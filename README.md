@@ -7,8 +7,10 @@ the D3D12 rendering corruption. No application override has been added.
 ## Current status
 
 The launch-option matrix E00-E02 is complete as of 2026-08-06. The
-investigation has now moved to source-level diagnosis; no application override
-or behavior-changing source patch has been added. The verified environment is:
+investigation has now moved to source-level diagnosis. No application override
+or permanent fix has been added; D05 is an opt-in diagnostic behavior change
+which is inert unless its investigation-only environment variable is set. The
+verified environment is:
 
 - Launch executable: `bin/game/IL2Series.exe`
 - Steam library: `/home/silv3rshi3ld/.local/share/Steam`
@@ -74,9 +76,11 @@ BC3 baked-terrain caches and issues 432 internal border uploads measuring
 `BakedTerrain`/`stitchBorders`. Current VKD3D forwards those one-texel extents
 unchanged to Vulkan, whose BC3 transfers are 4x4-block granular. This is the
 strongest current cause for the magenta terrain seams and a possible contributor
-to whole-page loss. It does not yet explain the menu blocks. The next test is
-one gated block-normalization build, not another batch of generic flags. See
-[`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md).
+to whole-page loss. It does not yet explain the menu blocks. D05 now provides
+the gated block-normalization build needed to test causality; it has not yet
+been run. See
+[`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md)
+and [`docs/evidence-d05-preparation.md`](docs/evidence-d05-preparation.md).
 
 D03 is complete and visually unchanged. In its same-run pre-cap class, all 585
 candidates have placed-resource records, none overlaps any traced placed buffer
@@ -230,6 +234,8 @@ Compare collected runs with:
   unmodified current-upstream build identity, hashes, and safety state
 - [`docs/evidence-d04-upstream-result.md`](docs/evidence-d04-upstream-result.md):
   unchanged result and game texture-provider fallback evidence
+- [`docs/evidence-d05-preparation.md`](docs/evidence-d05-preparation.md): gated
+  BC3 normalization build, exact hashes, launch option, and decision rule
 - [`docs/evidence-e03-no-descriptor-buffer.md`](docs/evidence-e03-no-descriptor-buffer.md):
   first verified descriptor-buffer-disabled result and provenance caveat
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only

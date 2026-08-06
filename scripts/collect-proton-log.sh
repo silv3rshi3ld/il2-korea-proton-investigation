@@ -19,6 +19,7 @@ usage() {
         "  resource-trace" \
         "  texture-trace" \
         "  alias-trace" \
+        "  bc3-border-normalization" \
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
@@ -45,6 +46,9 @@ variant_environment() {
             ;;
         alias-trace)
             printf '%s' 'VKD3D_IL2_TEXTURE_TRACE=1 VKD3D_IL2_ALIAS_TRACE=1 '
+            ;;
+        bc3-border-normalization)
+            printf '%s' 'VKD3D_IL2_BC3_BORDER_COPY=1 '
             ;;
         no-upload-hvv)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv '
@@ -203,7 +207,7 @@ collect_run() {
 
     awk '
         BEGIN { IGNORECASE = 1 }
-        /IL2TRACE|IL2TEX|IL2ALIAS|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
+        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
     ' "$source_log" >"$run_dir/filtered.log"
 
     awk '
@@ -241,6 +245,9 @@ collect_run() {
         printf 'alias_resource_destroy_count=%s\n' "$(count_matches 'IL2ALIAS destroy ' "$source_log")"
         printf 'alias_barrier_count=%s\n' "$(count_matches 'IL2ALIAS barrier ' "$source_log")"
         printf 'alias_trace_suppressed_count=%s\n' "$(count_matches 'IL2ALIAS suppressed ' "$source_log")"
+        printf 'bc3_border_enabled_count=%s\n' "$(count_matches 'IL2BCCOPY enabled ' "$source_log")"
+        printf 'bc3_border_adjustment_count=%s\n' "$(count_matches 'IL2BCCOPY adjust ' "$source_log")"
+        printf 'bc3_border_log_limit_count=%s\n' "$(count_matches 'IL2BCCOPY adjustment log limit' "$source_log")"
     } >"$run_dir/summary.txt"
 
     if grep -q -- 'IL2TEX enabled:' "$source_log"; then
@@ -251,6 +258,11 @@ collect_run() {
     if grep -q -- 'IL2ALIAS enabled:' "$source_log"; then
         "$script_dir/analyze-alias-trace.py" "$source_log" \
             --output "$run_dir/alias-trace-analysis.md"
+    fi
+
+    if grep -q -- 'IL2BCCOPY enabled ' "$source_log"; then
+        "$script_dir/analyze-bc3-border-copy.py" "$source_log" \
+            --output "$run_dir/bc3-border-copy-analysis.md"
     fi
 
     if ((include_system_info)) && [[ ! -f "$run_dir/system-info.txt" ]]; then
@@ -277,6 +289,9 @@ collect_run() {
     fi
     if [[ -f "$run_dir/alias-trace-analysis.md" ]]; then
         printf '  alias analysis:   %s\n' "$run_dir/alias-trace-analysis.md"
+    fi
+    if [[ -f "$run_dir/bc3-border-copy-analysis.md" ]]; then
+        printf '  BC3 analysis:     %s\n' "$run_dir/bc3-border-copy-analysis.md"
     fi
     printf '\nKey counts:\n'
     sed -n '1,120p' "$run_dir/summary.txt"

@@ -1,10 +1,10 @@
 # Patch status
 
-No permanent behavior-changing fix is currently justified. D02 now justifies
-one opt-in diagnostic behavior change: normalize only the observed internal
-one-texel BC3 border-copy extent to a complete physical block and measure the
-visual result. That diagnostic patch has not been created yet and must not be
-treated as an application override.
+No permanent behavior-changing fix is currently justified. D02 justifies one
+opt-in diagnostic behavior change: normalize only the observed internal one-
+texel BC3 border-copy extent to a complete physical block and measure the
+visual result. D05 implements that experiment; it must not be treated as an
+application override or an upstream-ready fix before the runtime result.
 
 `0001-il2-korea-sparse-resource-diagnostics.patch` is a temporary, gated
 instrumentation patch, not a candidate fix. It records the D3D12 reserved and
@@ -24,6 +24,14 @@ diagnostic patch. Behind `VKD3D_IL2_ALIAS_TRACE=1`, it records bounded placed-
 resource heap ranges, lifetimes, and explicit alias barriers using the same
 resource cookies as D02. It changes no D3D12/Vulkan behavior and must not be
 presented upstream as a remedy.
+
+`0004-vkd3d-Add-gated-BC3-border-copy-diagnostic-for-IL-2-.patch` is the D05
+causal diagnostic. It is inert unless `VKD3D_IL2_BC3_BORDER_COPY=1` is set and
+then recognizes only the observed 2048x2048 single-mip BC3 resource class and
+`1x64`, `64x1`, `1x128`, or `128x1` copy shapes. It expands only the one-texel
+dimension to a full four-texel physical block and emits bounded `IL2BCCOPY`
+records. Its runtime result determines whether any permanent compatibility
+behavior is justified.
 
 ## Why there is no application override
 

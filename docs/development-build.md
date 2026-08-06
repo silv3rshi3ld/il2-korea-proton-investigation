@@ -271,3 +271,20 @@ prefix hashes match the build, closing the broad current-upstream version lead.
 The game's own `tex.log` adds a distinct texture-provider fallback lead; see
 [`evidence-d04-upstream-preparation.md`](evidence-d04-upstream-preparation.md)
 and [`evidence-d04-upstream-result.md`](evidence-d04-upstream-result.md).
+
+## D05 gated BC3 border normalization
+
+- Base VKD3D-Proton: `84c87c8390d9df75ba41d911496296fe13f0e275`
+- Diagnostic commit: `35bd875cf58a555a64fa366926c04cd6b0664611`
+- Gate: `VKD3D_IL2_BC3_BORDER_COPY=1`
+- Build directory: `build/vkd3d-proton-il2-d05-bc3-35bd875c/`
+- Custom tool: `IL2-Korea-D05-BC3-35bd875c`
+
+D05 changes only the four one-texel BC3 border shapes already observed on the
+2048x2048, one-mip baked-terrain cache. It expands the thin dimension to one
+complete four-texel compressed block and logs every adjustment. It is disabled
+by default and is a causal diagnostic, not a proposed application override or
+general fix. Both architectures compile, the installed custom tool differs
+from Proton Experimental only in the four VKD3D DLLs plus its manifest and
+metadata, and `D05-bc3-r1` is prepared. Exact hashes and the test protocol are
+in [`evidence-d05-preparation.md`](evidence-d05-preparation.md).
