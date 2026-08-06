@@ -12,6 +12,9 @@ This directory contains ignored local evidence:
 - `curated/d02-ordinary-texture-trace/`: one cockpit screenshot showing the
   unchanged missing terrain pages at 1,385 m during valid ordinary-texture
   telemetry; SHA-256 is recorded in `docs/evidence-d02-ordinary-texture-trace.md`;
+- `curated/e03-no-descriptor-buffer/`: menu, 4,858 m, and 1,121 m screenshots
+  from the first descriptor-buffer-disabled run; hashes are recorded in
+  `docs/evidence-e03-no-descriptor-buffer.md`;
 - `runs/`: exact compressed Proton logs, compact module/summary files,
   metadata, and observations;
 - `comparisons/`: generated log comparisons.

@@ -52,9 +52,12 @@ configurations. E01 is therefore inconclusive pending matched-altitude A/B.
 E02 (`single_queue`) is complete and unchanged across two runs. Disabling
 asynchronous compute/transfer queues does not remove either defect.
 
-E03 (descriptor buffer disabled) is now the prepared next control; E04
-(`no_upload_hvv,single_queue`) was not run. Both remain explicitly inconclusive
-rather than being counted as unchanged. The user reports that below roughly 1,500 m some low-fidelity assets
+E03 run 1 definitely disabled descriptor buffers and is visually unchanged at
+the menu, 4,858 m, and 1,121 m. Steam remained on the D03-derived custom tool,
+although both telemetry gates were off, so one Proton Experimental confirmation
+is prepared before closing the row. E04 (`no_upload_hvv,single_queue`) was not
+run. Both remain explicitly inconclusive rather than being counted as final.
+The user reports that below roughly 1,500 m some low-fidelity assets
 begin to load; around 5,000 m the failure is much more severe. Current logs do
 not expose the relevant altitude, mip, tile-mapping, or residency state.
 
@@ -70,10 +73,22 @@ candidates have placed-resource records, none overlaps any traced placed buffer
 or texture range, and the full run records zero explicit legacy alias barriers.
 This excludes D3D12 placed-resource memory aliasing for the covered class with
 high confidence; it does not test descriptor-heap image/buffer type reuse.
-E03 therefore disables only the active descriptor-buffer extension. See
+E03-r1 indicates that changing from descriptor buffers to the mutable-descriptor
+fallback is not sufficient. See
 [`docs/evidence-d02-ordinary-texture-trace.md`](docs/evidence-d02-ordinary-texture-trace.md)
-and [`docs/evidence-d03-alias-trace.md`](docs/evidence-d03-alias-trace.md).
+[`docs/evidence-d03-alias-trace.md`](docs/evidence-d03-alias-trace.md), and
+[`docs/evidence-e03-no-descriptor-buffer.md`](docs/evidence-e03-no-descriptor-buffer.md).
 No descriptor or aliasing workaround has been enabled.
+
+Resolved Microsoft Flight Simulator cases were also reviewed. They do not
+provide a drop-in IL-2 workaround: the installed VKD3D-Proton already contains
+their historical shader and imported-memory fixes, and MSFS 2020's
+`host_import_fallback` was tied to a 16 GiB host allocation. MSFS 2024 does
+provide a strong diagnostic lesson because a near-ground/grass path exposed a
+`dxil-spirv` defect which validation missed. Current upstream contains 36
+translator commits beyond the installed revision, so the next source control
+is an unmodified current-upstream build, followed by a bisection only if it
+changes the result. See [`docs/prior-art-msfs.md`](docs/prior-art-msfs.md).
 
 An unmodified development build of the exact installed VKD3D-Proton commit was
 built successfully, but D00 did not validate it: stock Proton recopies its own
@@ -181,8 +196,16 @@ Compare collected runs with:
   build, isolated custom tool, exact launch option, and rollback
 - [`docs/evidence-d03-alias-trace.md`](docs/evidence-d03-alias-trace.md): valid
   D03 runtime result excluding placed-resource range aliasing
+- [`docs/evidence-d04-upstream-preparation.md`](docs/evidence-d04-upstream-preparation.md):
+  unmodified current-upstream build identity, hashes, and safety state
+- [`docs/evidence-e03-no-descriptor-buffer.md`](docs/evidence-e03-no-descriptor-buffer.md):
+  first verified descriptor-buffer-disabled result and provenance caveat
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
+- [`docs/rendering-path-assessment.md`](docs/rendering-path-assessment.md):
+  evidence-backed terrain data-flow model, exclusions, and leading mechanisms
+- [`docs/prior-art-msfs.md`](docs/prior-art-msfs.md): MSFS 2020/2024 shader,
+  host-import, and driver precedent and its exact consequences for IL-2
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated
   game-build baseline result
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status

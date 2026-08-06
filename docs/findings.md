@@ -138,6 +138,23 @@
     placed-resource memory aliasing is therefore excluded with high confidence
     as the population path for the covered class. Descriptor-heap image/buffer
     type reuse remains a distinct, untested mechanism.
+32. E03-r1 definitely disables `VK_EXT_descriptor_buffer` and selects the
+    `VK_EXT_mutable_descriptor_type` fallback. Menu aircraft blocks and terrain
+    loss at both 4,858 m and 1,121 m remain unchanged. Steam was still using
+    the D03-derived `cfca234e` tool, but both diagnostic gates were off and no
+    telemetry markers occurred. This is useful negative evidence, but the E03
+    row remains inconclusive pending one confirmation on Proton Experimental.
+33. The reviewed MSFS 2020/2024 fixes are already ancestors of installed
+    VKD3D-Proton `3dfc6f07`. They address shader pipeline creation, shader
+    control-flow/value-dominance/ROV translation, or exceptional imported host
+    memory. None is an unmerged application override which can be copied to
+    IL-2, and IL-2 has no matching pipeline-failure or 16 GiB host-import
+    signature in the representative logs.
+34. Current upstream VKD3D-Proton `84c87c83` advances `dxil-spirv` from the
+    installed `7ecda135` to `cc75a0c9`, a 36-commit range containing several
+    control-flow structurizer changes. MSFS 2024 demonstrates that a scene-
+    selected translator bug can evade `spirv-val`; this makes an unmodified
+    current-upstream D04 run a justified discriminator, not a claimed fix.
 
 ## Observations not yet promoted to findings
 
@@ -157,6 +174,13 @@
   missing synchronization, upload visibility, descriptor misuse, sparse
   residency, mip/LOD selection, aliasing, compression, shader translation, and
   a driver bug. Visual appearance cannot select among them.
+- The combined visual, binary, and trace evidence supports a working model in
+  which the terrain mesh remains present while an engine-level distance/LOD
+  system selects ordinary placed BC3 surface pages. Most distant pages appear
+  empty, stale, wrong, or not visible to the shader; lower altitude selects
+  additional local pages. Descriptor contents/lifetime, copy-to-sample
+  synchronization, shader index/LOD translation, and RADV remain distinct
+  possible causes. See `rendering-path-assessment.md`.
 
 ## External-report and prior-art assessment
 
@@ -168,6 +192,15 @@ dependency. Satisfactory also has a targeted missing-barrier workaround. Arma
 Reforger's unusual asset loading motivated a `no_upload_hvv` workaround. These
 cases increase the diagnostic value of E01, E02, and later resource/shader
 tracing; they do not justify copying an override.
+
+MSFS 2024 supplies a different and now higher-value precedent: grass or
+near-ground rendering selected a `dxil-spirv` bug which `spirv-val` did not
+catch. MSFS 2020's `host_import_fallback` advice instead belongs to an
+exceptional 16 GiB `OpenExistingHeapFromAddress` path and is not transferable
+without IL-2 host-import evidence. The installed VKD3D-Proton commit already
+contains all reviewed historical MSFS fixes, while current upstream contains
+36 newer `dxil-spirv` commits. This selects an unmodified current-upstream
+control before descriptor QA; see `prior-art-msfs.md`.
 
 ## Root-cause assessment
 
@@ -182,16 +215,18 @@ tracing; they do not justify copying an override.
 | Ordinary mip uploads | D02 geometrically verifies complete buffer uploads for 2,355 multi-mip compressed resources, zero partial resources, and zero non-zero SRV minimum-LOD clamps. | Broad incomplete-mip/min-LOD explanation weakened, medium-high |
 | No-upload SRV class | Corrected D02 analysis finds 405 pre-copy-cap placed multi-mip BC3 textures with SRVs but no logged incoming upload/copy; actual binding/use is unknown. | Medium for relevance, low for defect/cause |
 | Placed-resource aliasing | D03 matches all 585 same-run pre-cap candidates and finds zero range overlap plus zero explicit legacy alias barriers. | Excluded for covered class, high |
+| Descriptor-buffer backend | One verified disable run on the D03-derived build is visually unchanged and uses the mutable-descriptor fallback; stock-Proton confirmation remains. | Medium that descriptor buffers are not the primary cause |
 
 No behavior-changing upstream patch is justified yet. Focused diagnostic
 instrumentation is prepared for a dedicated custom Proton runtime.
 
 ## Source-level investigation gate
 
-Launch-option testing ended after E02 because two baseline runs, two
+The broad launch-option batch ended after E02 because two baseline runs, two
 upload-path runs, and two single-queue runs all retained the core defect. E03
-and E04 were not run and must not be described as unchanged. The investigation
-has resumed at the development-build stage.
+was later run once and remained visually unchanged with the extension disable
+verified; E04 was not run. The investigation has resumed at the
+development-build stage.
 
 1. D00 and D01a prefix-copy controls are invalid because Proton replaced the
    local DLLs before the game loaded them.
@@ -202,6 +237,10 @@ has resumed at the development-build stage.
    and identifies 405 pre-cap SRV-bearing compressed textures without a logged upload.
 5. D03 is complete and excludes placed-resource range aliasing for all 585
    same-run pre-cap candidates. It does not test descriptor-heap type reuse.
-6. E03 now disables only the active descriptor-buffer extension. If unchanged,
-   use a descriptor-QA build rather than another broad allocation trace.
-7. Investigate the NUMA caller separately with focused API tracing.
+6. E03-r1 disables the active descriptor-buffer extension and is visually
+   unchanged on the D03-derived tool with its telemetry gates off. A stock
+   confirmation remains desirable but is not the next source-level gate.
+7. Build and run unmodified current VKD3D-Proton `84c87c83` with
+   `dxil-spirv` `cc75a0c9`. If unchanged, proceed to descriptor QA; if fixed,
+   bisect the source range.
+8. Investigate the NUMA caller separately with focused API tracing.

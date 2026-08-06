@@ -22,7 +22,7 @@ not establish what Wine reports through Win32 processor groups and NUMA APIs.
 |---|---|---|---|
 | G1 | Host-visible VRAM/ReBAR upload-heap behavior exposes an application or VKD3D lifetime/visibility bug. | `no_upload_hvv` alone; inspect VKD3D memory-topology lines. | Compare ReBAR on/off, allocation path, and upload resource lifecycle. |
 | G2 | A missing or insufficient cross-queue dependency affects streamed terrain or menu compute work. | `single_queue` alone; then the planned combination only after G1/G2 individual results. | Queue-specific logging, semaphore/timeline analysis, then narrow instrumentation. |
-| G3 | Descriptor-buffer lifetime/type/reuse behavior exposes invalid game descriptors or a translation/driver defect. | E03 disables only `VK_EXT_descriptor_buffer`; D03 excluded placed-resource range aliasing but did not test descriptor-heap image/buffer type reuse. | Descriptor QA or filtered descriptor telemetry. |
+| G3 | Descriptor lifetime/type/reuse behavior exposes invalid game descriptors or a translation/driver defect. | E03-r1 definitely disables `VK_EXT_descriptor_buffer` and is visually unchanged on the D03-derived build; confirm on stock Proton. This weakens a descriptor-buffer-specific defect but does not test invalid descriptors common to both backends. | GPU-assisted descriptor QA or filtered descriptor telemetry. |
 | G4 | The game omits a UAV/resource barrier and native drivers implicitly serialize the sequence. | Look for a repeatable change under single queue or controlled heavy synchronization; correlate a specific compute shader/resource sequence. | Narrow shader/resource instrumentation; only then consider a shader-specific barrier quirk. |
 | G5 | Reserved/sparse terrain resources or residency updates are mishandled. | Valid D01b trace records zero reserved-resource and tile-mapping calls during reproduction. | Excluded for the tested path; do not pursue without contradictory new evidence. |
 | G6 | Incorrect mip/LOD state causes distant terrain to sample absent mips. | D02 found zero non-zero SRV minimum-LOD clamps and complete geometric uploads for 2,355 compressed mip chains, weakening the broad form of this hypothesis. | Correlate the remaining no-upload SRV class with actual binding and explicit-LOD shader use. |
@@ -83,6 +83,14 @@ value is the mechanism and debugging method.
 5. **Wreckfest 2 and Rise of the Tomb Raider:** current workarounds document
    illegal texture aliasing and render-while-sample/compression behavior. They
    justify inspecting G7 only if the simpler controls fail.
+6. **Microsoft Flight Simulator 2024:** two separate failures were fixed in
+   `dxil-spirv`, including a grass/near-ground crash caused by a translator bug
+   which `spirv-val` did not catch. This elevates G10 and justifies an
+   unmodified current-upstream control before IL-2-specific shader changes.
+7. **Microsoft Flight Simulator 2020:** its `host_import_fallback` advice is
+   tied to an exceptional 16 GiB `OpenExistingHeapFromAddress` allocation and
+   unusable AMD performance. IL-2 has no matching evidence, so this flag is not
+   selected without a focused host-import trace.
 
 Primary references:
 
@@ -92,6 +100,7 @@ Primary references:
 - [Wuthering Waves fix PR #2617](https://github.com/HansKristian-Work/vkd3d-proton/pull/2617)
 - [VKD3D-Proton changelog](https://github.com/HansKristian-Work/vkd3d-proton/blob/master/CHANGELOG.md)
 - [VKD3D-Proton releases](https://github.com/HansKristian-Work/vkd3d-proton/releases)
+- [MSFS prior-art assessment](prior-art-msfs.md)
 
 ## Decision gates
 
