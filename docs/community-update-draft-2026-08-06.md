@@ -4,9 +4,11 @@ The concise versions below were posted to
 [ValveSoftware/Proton #9906](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5209002066)
 and
 [VKD3D-Proton #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5209002942).
-The handoff archive was not uploaded; it remains available locally on request.
+Both comments now link to the public repository. The sanitized archive is
+published in the
+[2026-08-06 handoff release](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/handoff-2026-08-06).
 
-## Draft for ValveSoftware/Proton #9906
+## Posted text for ValveSoftware/Proton #9906
 
 ```text
 Small progress update from a second AMD/RADV system (RX 7800 XT, Mesa 26.1.6).
@@ -32,7 +34,7 @@ The notes, scripts and sanitized bundle are public here:
 https://github.com/silv3rshi3ld/il2-korea-proton-investigation
 ```
 
-## Draft for VKD3D-Proton #3134
+## Posted text for VKD3D-Proton #3134
 
 ```text
 I reproduced this on an RX 7800 XT with Mesa/RADV 26.1.6. single_queue,
@@ -70,9 +72,9 @@ The notes, scripts and sanitized bundle are public here:
 https://github.com/silv3rshi3ld/il2-korea-proton-investigation
 ```
 
-## Proposed attachments
+## Published handoff contents
 
-The generated community handoff archive should contain:
+The published community handoff archive contains:
 
 - sanitized, compressed D02 and D05a Proton logs;
 - a compact D02 excerpt containing the 2048x2048 BC3 cache creation and 432
