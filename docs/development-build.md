@@ -46,7 +46,8 @@ Directory:
 
 Different hashes from Proton's packaged DLLs are expected because the local
 compiler and link environment differ. Architecture and D3D12 export names were
-checked; D00 subsequently established runtime parity for the reported defect.
+checked. D00 did not establish runtime parity because stock Proton replaced the
+prefix-copied DLLs during launch.
 
 ## Safety state
 
@@ -62,8 +63,9 @@ verified this DLL-only backup:
 /home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T155429Z
 ```
 
-The four installed DLL hashes match the build-artifact table above. No Proton
-installation file was modified.
+The four DLL hashes matched the build-artifact table immediately after
+installation, and no Proton installation file was modified. This state was not
+durable: Proton recopied its packaged files when the game launched.
 
 Installation was restricted to the four D3D12 DLLs in the AppID 247970 prefix:
 
@@ -81,12 +83,13 @@ Rollback, with Steam and the game stopped:
   --yes
 ```
 
-## D00 parity result
+## D00 invalidated parity attempt
 
-D00 completed on 2026-08-06. The user reports the same menu and terrain
-corruption as E00. The log identifies the exact local build, loads DXGI,
-D3D12/D3D12Core, and the game backend with no D3D11 module, and contains no
-device-loss or out-of-memory signature. See
+D00 completed on 2026-08-06 and reproduced the same corruption. Because the
+local build and packaged build use the same source identifier, the log cannot
+distinguish them. D01a later proved that the prefix-copy method is overwritten
+by Proton at launch. D00 must therefore be treated as another packaged-Proton
+reproduction, not local-build parity. See
 [`evidence-d00-local-build.md`](evidence-d00-local-build.md).
 
 ## D01 trace-only build
@@ -123,14 +126,40 @@ remain available in the retained build directory. U00 subsequently confirmed
 the same corruption, so the trace build is cleared for reinstallation before
 D01.
 
-The trace build was reinstalled after U00 on 2026-08-06. The current clean
-Proton-DLL rollback point is:
+The trace build was copied into the prefix again after U00 on 2026-08-06. The
+clean Proton-DLL rollback point was:
 
 ```text
 /home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T165614Z
 ```
 
-The first gate is whether D01 contains any reserved/tiled-resource calls. If it
-does not, the next build will trace ordinary texture creation, mip-range SRVs,
-upload copies, descriptors, and resource lifetime rather than Vulkan sparse
-residency.
+D01a contained no `IL2TRACE` marker. Post-run prefix hashes exactly matched the
+packaged Proton DLLs, proving that Proton replaced the diagnostic files before
+VKD3D initialized. Zero reserved/tiled-resource calls in that log are therefore
+not evidence about the game. See
+[`evidence-d01-invalid-prefix-install.md`](evidence-d01-invalid-prefix-install.md).
+
+## Corrected custom-Proton method
+
+`scripts/create-custom-proton.sh` creates a Btrfs copy-on-write clone of Proton
+Experimental under Steam's `compatibilitytools.d`, replaces only the clone's
+four packaged VKD3D-Proton DLLs, adds a unique compatibility-tool manifest, and
+records hashes and source versions. It does not modify Proton Experimental or
+the game prefix. When the clone is selected, Proton's normal DLL-copy step
+installs the diagnostic files rather than overwriting them.
+
+After Steam is stopped, create the tool with:
+
+```bash
+./scripts/create-custom-proton.sh \
+  --source-tool "/home/silv3rshi3ld/.local/share/Steam/steamapps/common/Proton - Experimental" \
+  --build-dir "$PWD/build/vkd3d-proton-il2-resource-trace-3dfc6f07" \
+  --destination "/home/silv3rshi3ld/.local/share/Steam/compatibilitytools.d/IL2-Korea-Diagnostic-3dfc6f07" \
+  --tool-name IL2-Korea-Diagnostic-3dfc6f07 \
+  --yes
+```
+
+Restart Steam and select `IL2-Korea-Diagnostic-3dfc6f07` for AppID 247970.
+The next log must contain `IL2TRACE enabled` before any API counts are
+interpreted. Rollback is selecting Proton Experimental again; the custom tool
+must not be removed while Steam is running.

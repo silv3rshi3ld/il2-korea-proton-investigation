@@ -63,13 +63,14 @@ streaming, residency, or mip/LOD behavior is the leading class of hypotheses,
 but the defective layer is unknown. See [`patches/README.md`](patches/README.md)
 for the evidence-based no-patch decision.
 
-An unmodified development build of the exact installed VKD3D-Proton commit
-reproduced the Proton-supplied behavior in D00. This validates the local
-compiler/build/install path. Steam then auto-updated the game from build
+An unmodified development build of the exact installed VKD3D-Proton commit was
+built successfully, but D00 did not validate it: stock Proton recopies its own
+packaged D3D12 DLLs into the prefix during every launch. Steam then auto-updated the game from build
 `24577563` to `24596901` and restored the prefix's Proton-supplied D3D12 DLLs
 before D01 ran. U00 confirms the updated game has the same corruption and the
-same Linux D3D12 path. The trace-only D01 build has therefore been reinstalled
-and its focused run is prepared without another baseline repetition. See
+same Linux D3D12 path. A later D01 prefix-install attempt was also overwritten;
+its absent trace marker and post-run DLL hashes prove the method ineffective.
+The next run will use a dedicated custom Proton tool. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The user also confirms that the game renders correctly on native Windows. This
@@ -145,8 +146,10 @@ Compare collected runs with:
 - [`docs/experiment-matrix.md`](docs/experiment-matrix.md): one-variable test plan
 - [`docs/development-build.md`](docs/development-build.md): exact local build and
   source-level investigation status
-- [`docs/evidence-d00-local-build.md`](docs/evidence-d00-local-build.md): local
-  unmodified-build parity result
+- [`docs/evidence-d00-local-build.md`](docs/evidence-d00-local-build.md): why the
+  attempted local-build parity control is invalid
+- [`docs/evidence-d01-invalid-prefix-install.md`](docs/evidence-d01-invalid-prefix-install.md):
+  proof that stock Proton overwrote the trace DLLs
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated
   game-build baseline result
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status

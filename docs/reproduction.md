@@ -116,10 +116,14 @@ buffer disabling with another flag in this first matrix.
 
 ## D01 focused resource trace
 
-D01 uses the installed trace-only development build. Prepare it with:
+D01a proved that copying DLLs directly into the prefix is ineffective because
+stock Proton restores its packaged copies during launch. Create the dedicated
+custom tool using the command in [`development-build.md`](development-build.md),
+restart Steam, and explicitly select `IL2-Korea-Diagnostic-3dfc6f07` for this
+game. Then prepare a fresh run with:
 
 ```bash
-./scripts/collect-proton-log.sh prepare D01-sparse-resource-trace-r1 resource-trace
+./scripts/collect-proton-log.sh prepare D01b-custom-proton-sparse-trace-r1 resource-trace
 ```
 
 For this diagnostic gate, reach the menu and load the established Singo-dong
@@ -129,8 +133,10 @@ the log. The collector reports whether the trace gate was active and counts
 reserved-resource creation, tiling queries, tile updates, and tile copies.
 
 This run is not an A/B visual experiment: the DLL behavior is unchanged. Its
-question is whether the failing path uses D3D12 tiled/reserved resources at
-all. One representative run is sufficient to answer that binary API-use gate.
+first validity gate is an `IL2TRACE enabled` marker; no API result may be
+interpreted without it. Its diagnostic question is then whether the failing
+path uses D3D12 tiled/reserved resources at all. One representative valid run
+is sufficient to answer that binary API-use gate.
 
 ## Performance notes
 

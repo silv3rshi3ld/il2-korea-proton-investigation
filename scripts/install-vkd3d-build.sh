@@ -19,7 +19,9 @@ usage() {
         "  $0 restore --backup-dir PATH [--compat-dir PATH] [--backup-root PATH] --yes" \
         "" \
         "Installs only x64/x86 d3d12.dll and d3d12core.dll into the AppID $app_id prefix." \
-        "The Proton installation is never modified. Official package-release output is expected."
+        "The Proton installation is never modified. Official package-release output is expected." \
+        "WARNING: Stock Proton replaces these prefix DLLs during launch. Use this for backup/restore" \
+        "or direct-Wine diagnostics; use create-custom-proton.sh for Steam runtime testing."
 }
 
 while (($#)); do
@@ -242,6 +244,8 @@ if [[ "$mode" == "install" ]]; then
     sha256sum "$system32/d3d12.dll" "$system32/d3d12core.dll" \
         "$syswow64/d3d12.dll" "$syswow64/d3d12core.dll"
     printf 'Rollback with:\n  %q restore --backup-dir %q --yes\n' "$0" "$original_backup"
+    printf 'WARNING: Stock Proton will replace these prefix DLLs during launch.\n'
+    printf 'Use scripts/create-custom-proton.sh for a durable Steam runtime test.\n'
 else
     if [[ -z "$backup_dir" || ! -d "$backup_dir" ]]; then
         printf 'restore requires --backup-dir from a prior install.\n' >&2

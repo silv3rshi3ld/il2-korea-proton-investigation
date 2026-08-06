@@ -31,6 +31,7 @@ terrain. They also contain no Vulkan validation failure, device loss, GPU hang,
 or cross-driver comparison. The defective layer cannot be assigned to the
 game, VKD3D-Proton, or RADV.
 
-The unmodified local build now has runtime parity with E00, and D01 focused
-instrumentation is active. Only a demonstrated semantic defect should produce
-a behavior-changing patch.
+The prefix-only installation attempts did not load the local DLLs because
+stock Proton restored its packaged copies during launch. A dedicated custom
+Proton tool is required before D01 telemetry can be interpreted. Only a
+demonstrated semantic defect should produce a behavior-changing patch.

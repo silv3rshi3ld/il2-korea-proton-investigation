@@ -49,10 +49,9 @@
     synchronization or lifetime defects within the remaining queue path.
 15. An unmodified x64/x86 VKD3D-Proton development build succeeds from the
     exact installed source commit using the official retained-build method.
-    D00 reproduces the established menu and terrain corruption, logs build ID
-    `0x3dfc6f07d0953b1`, loads no D3D11 module, and differs only slightly from
-    E00-r2 in duration-dependent warning counts. The local build path therefore
-    has runtime parity with the packaged build for this defect.
+    D00 does not establish runtime parity: the local and packaged builds share
+    the same build identifier, and D01a later proves that stock Proton replaces
+    prefix-copied D3D12 DLLs with its packaged files during launch.
 16. The user confirms correct rendering on native Windows. The problem is
     consequently reproducible only on the tested Linux compatibility/driver
     path. This does not yet distinguish a VKD3D-Proton defect, a RADV defect,
@@ -72,6 +71,11 @@
     host-visible upload heaps, and multiple queues, with no D3D11 module,
     device loss, or out-of-memory signature. The update is therefore unchanged
     for the investigated defect.
+20. D01a visually reproduces the defect at 6,306 m, but it is not an
+    instrumentation result. Its log contains zero `IL2TRACE` markers and the
+    four post-run prefix hashes exactly match Proton Experimental rather than
+    the diagnostic build. Prefix-only DLL installation is therefore unsuitable
+    for stock Proton runtime tests; a dedicated custom Proton tool is required.
 
 ## Observations not yet promoted to findings
 
@@ -113,7 +117,7 @@ tracing; they do not justify copying an override.
 | Streaming/residency/LOD | The cross-configuration altitude threshold and rectangular terrain pages make this the leading hypothesis class, but current logs contain no resource-level evidence. | Medium for relevance, low for mechanism |
 
 No behavior-changing upstream patch is justified yet. Focused diagnostic
-instrumentation is prepared and will resume after the updated-game baseline.
+instrumentation is prepared for a dedicated custom Proton runtime.
 
 ## Source-level investigation gate
 
@@ -122,9 +126,11 @@ upload-path runs, and two single-queue runs all retained the core defect. E03
 and E04 were not run and must not be described as unchanged. The investigation
 has resumed at the development-build stage.
 
-1. D00 is complete: the unmodified local build has parity with E00.
+1. D00 and D01a prefix-copy controls are invalid because Proton replaced the
+   local DLLs before the game loaded them.
 2. U00 is complete: the updated game build is unchanged for the defect.
-3. Reinstall the trace-only build and use D01 focused
+3. Create and select a dedicated custom Proton tool containing the trace-only
+   build, then use D01b focused
    API telemetry to determine whether the title uses D3D12 reserved resources
    and tile mappings for the affected terrain.
 4. If it does, correlate tile map/unmap operations, mips, queue submissions,
