@@ -65,7 +65,13 @@
     `24596901` (886,044,096 bytes downloaded; 5,418,273,475 bytes staged; 51
     files updated). Proton Experimental and VKD3D-Proton remained unchanged,
     while the update's install step restored the prefix D3D12 DLLs to the
-    Proton-supplied hashes. U00 must establish the new game-build baseline.
+    Proton-supplied hashes. U00 was therefore required as a new-build baseline.
+19. U00 establishes that baseline. The user reports the same menu and terrain
+    corruption on game build `24596901`. The log still identifies
+    VKD3D-Proton `3dfc6f07d0953b1`, DXVK DXGI, descriptor buffers,
+    host-visible upload heaps, and multiple queues, with no D3D11 module,
+    device loss, or out-of-memory signature. The update is therefore unchanged
+    for the investigated defect.
 
 ## Observations not yet promoted to findings
 
@@ -117,8 +123,8 @@ and E04 were not run and must not be described as unchanged. The investigation
 has resumed at the development-build stage.
 
 1. D00 is complete: the unmodified local build has parity with E00.
-2. Run U00 once with the new game build and Proton-supplied D3D12 DLLs.
-3. If the defect remains, reinstall the trace-only build and use D01 focused
+2. U00 is complete: the updated game build is unchanged for the defect.
+3. Reinstall the trace-only build and use D01 focused
    API telemetry to determine whether the title uses D3D12 reserved resources
    and tile mappings for the affected terrain.
 4. If it does, correlate tile map/unmap operations, mips, queue submissions,

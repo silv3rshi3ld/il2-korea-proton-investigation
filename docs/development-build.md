@@ -119,8 +119,9 @@ directory:
 Before D01 launched, Steam auto-updated the game to build `24596901`. Its
 install step restored all four prefix D3D12 DLLs to hashes matching Proton
 Experimental, so the trace marker cannot be active in U00. The diagnostic DLLs
-remain available in the retained build directory and will be reinstalled after
-the new-build baseline only if the defect persists.
+remain available in the retained build directory. U00 subsequently confirmed
+the same corruption, so the trace build is cleared for reinstallation before
+D01.
 
 The first gate is whether D01 contains any reserved/tiled-resource calls. If it
 does not, the next build will trace ordinary texture creation, mip-range SRVs,

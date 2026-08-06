@@ -67,8 +67,9 @@ An unmodified development build of the exact installed VKD3D-Proton commit
 reproduced the Proton-supplied behavior in D00. This validates the local
 compiler/build/install path. Steam then auto-updated the game from build
 `24577563` to `24596901` and restored the prefix's Proton-supplied D3D12 DLLs
-before D01 ran. U00 is the required new-build baseline; the trace-only D01 build
-will be reinstalled only if the defect remains. See
+before D01 ran. U00 confirms the updated game has the same corruption and the
+same Linux D3D12 path. The trace-only D01 build can therefore be reinstalled
+without another baseline repetition. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The user also confirms that the game renders correctly on native Windows. This
@@ -146,6 +147,8 @@ Compare collected runs with:
   source-level investigation status
 - [`docs/evidence-d00-local-build.md`](docs/evidence-d00-local-build.md): local
   unmodified-build parity result
+- [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated
+  game-build baseline result
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status
 - [`docs/upstream-drafts.md`](docs/upstream-drafts.md): review-only issue drafts
 - [`patches/README.md`](patches/README.md): why no patch is justified
