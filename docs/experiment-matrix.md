@@ -24,7 +24,7 @@ Allowed final values: **fixed**, **improved**, **unchanged**, **regressed**,
 | D00 | Prefix copy of locally compiled, otherwise unmodified VKD3D-Proton at `3dfc6f07…` | [invalid](evidence-d00-local-build.md) | Stock Proton recopies packaged DLLs at launch; runtime local-build parity was not established | inconclusive |
 | U00 | Game build `24596901`; Proton-supplied VKD3D at `3dfc6f07…` | [completed](evidence-u00-game-update.md) | Same menu and terrain corruption; update did not change the defect | unchanged |
 | D01a | Prefix copy plus `VKD3D_IL2_RESOURCE_TRACE=1`; trace-only build at `d0b4421f…` | [invalid](evidence-d01-invalid-prefix-install.md) | No trace marker; post-run hashes exactly match packaged Proton DLLs | inconclusive |
-| D01b | Dedicated custom Proton plus the same trace build | custom tool created and verified; `D01b-custom-proton-sparse-trace-r1` prepared | Confirm local DLL build marker, then determine whether reserved/tiled-resource APIs are called | inconclusive |
+| D01b | Dedicated custom Proton plus the same trace build | custom tool created and verified; first launch malformed before Proton; shorter `D01b-r1` prepared | Confirm local DLL build marker, then determine whether reserved/tiled-resource APIs are called | inconclusive |
 
 For each completed cell, link a run directory or curated evidence file and
 record new warning/error fingerprints from `compare-logs.py`.
