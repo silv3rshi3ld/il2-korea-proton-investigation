@@ -175,6 +175,10 @@ exactly one `IL2TEX enabled` marker plus post-run diagnostic DLL hashes. This
 is an API census, not a visual A/B fix test; one valid representative run is
 enough before narrowing the trace.
 
+D02-r1 is complete. Do not repeat it unless the game, Proton, VKD3D-Proton, or
+Mesa baseline changes. Its result and screenshot checksum are recorded in
+[`evidence-d02-ordinary-texture-trace.md`](evidence-d02-ordinary-texture-trace.md).
+
 ## Performance notes
 
 Record menu FPS, in-mission FPS, and obvious frame-pacing changes from the same

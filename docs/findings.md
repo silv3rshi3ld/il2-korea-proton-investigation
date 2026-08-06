@@ -99,14 +99,30 @@
 24. D02's bounded, opt-in ordinary texture telemetry builds successfully for
     x86-64 and x86 at local VKD3D-Proton commit `54797ad3`. It records texture
     creation/destruction, normalized SRV mip ranges, `CopyTextureRegion`, and
-    texture `CopyResource` calls by stable resource cookie. It changes no
-    rendering behavior and awaits a controlled runtime capture.
+    texture `CopyResource` calls by stable resource cookie without changing
+    rendering behavior.
 25. The separate `IL2-Korea-D02-Texture-Trace-54797ad3` custom Proton tool was
     created only after Steam exited. Recursive comparison against Proton
     Experimental shows exactly the intended four VKD3D-Proton DLL differences
     after excluding the custom manifest and metadata; every installed hash
     matches the D02 build. Proton Experimental, the D01 tool, game files, and
     prefix remain unchanged by creation.
+26. D02-r1 is a valid instrumented run: it contains one `IL2TEX enabled`
+    marker, the post-run DLL hashes match the custom tool, and D3D12/DXGI load
+    without D3D11. The screenshot shows the same rectangular terrain-page
+    failure at 1,385 m. Its timestamp precedes the copy-event cap by about 5.9
+    seconds, so the bounded trace covers the visible failure moment.
+27. D02 records 3,478 texture creations, 4,185 SRV descriptions, 39,978
+    `CopyTextureRegion` calls, and 22 texture `CopyResource` calls. After
+    correctly combining Z-slice uploads for Texture3D resources, 2,355
+    multi-mip block-compressed resources have complete geometric upload
+    coverage and none are partial. All observed SRVs use
+    `ResourceMinLODClamp = 0`, and no logged SRV or copy follows destruction.
+28. A narrower class remains unresolved: 433 placed multi-mip BC3 textures
+    have an SRV but no logged buffer upload or incoming texture copy. SRV
+    creation alone does not prove shader use, and D02 lacks buffer/heap overlap,
+    alias-barrier, descriptor-copy, and draw-use correlation. This class
+    justifies D03 instrumentation but not an aliasing workaround.
 
 ## Observations not yet promoted to findings
 
@@ -119,8 +135,9 @@
 - Screenshot evidence shows strong altitude/distance dependence across several
   configurations. The user reports that additional low-fidelity assets begin
   loading below roughly 1,500 m, while captures near 5,000 m show substantially
-  greater loss. The ordinary logs contain no altitude, mip, tile-mapping,
-  sparse-resource, or residency telemetry, so the mechanism is unproven.
+  greater loss. D02 also proves that rectangular pages remain missing at 1,385
+  m, so the threshold changes severity rather than fixing the defect. The
+  mechanism remains unproven.
 - Rendering symptoms are consistent with several failure classes, including
   missing synchronization, upload visibility, descriptor misuse, sparse
   residency, mip/LOD selection, aliasing, compression, shader translation, and
@@ -145,8 +162,10 @@ tracing; they do not justify copying an override.
 | Graphics | The game definitely uses D3D12 through VKD3D-Proton and DXVK's DXGI on this setup. The defective layer and mechanism are not isolated. | High for path, low for cause |
 | Queue selection | Two `single_queue` runs leave the defects unchanged, making ordinary asynchronous compute/transfer queue selection unlikely to be the primary trigger. | Medium |
 | Upload allocation | `no_upload_hvv` changes the allocation path, but its apparent improvement is inseparable from lower capture altitude. | Low/inconclusive |
-| Streaming/residency/LOD | The cross-configuration altitude threshold and rectangular terrain pages make this the leading hypothesis class, but current logs contain no resource-level evidence. | Medium for relevance, low for mechanism |
+| Streaming/residency/LOD | D02 confirms active ordinary compressed-texture streaming and narrows it to complete uploads plus an unresolved no-upload SRV class; it does not identify which resources produce the visible pages. | Medium for relevance, low for mechanism |
 | D3D12 sparse/tiled resources | Valid D01b instrumentation records zero reserved-resource and tile-mapping API use during reproduction. | Excluded for this path, high |
+| Ordinary mip uploads | D02 geometrically verifies complete buffer uploads for 2,355 multi-mip compressed resources, zero partial resources, and zero non-zero SRV minimum-LOD clamps. | Broad incomplete-mip/min-LOD explanation weakened, medium-high |
+| No-upload SRV class | D02 finds 433 placed multi-mip BC3 textures with SRVs but no logged incoming upload/copy; actual binding/use and aliasing are unknown. | Medium for relevance, low for defect/cause |
 
 No behavior-changing upstream patch is justified yet. Focused diagnostic
 instrumentation is prepared for a dedicated custom Proton runtime.
@@ -163,9 +182,10 @@ has resumed at the development-build stage.
 2. U00 is complete: the updated game build is unchanged for the defect.
 3. D01b is complete and excludes D3D12 reserved/tiled resources from the
    failing path.
-4. D02 ordinary texture creation, mip-range SRV, upload-copy, and lifetime
-   telemetry and its separately named custom Proton tool are verified; collect
-   one representative runtime trace.
-5. Use descriptor QA only after the resource path is known, or earlier if the
-   focused trace reports suspicious descriptor reuse/destruction.
+4. D02 is complete. It weakens broad missing-mip and minimum-LOD explanations
+   and identifies 433 SRV-bearing compressed textures without a logged upload.
+5. D03 should add bounded placed-buffer/texture heap ranges, aliasing barriers,
+   descriptor propagation, and use correlation for that exact resource class.
+   Use descriptor QA only if this correlation points to descriptor reuse or
+   image/buffer type confusion.
 6. Investigate the NUMA caller separately with focused API tracing.

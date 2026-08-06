@@ -9,6 +9,9 @@ This directory contains ignored local evidence:
   prefix-install attempt; the visual evidence is valid but no trace ran;
 - `curated/d01b-custom-proton-trace/`: one screenshot from the valid custom-
   Proton sparse-resource trace;
+- `curated/d02-ordinary-texture-trace/`: one cockpit screenshot showing the
+  unchanged missing terrain pages at 1,385 m during valid ordinary-texture
+  telemetry; SHA-256 is recorded in `docs/evidence-d02-ordinary-texture-trace.md`;
 - `runs/`: exact compressed Proton logs, compact module/summary files,
   metadata, and observations;
 - `comparisons/`: generated log comparisons.

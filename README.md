@@ -58,10 +58,16 @@ unchanged. The user reports that below roughly 1,500 m some low-fidelity assets
 begin to load; around 5,000 m the failure is much more severe. Current logs do
 not expose the relevant altitude, mip, tile-mapping, or residency state.
 
-The current root-cause confidence is **low**. Altitude/distance-dependent
-streaming, residency, or mip/LOD behavior is the leading class of hypotheses,
-but the defective layer is unknown. See [`patches/README.md`](patches/README.md)
-for the evidence-based no-patch decision.
+The current root-cause confidence is **low**, but D02 has narrowed the next
+step. During a valid corrupted run, 2,355 multi-mip compressed textures received
+geometrically complete buffer uploads, no partial mip chain was found, every
+logged SRV used a zero minimum-LOD clamp, and no logged operation followed
+resource destruction. A separate class of 433 placed BC3 textures received an
+SRV but no logged incoming upload/copy. D03 will determine whether those
+resources are actually bound and whether buffer overlap, aliasing barriers, or
+descriptor propagation explains their contents. See
+[`docs/evidence-d02-ordinary-texture-trace.md`](docs/evidence-d02-ordinary-texture-trace.md)
+and [`patches/README.md`](patches/README.md).
 
 An unmodified development build of the exact installed VKD3D-Proton commit was
 built successfully, but D00 did not validate it: stock Proton recopies its own
@@ -76,9 +82,10 @@ that the diagnostic DLLs ran. Zero reserved-resource or tile-mapping calls were
 made, excluding D3D12 sparse/tiled resources from the failing path. Read-only
 inspection of the compiled game/backend binaries independently points to the
 game's ordinary committed/placed textures, async `UpdateSubresource`, mip SRVs,
-and copy operations. D02 telemetry for those paths is built at local commit
-`54797ad3`. The separately named D02 custom Proton tool is created and its four
-diagnostic DLL hashes are verified; its runtime capture is next. See
+and copy operations. D02 telemetry at local commit `54797ad3` has now completed
+in its separately named custom Proton tool. The trace is valid and the visual
+failure remains at 1,385 m; its findings select a focused heap/alias/descriptor
+D03 trace rather than an application override. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The user also confirms that the game renders correctly on native Windows. This
@@ -162,6 +169,8 @@ Compare collected runs with:
   valid trace excluding the D3D12 reserved/tiled-resource path
 - [`docs/evidence-d02-preparation.md`](docs/evidence-d02-preparation.md): D02
   build and isolated custom-tool verification
+- [`docs/evidence-d02-ordinary-texture-trace.md`](docs/evidence-d02-ordinary-texture-trace.md):
+  valid D02 runtime result and next diagnostic discriminator
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated

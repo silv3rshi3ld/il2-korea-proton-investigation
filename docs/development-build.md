@@ -222,3 +222,10 @@ reports exactly the intended four D3D12/D3D12Core differences after excluding
 the new compatibility manifest and diagnostic metadata. All four installed
 hashes match the D02 build table above. See
 [`evidence-d02-preparation.md`](evidence-d02-preparation.md).
+
+D02-r1 subsequently passed the runtime validity gates. The corruption remained
+visible at 1,385 m, 2,355 multi-mip block-compressed resources had complete
+geometric upload coverage, no partial resource was found, and all 4,185 SRV
+descriptions used a zero minimum-LOD clamp. The remaining discriminator is 433
+placed BC3 textures with an SRV but no logged incoming upload/copy. See
+[`evidence-d02-ordinary-texture-trace.md`](evidence-d02-ordinary-texture-trace.md).

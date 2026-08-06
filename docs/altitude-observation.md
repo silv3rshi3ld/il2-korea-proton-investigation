@@ -16,6 +16,7 @@ observation, although map locations and camera positions are not identical.
 | E01 `no_upload_hvv` r2 | `E01-r2-terrain-more-vegetation-missing-pages-remain-singo-dong.png` | 1,356 m | Dense vegetation repeats; pages and dark ground remain |
 | E02 `single_queue` r1 | `E02-r1-terrain-unchanged-missing-pages-magenta-seams.png` | 2,538 m | Some vegetation; severe page loss remains |
 | E02 `single_queue` r2 | `E02-r2-terrain-unchanged-missing-pages-magenta-seams.png` | 5,036 m | Very little vegetation; ground almost entirely absent |
+| D02 ordinary-texture trace | `D02-r1-cockpit-missing-terrain-pages-1385m.png` | 1,385 m | More local detail is visible, but many rectangular ground pages remain absent |
 
 This pattern is present across baseline, `no_upload_hvv`, and `single_queue`.
 It therefore confounds the earlier apparent E01 improvement: both E01 captures
@@ -25,14 +26,20 @@ matched low and high altitudes under baseline and `no_upload_hvv`.
 
 ## What the current logs show
 
-The ordinary `PROTON_LOG=1` logs do not contain:
+The ordinary `PROTON_LOG=1` logs do not contain camera position or altitude.
+D01b excludes D3D12 sparse/reserved resources from the reproduced path. D02
+adds stable ordinary-texture identifiers, SRV mip ranges, and upload copies and
+finds complete geometric uploads for most compressed mip chains. It does not
+identify which resources correspond to visible terrain pages or whether the
+remaining no-upload SRV class reaches a shader.
+
+The completed telemetry still does not contain:
 
 - camera position or altitude;
-- terrain resource identifiers;
-- `UpdateTileMappings`, `CopyTileMappings`, or `ResizeTilePool` calls;
-- resource minimum LOD or SRV mip-range information;
-- sparse/reserved-resource creation details;
-- residency changes associated with visible pages.
+- a mapping from a resource cookie to a visible terrain page;
+- placed-buffer overlap or alias-barrier correlation;
+- descriptor propagation and actual draw/dispatch use;
+- residency or explicit shader-LOD decisions associated with visible pages.
 
 Only E00-r1 logs two application CPU thread names, `BlocksCache`. The same
 visible failure occurs without that thread-name message in the other logs, so
@@ -51,7 +58,6 @@ capture both conditions before exiting:
 5. record whether underlying ground, vegetation, roads, page edges, and
    magenta seams change independently.
 
-If the runtime controls do not isolate the failure, a development VKD3D build
-must add filtered telemetry around candidate terrain texture dimensions,
-reserved-resource/tile mapping operations, mip ranges, layouts, allocation
-path, and queue use. Logging all resources indiscriminately is not justified.
+D03 should add filtered heap-range, buffer, alias-barrier, and descriptor-use
+telemetry for the D02 no-upload resource class. Logging every GPU operation
+indiscriminately is not justified.

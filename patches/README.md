@@ -23,7 +23,8 @@ be presented upstream as a rendering remedy.
 - `VKD3D_CONFIG=no_upload_hvv` was enabled successfully, but its apparent
   vegetation improvement is confounded by altitude and map location.
 - Descriptor-buffer disabling and the combined upload/single-queue control
-  were not run before runtime testing ended.
+  have not been run; D02 first identified a resource class that can make a
+  later descriptor control evidence-driven.
 - Ground pages and magenta borders remain in every captured configuration.
 
 Adding `.NO_UPLOAD_HVV`, `.NO_STAGGERED_SUBMIT`, or another executable override
@@ -32,13 +33,14 @@ permanent game-specific behavior. That is unsuitable for upstream review.
 
 ## Why there is no general VKD3D-Proton or Mesa patch
 
-Valid D01b telemetry excludes D3D12 reserved/tiled resources, but the current
-completed logs still contain no ordinary-texture identifiers, mip ranges,
-layouts, or synchronization sequence for the affected terrain. They also
-contain no Vulkan validation failure, device loss, GPU hang, or cross-driver
-comparison. D02 is designed to supply the next resource-level discriminator;
-until it runs, the defective layer cannot be assigned to the game,
-VKD3D-Proton, or RADV.
+Valid D01b telemetry excludes D3D12 reserved/tiled resources. D02 supplies
+ordinary texture identifiers, mip ranges, upload copies, and lifetime order:
+2,355 compressed resources have complete geometric mip uploads, zero partial
+resources were found, and all SRV minimum-LOD clamps are zero. It also finds
+433 placed BC3 textures with an SRV but no logged incoming upload/copy. Because
+SRV creation does not prove shader use and D02 does not correlate heap overlap,
+aliasing barriers, descriptor propagation, or draw use, the defective layer
+still cannot be assigned to the game, VKD3D-Proton, or RADV.
 
 The prefix-only installation attempts did not load the local DLLs because
 stock Proton restored its packaged copies during launch. A dedicated custom

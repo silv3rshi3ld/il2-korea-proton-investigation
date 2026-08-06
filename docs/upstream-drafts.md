@@ -1,9 +1,9 @@
 # Upstream drafts (review only; do not post automatically)
 
-These drafts describe the completed E00-E02 investigation accurately. They do
-not claim a root cause or fix. Attach only selected, reviewed screenshots and
-filtered logs; do not upload the game, prefix, credentials, or unfiltered large
-artifacts.
+These drafts describe the completed E00-E02, D01b, and D02 investigation
+accurately. They do not claim a root cause or fix. Attach only selected,
+reviewed screenshots and filtered logs; do not upload the game, prefix,
+credentials, or unfiltered large artifacts.
 
 ## ValveSoftware/Proton issue #9906 update
 
@@ -59,6 +59,12 @@ Controlled results (two runs each)
   GetResourceTiling, UpdateTileMappings, or CopyTileMappings calls while the
   corruption is visible. D3D12 sparse/tiled resources are excluded from this
   failing path.
+- D02, dedicated custom Proton with bounded ordinary-texture telemetry: the
+  defect remains visible at 1,385 m. Of the multi-mip block-compressed
+  resources, 2,355 have complete geometric buffer-upload coverage, none are
+  partial, and all 4,185 SRV descriptions use ResourceMinLODClamp 0. A separate
+  class of 433 placed BC3 textures has an SRV but no logged incoming upload or
+  texture copy. SRV creation alone does not establish shader use.
 
 No run reported device loss, GPU hang/reset, or out-of-memory errors. Repeated
 split END_ONLY barrier warnings remain uncorrelated with an affected resource
@@ -66,12 +72,13 @@ and are not treated as causal.
 
 Assessment
 The altitude dependence and rectangular pages make ordinary texture streaming,
-uploads, descriptor/mip selection, or LOD behavior the leading hypothesis
-class. D01b excludes API-level sparse residency, but current completed output
-contains no affected ordinary-texture IDs, mip ranges, or altitude, so the
-defective layer (game, VKD3D-Proton, or RADV) is not isolated. A gated D02
-ordinary-texture trace is prepared; no override or behavior-changing source
-patch is proposed.
+descriptor propagation/use, or explicit LOD behavior the leading hypothesis
+class. D01b excludes API-level sparse residency. D02 weakens broad incomplete-
+mip and non-zero minimum-LOD explanations, but does not prove that its 433
+no-upload SRV resources are sampled. The next trace will correlate their heap
+ranges, buffer overlap, alias barriers, descriptor propagation, and use. The
+defective layer (game, VKD3D-Proton, or RADV) remains unisolated; no override or
+behavior-changing source patch is proposed.
 
 Attachments proposed after review
 - environment.md
@@ -79,6 +86,7 @@ Attachments proposed after review
 - findings.md
 - one E00 low-altitude and one E00 high-altitude screenshot
 - one E02 high-altitude screenshot
+- D02 1,385 m screenshot and compact generated resource analysis
 - filtered log comparison and checksums
 ```
 
@@ -108,12 +116,19 @@ Results, two runs per completed configuration:
 - A valid dedicated-custom-Proton trace recorded zero D3D12 reserved-resource,
   tiling-query, tile-update, or tile-copy calls during reproduction. This
   excludes API-level sparse/tiled resources from the failing path.
+- A second valid diagnostic run traced ordinary textures. The same missing
+  pages remain at 1,385 m. It found 2,355 complete block-compressed mip uploads,
+  zero partial resources, zero non-zero SRV minimum-LOD clamps, and no logged
+  operation after resource destruction. It also found 433 placed BC3 textures
+  with SRVs but no logged incoming upload/copy; actual binding/use is not yet
+  known.
 
 There is a strong altitude/distance dependency across configurations. The user
 observes some low-fidelity assets loading below roughly 1,500 m, while captures
-near 5,000 m show almost entirely absent ground. Ordinary PROTON_LOG output
-does not expose altitude, affected ordinary-texture IDs, or mip ranges, so this
-does not yet distinguish upload, descriptor/mip, barrier, application, or
+near 5,000 m show almost entirely absent ground. D02 now supplies stable
+ordinary-resource IDs and mip ranges, but it does not yet correlate the
+suspicious no-upload class with descriptor propagation or actual shader use.
+This still does not distinguish descriptor, aliasing, barrier, application, or
 driver behavior.
 
 No device loss, GPU reset/hang, or OOM was found. Split END_ONLY barrier
@@ -121,10 +136,9 @@ warnings are frequent but have no resource correlation, and the current
 VKD3D-Proton code already handles END_ONLY as a conservative full transition.
 
 Current conclusion: no game override or general patch is justified. The next
-prepared step is bounded telemetry for ordinary texture creation/lifetime,
-normalized SRV mip ranges, and upload copies by stable resource cookie. That
-should select a resource class before any barrier, descriptor, or driver
-instrumentation is broadened.
+step is a bounded trace of placed buffer/texture heap ranges, alias barriers,
+descriptor propagation, and actual use for the D02 no-upload SRV class. Only a
+demonstrated sequence should select a descriptor/alias control or source fix.
 ```
 
 ## Wine or Proton startup report outline
