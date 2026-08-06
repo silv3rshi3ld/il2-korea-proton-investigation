@@ -76,7 +76,7 @@ descriptor propagation/use, or explicit LOD behavior the leading hypothesis
 class. D01b excludes API-level sparse residency. D02 weakens broad incomplete-
 mip and non-zero minimum-LOD explanations, but does not prove that its 433
 no-upload SRV resources are sampled. The next trace will correlate their heap
-ranges, buffer overlap, alias barriers, descriptor propagation, and use. The
+ranges, buffer overlap, and alias barriers before any descriptor-use trace. The
 defective layer (game, VKD3D-Proton, or RADV) remains unisolated; no override or
 behavior-changing source patch is proposed.
 
@@ -136,9 +136,9 @@ warnings are frequent but have no resource correlation, and the current
 VKD3D-Proton code already handles END_ONLY as a conservative full transition.
 
 Current conclusion: no game override or general patch is justified. The next
-step is a bounded trace of placed buffer/texture heap ranges, alias barriers,
-descriptor propagation, and actual use for the D02 no-upload SRV class. Only a
-demonstrated sequence should select a descriptor/alias control or source fix.
+step is a bounded trace of placed buffer/texture heap ranges and alias barriers
+for the D02 no-upload SRV class. Only a demonstrated sequence should select
+descriptor QA, a descriptor/alias control, or a source fix.
 ```
 
 ## Wine or Proton startup report outline

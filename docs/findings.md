@@ -184,8 +184,8 @@ has resumed at the development-build stage.
    failing path.
 4. D02 is complete. It weakens broad missing-mip and minimum-LOD explanations
    and identifies 433 SRV-bearing compressed textures without a logged upload.
-5. D03 should add bounded placed-buffer/texture heap ranges, aliasing barriers,
-   descriptor propagation, and use correlation for that exact resource class.
-   Use descriptor QA only if this correlation points to descriptor reuse or
+5. D03 adds bounded placed-buffer/texture heap ranges and aliasing barriers for
+   that exact resource class. Use a descriptor-QA build only if D03 finds live
+   overlap or a barrier sequence that points to descriptor reuse or
    image/buffer type confusion.
 6. Investigate the NUMA caller separately with focused API tracing.

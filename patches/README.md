@@ -15,6 +15,12 @@ creation/destruction, normalized SRV mip ranges, and texture copies by stable
 cookie. It is retained to make the diagnostic build reproducible and must not
 be presented upstream as a rendering remedy.
 
+`0003-Add-focused-IL-2-placed-resource-alias-telemetry.patch` is the D03
+diagnostic patch. Behind `VKD3D_IL2_ALIAS_TRACE=1`, it records bounded placed-
+resource heap ranges, lifetimes, and explicit alias barriers using the same
+resource cookies as D02. It changes no D3D12/Vulkan behavior and must not be
+presented upstream as a remedy.
+
 ## Why there is no application override
 
 - The repeatable E00 baseline confirms the defect but does not identify a

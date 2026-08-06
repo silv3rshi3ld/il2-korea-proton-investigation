@@ -229,3 +229,22 @@ geometric upload coverage, no partial resource was found, and all 4,185 SRV
 descriptions used a zero minimum-LOD clamp. The remaining discriminator is 433
 placed BC3 textures with an SRV but no logged incoming upload/copy. See
 [`evidence-d02-ordinary-texture-trace.md`](evidence-d02-ordinary-texture-trace.md).
+
+## D03 placed-resource alias trace build
+
+- D03 diagnostic commit: `cfca234ebaff261e5fc1aa1df2a9f5520fef5e96`
+- Gates: `VKD3D_IL2_TEXTURE_TRACE=1` and `VKD3D_IL2_ALIAS_TRACE=1`
+- Build directory: `build/vkd3d-proton-il2-alias-trace-3dfc6f07/`
+- Custom tool: `IL2-Korea-D03-Alias-Trace-cfca234e`
+
+The fresh official development build completed for x86-64 and x86. Its alias
+gate records only placed-resource heap intervals, destruction, and explicit
+legacy alias barriers. The D02 gate remains enabled in the same run so stable
+cookies can identify the no-incoming-copy SRV class; combining diagnostic logs
+does not change rendering behavior.
+
+The custom tool was created after Steam exited. Its four installed DLL hashes
+match the retained build, and recursive comparison with Proton Experimental
+reports only those four intended differences after excluding the custom
+manifest and metadata. Exact hashes, launch options, and rollback are recorded
+in [`evidence-d03-preparation.md`](evidence-d03-preparation.md).

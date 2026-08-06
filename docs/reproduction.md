@@ -179,6 +179,31 @@ D02-r1 is complete. Do not repeat it unless the game, Proton, VKD3D-Proton, or
 Mesa baseline changes. Its result and screenshot checksum are recorded in
 [`evidence-d02-ordinary-texture-trace.md`](evidence-d02-ordinary-texture-trace.md).
 
+## D03 placed-resource alias trace
+
+Select `IL2-Korea-D03-Alias-Trace-cfca234e` for AppID 247970. `D03-r1` is
+already prepared, so paste the launch option stored in
+`captures/runs/D03-r1/launch-options.txt` exactly.
+
+In-game:
+
+1. Wait for the menu aircraft artifacts to appear.
+2. Load the same Singo-dong mission.
+3. Reproduce the rectangular missing ground pages near 1,300-1,500 m.
+4. Keep the defective view visible for approximately 15 seconds and take one
+   screenshot showing the HUD altitude.
+5. Exit the game normally.
+
+Then collect:
+
+```bash
+./scripts/collect-proton-log.sh collect D03-r1
+```
+
+Collection checks both trace gates and generates `texture-trace-analysis.md`
+and `alias-trace-analysis.md`. One valid run is sufficient for this API/range
+question; do not repeat it before reading the generated overlap result.
+
 ## Performance notes
 
 Record menu FPS, in-mission FPS, and obvious frame-pacing changes from the same

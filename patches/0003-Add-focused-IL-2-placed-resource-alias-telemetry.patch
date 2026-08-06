@@ -1,0 +1,196 @@
+From cfca234ebaff261e5fc1aa1df2a9f5520fef5e96 Mon Sep 17 00:00:00 2001
+From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+Date: Thu, 6 Aug 2026 20:04:49 +0200
+Subject: [PATCH] Add focused IL-2 placed-resource alias telemetry
+
+---
+ libs/vkd3d/command.c       | 22 +++++++++++
+ libs/vkd3d/device.c        |  1 +
+ libs/vkd3d/resource.c      | 76 ++++++++++++++++++++++++++++++++++++++
+ libs/vkd3d/vkd3d_private.h | 11 ++++++
+ 4 files changed, 110 insertions(+)
+
+diff --git a/libs/vkd3d/command.c b/libs/vkd3d/command.c
+index 674525ee..8bb61eda 100644
+--- a/libs/vkd3d/command.c
++++ b/libs/vkd3d/command.c
+@@ -13823,12 +13823,34 @@ static void STDMETHODCALLTYPE d3d12_command_list_ResourceBarrier(d3d12_command_l
+                 struct d3d12_resource *before, *after;
+                 VkAccessFlags2 alias_src_access;
+                 VkAccessFlags2 alias_dst_access;
++                VkDeviceSize before_offset, after_offset;
++                uint32_t sequence;
+ 
+                 alias = &current->Aliasing;
+                 TRACE("Aliasing barrier (before %p, after %p).\n", alias->pResourceBefore, alias->pResourceAfter);
+                 before = impl_from_ID3D12Resource(alias->pResourceBefore);
+                 after = impl_from_ID3D12Resource(alias->pResourceAfter);
+ 
++                if (vkd3d_il2_alias_trace_take(VKD3D_IL2_ALIAS_TRACE_BARRIER, &sequence))
++                {
++                    before_offset = before && before->heap && before->mem.offset >= before->heap->allocation.offset
++                            ? before->mem.offset - before->heap->allocation.offset : 0;
++                    after_offset = after && after->heap && after->mem.offset >= after->heap->allocation.offset
++                            ? after->mem.offset - after->heap->allocation.offset : 0;
++                    INFO("IL2ALIAS barrier seq=%u list_type=%u before_cookie=%u before_kind=%s"
++                            " before_heap=%p before_offset=%"PRIu64" before_size=%"PRIu64
++                            " after_cookie=%u after_kind=%s after_heap=%p after_offset=%"PRIu64
++                            " after_size=%"PRIu64".\n",
++                            sequence, list->type, before ? before->res.cookie.index : 0,
++                            !before ? "null" : d3d12_resource_is_buffer(before) ? "buffer" : "texture",
++                            before ? before->heap : NULL, before_offset,
++                            before ? before->mem.resource.size : 0,
++                            after ? after->res.cookie.index : 0,
++                            !after ? "null" : d3d12_resource_is_buffer(after) ? "buffer" : "texture",
++                            after ? after->heap : NULL, after_offset,
++                            after ? after->mem.resource.size : 0);
++                }
++
+                 VKD3D_BREADCRUMB_TAG("Aliasing Barrier");
+ 
+                 if (d3d12_resource_may_alias_other_resources(before) && d3d12_resource_may_alias_other_resources(after))
+diff --git a/libs/vkd3d/device.c b/libs/vkd3d/device.c
+index 98308949..d652262a 100644
+--- a/libs/vkd3d/device.c
++++ b/libs/vkd3d/device.c
+@@ -35,6 +35,7 @@ static uint32_t vkd3d_get_vk_version(void)
+ 
+     (void)vkd3d_il2_resource_trace_enabled();
+     (void)vkd3d_il2_texture_trace_enabled();
++    (void)vkd3d_il2_alias_trace_enabled();
+     vkd3d_parse_version(PACKAGE_VERSION, &major, &minor, &patch);
+     INFO("vkd3d-proton - applicationVersion: %d.%d.%d.\n", major, minor, patch);
+     return VK_MAKE_VERSION(major, minor, patch);
+diff --git a/libs/vkd3d/resource.c b/libs/vkd3d/resource.c
+index 0e626561..ff22695d 100644
+--- a/libs/vkd3d/resource.c
++++ b/libs/vkd3d/resource.c
+@@ -42,6 +42,13 @@ static const uint32_t il2_texture_trace_limits[VKD3D_IL2_TEXTURE_TRACE_EVENT_COU
+ {
+     20000, 40000, 40000, 20000,
+ };
++static pthread_once_t il2_alias_trace_once = PTHREAD_ONCE_INIT;
++static bool il2_alias_trace;
++static uint32_t il2_alias_trace_counters[VKD3D_IL2_ALIAS_TRACE_EVENT_COUNT];
++static const uint32_t il2_alias_trace_limits[VKD3D_IL2_ALIAS_TRACE_EVENT_COUNT] =
++{
++    30000, 30000, 20000,
++};
+ 
+ static void vkd3d_il2_resource_trace_init(void)
+ {
+@@ -94,6 +101,72 @@ bool vkd3d_il2_texture_trace_take(enum vkd3d_il2_texture_trace_event event, uint
+     return false;
+ }
+ 
++static void vkd3d_il2_alias_trace_init(void)
++{
++    char value[16];
++
++    il2_alias_trace = vkd3d_get_env_var("VKD3D_IL2_ALIAS_TRACE", value, sizeof(value)) &&
++            strcmp(value, "0") != 0;
++    if (il2_alias_trace)
++        INFO("IL2ALIAS enabled: bounded placed-resource range and alias-barrier telemetry.\n");
++}
++
++bool vkd3d_il2_alias_trace_enabled(void)
++{
++    pthread_once(&il2_alias_trace_once, vkd3d_il2_alias_trace_init);
++    return il2_alias_trace;
++}
++
++bool vkd3d_il2_alias_trace_take(enum vkd3d_il2_alias_trace_event event, uint32_t *sequence)
++{
++    uint32_t value;
++
++    if (!vkd3d_il2_alias_trace_enabled() || event >= VKD3D_IL2_ALIAS_TRACE_EVENT_COUNT)
++        return false;
++
++    value = vkd3d_atomic_uint32_increment(&il2_alias_trace_counters[event], vkd3d_memory_order_relaxed);
++    *sequence = value;
++
++    if (value <= il2_alias_trace_limits[event])
++        return true;
++
++    if (value == il2_alias_trace_limits[event] + 1)
++        INFO("IL2ALIAS suppressed event=%u after limit=%u.\n", event, il2_alias_trace_limits[event]);
++
++    return false;
++}
++
++static VkDeviceSize vkd3d_il2_alias_trace_resource_offset(const struct d3d12_resource *resource)
++{
++    if (!resource->heap || resource->mem.offset < resource->heap->allocation.offset)
++        return 0;
++
++    return resource->mem.offset - resource->heap->allocation.offset;
++}
++
++static void vkd3d_il2_alias_trace_resource_event(const char *event,
++        enum vkd3d_il2_alias_trace_event event_type, const struct d3d12_resource *resource)
++{
++    uint32_t sequence;
++
++    if (!(resource->flags & VKD3D_RESOURCE_PLACED) || !resource->heap ||
++            !vkd3d_il2_alias_trace_take(event_type, &sequence))
++        return;
++
++    INFO("IL2ALIAS %s seq=%u cookie=%u kind=%s heap=%p heap_size=%"PRIu64
++            " heap_backing_size=%"PRIu64" heap_type=%u heap_flags=%#x offset=%"PRIu64
++            " size=%"PRIu64" dimension=%u width=%"PRIu64" height=%u depth_or_layers=%u"
++            " mips=%u format=%#x desc_flags=%#x internal_flags=%#x.\n",
++            event, sequence, resource->res.cookie.index,
++            d3d12_resource_is_buffer(resource) ? "buffer" : "texture", resource->heap,
++            resource->heap->desc.SizeInBytes, resource->heap->allocation.resource.size,
++            resource->heap->desc.Properties.Type, resource->heap->desc.Flags,
++            vkd3d_il2_alias_trace_resource_offset(resource), resource->mem.resource.size,
++            resource->desc.Dimension, resource->desc.Width, resource->desc.Height,
++            resource->desc.DepthOrArraySize, resource->desc.MipLevels, resource->desc.Format,
++            resource->desc.Flags, resource->flags);
++}
++
+ static void vkd3d_il2_texture_trace_resource_create(const char *allocation,
+         const struct d3d12_resource *resource, uint64_t heap_offset)
+ {
+@@ -4054,6 +4127,8 @@ static void d3d12_resource_destroy(struct d3d12_resource *resource, struct d3d12
+     const struct vkd3d_vk_device_procs *vk_procs = &device->vk_procs;
+     uint32_t sequence;
+ 
++    vkd3d_il2_alias_trace_resource_event("destroy", VKD3D_IL2_ALIAS_TRACE_DESTROY, resource);
++
+     if (d3d12_resource_is_texture(resource) &&
+             vkd3d_il2_texture_trace_take(VKD3D_IL2_TEXTURE_TRACE_DESTROY, &sequence))
+     {
+@@ -4877,6 +4952,7 @@ HRESULT d3d12_resource_create_placed(struct d3d12_device *device, const D3D12_RE
+ #endif
+ 
+     vkd3d_il2_texture_trace_resource_create("placed", object, heap_offset);
++    vkd3d_il2_alias_trace_resource_event("create", VKD3D_IL2_ALIAS_TRACE_CREATE, object);
+ 
+     *resource = object;
+     return S_OK;
+diff --git a/libs/vkd3d/vkd3d_private.h b/libs/vkd3d/vkd3d_private.h
+index 66d2eebc..151624f4 100644
+--- a/libs/vkd3d/vkd3d_private.h
++++ b/libs/vkd3d/vkd3d_private.h
+@@ -1247,6 +1247,17 @@ enum vkd3d_il2_texture_trace_event
+ bool vkd3d_il2_texture_trace_enabled(void);
+ bool vkd3d_il2_texture_trace_take(enum vkd3d_il2_texture_trace_event event, uint32_t *sequence);
+ 
++enum vkd3d_il2_alias_trace_event
++{
++    VKD3D_IL2_ALIAS_TRACE_CREATE,
++    VKD3D_IL2_ALIAS_TRACE_DESTROY,
++    VKD3D_IL2_ALIAS_TRACE_BARRIER,
++    VKD3D_IL2_ALIAS_TRACE_EVENT_COUNT,
++};
++
++bool vkd3d_il2_alias_trace_enabled(void);
++bool vkd3d_il2_alias_trace_take(enum vkd3d_il2_alias_trace_event event, uint32_t *sequence);
++
+ static inline struct vkd3d_cookie vkd3d_null_cookie(void)
+ {
+     struct vkd3d_cookie cookie = { 0 };
+-- 
+2.55.0
+

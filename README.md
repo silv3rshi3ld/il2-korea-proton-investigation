@@ -63,11 +63,17 @@ step. During a valid corrupted run, 2,355 multi-mip compressed textures received
 geometrically complete buffer uploads, no partial mip chain was found, every
 logged SRV used a zero minimum-LOD clamp, and no logged operation followed
 resource destruction. A separate class of 433 placed BC3 textures received an
-SRV but no logged incoming upload/copy. D03 will determine whether those
-resources are actually bound and whether buffer overlap, aliasing barriers, or
-descriptor propagation explains their contents. See
+SRV but no logged incoming upload/copy. D03 will first determine whether those
+resources overlap live buffers/textures or participate in explicit alias
+barriers. Actual descriptor use is a follow-up only if that result requires it. See
 [`docs/evidence-d02-ordinary-texture-trace.md`](docs/evidence-d02-ordinary-texture-trace.md)
 and [`patches/README.md`](patches/README.md).
+
+D03 is prepared at diagnostic commit `cfca234e`. A separate custom Proton tool
+will correlate those same resource cookies with placed buffer/texture heap
+ranges, lifetimes, and explicit alias barriers. It remains telemetry-only; no
+descriptor or aliasing workaround has been enabled. See
+[`docs/evidence-d03-preparation.md`](docs/evidence-d03-preparation.md).
 
 An unmodified development build of the exact installed VKD3D-Proton commit was
 built successfully, but D00 did not validate it: stock Proton recopies its own
@@ -171,6 +177,8 @@ Compare collected runs with:
   build and isolated custom-tool verification
 - [`docs/evidence-d02-ordinary-texture-trace.md`](docs/evidence-d02-ordinary-texture-trace.md):
   valid D02 runtime result and next diagnostic discriminator
+- [`docs/evidence-d03-preparation.md`](docs/evidence-d03-preparation.md): D03
+  build, isolated custom tool, exact launch option, and rollback
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated
