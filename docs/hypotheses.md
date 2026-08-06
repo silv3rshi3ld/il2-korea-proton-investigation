@@ -24,18 +24,18 @@ not establish what Wine reports through Win32 processor groups and NUMA APIs.
 | G2 | A missing or insufficient cross-queue dependency affects streamed terrain or menu compute work. | `single_queue` alone; then the planned combination only after G1/G2 individual results. | Queue-specific logging, semaphore/timeline analysis, then narrow instrumentation. |
 | G3 | Descriptor-buffer lifetime/type/reuse behavior exposes invalid game descriptors or a translation/driver defect. | Disable only `VK_EXT_descriptor_buffer`; inspect enabled extension path. | Descriptor QA or filtered descriptor telemetry. |
 | G4 | The game omits a UAV/resource barrier and native drivers implicitly serialize the sequence. | Look for a repeatable change under single queue or controlled heavy synchronization; correlate a specific compute shader/resource sequence. | Narrow shader/resource instrumentation; only then consider a shader-specific barrier quirk. |
-| G5 | Reserved/sparse terrain resources or residency updates are mishandled. | Baseline sparse-resource log lines and queue selection; later driver comparison. | Filtered creation/tile-mapping/residency telemetry and a minimal Vulkan reproduction if RADV-specific. |
+| G5 | Reserved/sparse terrain resources or residency updates are mishandled. | Valid D01b trace records zero reserved-resource and tile-mapping calls during reproduction. | Excluded for the tested path; do not pursue without contradictory new evidence. |
 | G6 | Incorrect mip/LOD state causes distant terrain to sample absent mips. | Capture resource/view mip ranges around a reproducible terrain resource. | Check `ResourceMinLODClamp`, image-view min LOD, sampler feedback, and explicit LOD shaders. |
 | G7 | Image/buffer aliasing or compression interacts with invalid game use. | Only after G1-G3; look for placed-resource aliasing and compression-related messages/resources. | One targeted internal flag at a time, backed by telemetry. |
 | G8 | The repeated split-barrier `END_ONLY` warnings are incidental because VKD3D conservatively completes them. | Count and correlate warning timestamps with resources and visible failures; compare behavior, not warning count alone. | Instrument a suspicious resource's before/after states and layouts. |
 | G9 | RADV is given valid Vulkan but mishandles a specific path. | Reproduce with another AMD Vulkan driver or Mesa version, one variable at a time. | Vulkan validation, RenderDoc/trace if lawful and practical, then minimal Vulkan reproducer. |
 | G10 | Shader translation produces incorrect code for a menu/terrain shader. | Artifact is invariant under memory, queue, and descriptor controls; shader debug/hash points to a stable stage. | Shader replacement/bisection and minimal shader test. |
 
-The cross-configuration screenshot set now shows substantially worse page loss
-near 5,000-5,500 m and more low-fidelity content near 1,250-1,500 m. This raises
-the priority of G5 (streaming/residency) and G6 (mip/LOD) relative to a generic
-global shader failure. Location is not yet matched, so it does not select
-between G5 and G6.
+The cross-configuration screenshot set shows substantially worse page loss
+near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
+instrumentation excludes D3D12 reserved/tiled resources, so the remaining
+streaming lead is the game's ordinary texture paging, mip/LOD, descriptors, or
+uploads rather than API-level sparse residency.
 
 ## Direct public report
 

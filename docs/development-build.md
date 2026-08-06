@@ -169,3 +169,9 @@ against Proton Experimental reports only the four intended DLL differences,
 plus the new manifest and diagnostic metadata. All recorded DLL hashes verify.
 On Btrfs its apparent size is 1.45 GiB, while the clone shares 974.88 MiB of
 extents and reports only 16 KiB exclusive before runtime-generated files.
+
+D01b subsequently passed all validity gates: the trace marker occurred once,
+the build string carried the modified-tree `+` suffix, and the four post-run
+prefix hashes matched the diagnostic artifacts. No reserved-resource or
+tile-mapping API was called during the corrupted menu and mission. See
+[`evidence-d01b-sparse-trace.md`](evidence-d01b-sparse-trace.md).

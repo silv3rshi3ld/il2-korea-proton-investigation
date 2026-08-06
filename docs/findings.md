@@ -76,6 +76,12 @@
     four post-run prefix hashes exactly match Proton Experimental rather than
     the diagnostic build. Prefix-only DLL installation is therefore unsuitable
     for stock Proton runtime tests; a dedicated custom Proton tool is required.
+21. D01b is the first valid source-instrumented run. Its log contains one
+    `IL2TRACE enabled` marker, the VKD3D build identifier carries the local `+`
+    suffix, and all four post-run prefix hashes exactly match the diagnostic
+    build. Across the corrupted menu and mission it records zero reserved
+    resource creations, tiling queries, tile-map updates, or tile copies.
+    D3D12 reserved/tiled resources are therefore not used on the failing path.
 
 ## Observations not yet promoted to findings
 
@@ -115,6 +121,7 @@ tracing; they do not justify copying an override.
 | Queue selection | Two `single_queue` runs leave the defects unchanged, making ordinary asynchronous compute/transfer queue selection unlikely to be the primary trigger. | Medium |
 | Upload allocation | `no_upload_hvv` changes the allocation path, but its apparent improvement is inseparable from lower capture altitude. | Low/inconclusive |
 | Streaming/residency/LOD | The cross-configuration altitude threshold and rectangular terrain pages make this the leading hypothesis class, but current logs contain no resource-level evidence. | Medium for relevance, low for mechanism |
+| D3D12 sparse/tiled resources | Valid D01b instrumentation records zero reserved-resource and tile-mapping API use during reproduction. | Excluded for this path, high |
 
 No behavior-changing upstream patch is justified yet. Focused diagnostic
 instrumentation is prepared for a dedicated custom Proton runtime.
@@ -129,14 +136,10 @@ has resumed at the development-build stage.
 1. D00 and D01a prefix-copy controls are invalid because Proton replaced the
    local DLLs before the game loaded them.
 2. U00 is complete: the updated game build is unchanged for the defect.
-3. Create and select a dedicated custom Proton tool containing the trace-only
-   build, then use D01b focused
-   API telemetry to determine whether the title uses D3D12 reserved resources
-   and tile mappings for the affected terrain.
-4. If it does, correlate tile map/unmap operations, mips, queue submissions,
-   and destruction for stable resource cookies. If it does not, instrument the
-   game's texture atlas, mip-range SRVs, upload copies, descriptors, and
-   lifetime instead.
+3. D01b is complete and excludes D3D12 reserved/tiled resources from the
+   failing path.
+4. Instrument ordinary texture creation, mip-range SRVs, upload copies,
+   descriptors, and lifetime with bounded logging and stable cookies.
 5. Use descriptor QA only after the resource path is known, or earlier if the
    focused trace reports suspicious descriptor reuse/destruction.
 6. Investigate the NUMA caller separately with focused API tracing.

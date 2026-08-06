@@ -71,7 +71,10 @@ before D01 ran. U00 confirms the updated game has the same corruption and the
 same Linux D3D12 path. A later D01 prefix-install attempt was also overwritten;
 its absent trace marker and post-run DLL hashes prove the method ineffective.
 The verified `IL2-Korea-Diagnostic-3dfc6f07` custom Proton tool is now created,
-and D01b is prepared. See
+and D01b has completed successfully. The trace marker and post-run hashes prove
+that the diagnostic DLLs ran. Zero reserved-resource or tile-mapping calls were
+made, excluding D3D12 sparse/tiled resources from the failing path. Investigation
+now moves to ordinary textures, mip views, and upload copies. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The user also confirms that the game renders correctly on native Windows. This
@@ -151,6 +154,8 @@ Compare collected runs with:
   attempted local-build parity control is invalid
 - [`docs/evidence-d01-invalid-prefix-install.md`](docs/evidence-d01-invalid-prefix-install.md):
   proof that stock Proton overwrote the trace DLLs
+- [`docs/evidence-d01b-sparse-trace.md`](docs/evidence-d01b-sparse-trace.md):
+  valid trace excluding the D3D12 reserved/tiled-resource path
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated
   game-build baseline result
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status
