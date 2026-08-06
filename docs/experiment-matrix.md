@@ -23,7 +23,7 @@ Allowed final values: **fixed**, **improved**, **unchanged**, **regressed**,
 |---|---|---|---|---|
 | D00 | Locally compiled, otherwise unmodified VKD3D-Proton at `3dfc6f07…` | [completed](evidence-d00-local-build.md) | Same menu and terrain corruption reproduced; local build has parity with E00 | unchanged |
 | U00 | Game build `24596901`; Proton-supplied VKD3D at `3dfc6f07…` | [completed](evidence-u00-game-update.md) | Same menu and terrain corruption; update did not change the defect | unchanged |
-| D01 | `VKD3D_IL2_RESOURCE_TRACE=1`; trace-only build at `d0b4421f…` | initial preparation invalidated before launch; reinstallation pending | Determine whether the title calls reserved/tiled-resource APIs on the failing path | inconclusive |
+| D01 | `VKD3D_IL2_RESOURCE_TRACE=1`; trace-only build at `d0b4421f…` | reinstalled; `D01-game-24596901-sparse-trace-r1` prepared | Determine whether the title calls reserved/tiled-resource APIs on the failing path | inconclusive |
 
 For each completed cell, link a run directory or curated evidence file and
 record new warning/error fingerprints from `compare-logs.py`.

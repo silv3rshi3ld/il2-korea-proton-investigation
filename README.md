@@ -68,8 +68,8 @@ reproduced the Proton-supplied behavior in D00. This validates the local
 compiler/build/install path. Steam then auto-updated the game from build
 `24577563` to `24596901` and restored the prefix's Proton-supplied D3D12 DLLs
 before D01 ran. U00 confirms the updated game has the same corruption and the
-same Linux D3D12 path. The trace-only D01 build can therefore be reinstalled
-without another baseline repetition. See
+same Linux D3D12 path. The trace-only D01 build has therefore been reinstalled
+and its focused run is prepared without another baseline repetition. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The user also confirms that the game renders correctly on native Windows. This

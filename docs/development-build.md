@@ -123,6 +123,13 @@ remain available in the retained build directory. U00 subsequently confirmed
 the same corruption, so the trace build is cleared for reinstallation before
 D01.
 
+The trace build was reinstalled after U00 on 2026-08-06. The current clean
+Proton-DLL rollback point is:
+
+```text
+/home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T165614Z
+```
+
 The first gate is whether D01 contains any reserved/tiled-resource calls. If it
 does not, the next build will trace ordinary texture creation, mip-range SRVs,
 upload copies, descriptors, and resource lifetime rather than Vulkan sparse
