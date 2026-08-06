@@ -30,6 +30,7 @@ not establish what Wine reports through Win32 processor groups and NUMA APIs.
 | G8 | The repeated split-barrier `END_ONLY` warnings are incidental because VKD3D conservatively completes them. | Count and correlate warning timestamps with resources and visible failures; compare behavior, not warning count alone. | Instrument a suspicious resource's before/after states and layouts. |
 | G9 | RADV is given valid Vulkan but mishandles a specific path. | Reproduce with another AMD Vulkan driver or Mesa version, one variable at a time. | Vulkan validation, RenderDoc/trace if lawful and practical, then minimal Vulkan reproducer. |
 | G10 | Shader translation produces incorrect code for a menu/terrain shader. | Artifact is invariant under memory, queue, and descriptor controls; shader debug/hash points to a stable stage. | Shader replacement/bisection and minimal shader test. |
+| G11 | The game texture-provider path fails to resolve, decode, or create required Korea terrain inputs under Wine and substitutes its default white texture. | Compare `data/tex.log` from the same current-build Korea winter scenario on native Windows; D04 already proves six terrain failures and fallback on Linux. | If Linux-only, instrument the package lookup/decode/backend-create boundary; if present on Windows, treat the failures as non-causal. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -46,8 +47,9 @@ shows complete mip uploads for most compressed textures and zero non-zero SRV
 minimum-LOD clamps, but also a distinct pre-cap class of 405 SRV-bearing BC3 textures
 without an observed incoming upload. That class is not yet proven to be sampled
 or defective. D03 excludes placed-resource range aliasing as its population
-path during the covered interval, leaving descriptor propagation/use as the
-next discriminator.
+path during the covered interval. D04 is unchanged on current upstream but
+adds direct game-log evidence of failed terrain inputs. A matched Windows
+`tex.log` is now the shortest discriminator before descriptor QA.
 
 ## Direct public report
 
@@ -85,8 +87,8 @@ value is the mechanism and debugging method.
    justify inspecting G7 only if the simpler controls fail.
 6. **Microsoft Flight Simulator 2024:** two separate failures were fixed in
    `dxil-spirv`, including a grass/near-ground crash caused by a translator bug
-   which `spirv-val` did not catch. This elevates G10 and justifies an
-   unmodified current-upstream control before IL-2-specific shader changes.
+   which `spirv-val` did not catch. This justified D04, but D04 is visually
+   unchanged and closes the current-upstream version lead.
 7. **Microsoft Flight Simulator 2020:** its `host_import_fallback` advice is
    tied to an exceptional 16 GiB `OpenExistingHeapFromAddress` allocation and
    unusable AMD performance. IL-2 has no matching evidence, so this flag is not

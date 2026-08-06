@@ -254,3 +254,20 @@ same-run candidate textures observable before the copy cap have matching
 placed-resource records; none overlaps any traced placed buffer or texture
 range. The full run records zero explicit legacy alias barriers. See
 [`evidence-d03-alias-trace.md`](evidence-d03-alias-trace.md).
+
+## D04 unmodified current-upstream control
+
+- VKD3D-Proton: `84c87c8390d9df75ba41d911496296fe13f0e275`
+- `dxil-spirv`: `cc75a0c98d34d7bcc03560527c799b52e48b4d1f`
+- Build directory: `build/vkd3d-proton-il2-upstream-84c87c83/`
+- Custom tool: `IL2-Korea-D04-Upstream-84c87c83`
+
+The official development-build method completed for both architectures in an
+isolated, unmodified worktree. Recursive comparison with Proton Experimental
+shows only the four intended VKD3D DLL changes plus custom-tool metadata.
+
+D04-r1 is visually unchanged in the menu and at 6,400 m. All four post-run
+prefix hashes match the build, closing the broad current-upstream version lead.
+The game's own `tex.log` adds a distinct texture-provider fallback lead; see
+[`evidence-d04-upstream-preparation.md`](evidence-d04-upstream-preparation.md)
+and [`evidence-d04-upstream-result.md`](evidence-d04-upstream-result.md).

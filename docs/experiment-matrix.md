@@ -27,7 +27,7 @@ Allowed final values: **fixed**, **improved**, **unchanged**, **regressed**,
 | D01b | Dedicated custom Proton plus the same trace build | [completed](evidence-d01b-sparse-trace.md) | Valid marker and diagnostic hashes; zero reserved-resource or tile-mapping calls | unchanged visually; sparse path excluded |
 | D02 | Ordinary texture, mip-view, upload-copy, and lifetime census at local commit `54797ad3…` | [completed](evidence-d02-ordinary-texture-trace.md) | Valid marker/hashes; 2,355 complete compressed mip chains, zero partial, and 405 pre-cap SRV-bearing BC3 textures without a logged incoming upload/copy | unchanged visually; resource class narrowed |
 | D03 | Placed-resource heap ranges and alias-barrier correlation at local commit `cfca234e…` | [completed](evidence-d03-alias-trace.md) | Valid markers/hashes; all 585 pre-cap candidates matched and none overlap any traced placed-resource range; zero explicit legacy alias barriers | unchanged visually; placed-resource alias path excluded |
-| D04 | Unmodified current VKD3D-Proton `84c87c83…` with `dxil-spirv` `cc75a0c9…` | [built; custom tool pending Steam exit](evidence-d04-upstream-preparation.md) | Compare against installed `3dfc6f07…`/`7ecda135…`; if fixed, bisect the full VKD3D-Proton range; if unchanged, proceed to descriptor QA | inconclusive |
+| D04 | Unmodified current VKD3D-Proton `84c87c83…` with `dxil-spirv` `cc75a0c9…` | [completed](evidence-d04-upstream-result.md) | Post-run DLL hashes match D04; menu blocks and severe 6,400 m terrain-page loss remain | unchanged; current-upstream lead closed |
 
 For each completed cell, link a run directory or curated evidence file and
 record new warning/error fingerprints from `compare-logs.py`.

@@ -85,10 +85,18 @@ provide a drop-in IL-2 workaround: the installed VKD3D-Proton already contains
 their historical shader and imported-memory fixes, and MSFS 2020's
 `host_import_fallback` was tied to a 16 GiB host allocation. MSFS 2024 does
 provide a strong diagnostic lesson because a near-ground/grass path exposed a
-`dxil-spirv` defect which validation missed. Current upstream contains 36
-translator commits beyond the installed revision, so the next source control
-is an unmodified current-upstream build, followed by a bisection only if it
-changes the result. See [`docs/prior-art-msfs.md`](docs/prior-art-msfs.md).
+`dxil-spirv` defect which validation missed. D04 has now tested the 36 newer
+translator commits in unmodified current VKD3D-Proton and is visually
+unchanged, closing that lead after one run. See
+[`docs/prior-art-msfs.md`](docs/prior-art-msfs.md).
+
+D04 also produced a more direct lead in the game's own `tex.log`: six exact
+Korea winter terrain inputs fail, and static inspection shows that
+`dxBackend12.dll` then substitutes `graphics\textures\defWhite.bmp`. All map
+packages were enumerated without a reported package error. A matched native-
+Windows `tex.log` is required before calling these failures causal; if Windows
+also records them while rendering correctly, descriptor QA remains next. See
+[`docs/evidence-d04-upstream-result.md`](docs/evidence-d04-upstream-result.md).
 
 An unmodified development build of the exact installed VKD3D-Proton commit was
 built successfully, but D00 did not validate it: stock Proton recopies its own
@@ -140,6 +148,16 @@ log:
 ```bash
 ./scripts/collect-proton-log.sh collect E00-baseline-r1
 ```
+
+After any mission run, preserve the game's bounded text diagnostics separately
+with:
+
+```bash
+./scripts/collect-game-logs.sh E00-baseline-r1
+```
+
+This copies `tex.log`, `packman.log`, and related small diagnostics without
+extracting packages or changing the game installation.
 
 For new work, use the altitude-controlled procedure in
 [`docs/reproduction.md`](docs/reproduction.md) and the order recorded in
@@ -198,6 +216,8 @@ Compare collected runs with:
   D03 runtime result excluding placed-resource range aliasing
 - [`docs/evidence-d04-upstream-preparation.md`](docs/evidence-d04-upstream-preparation.md):
   unmodified current-upstream build identity, hashes, and safety state
+- [`docs/evidence-d04-upstream-result.md`](docs/evidence-d04-upstream-result.md):
+  unchanged result and game texture-provider fallback evidence
 - [`docs/evidence-e03-no-descriptor-buffer.md`](docs/evidence-e03-no-descriptor-buffer.md):
   first verified descriptor-buffer-disabled result and provenance caveat
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only

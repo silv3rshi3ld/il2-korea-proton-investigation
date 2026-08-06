@@ -124,6 +124,10 @@ Primary reference:
    shader-hash/resource-use telemetry. If it fixes the scene, bisect the
    VKD3D-Proton or `dxil-spirv` range before proposing any patch.
 
+D04 subsequently tested that current-upstream range and was visually
+unchanged. The MSFS-derived version lead is therefore closed; no source-range
+bisection or MSFS-specific workaround is selected.
+
 All historical commits reviewed here are ancestors of the installed
 VKD3D-Proton commit. No MSFS-named application profile or executable override
 was found in current VKD3D-Proton source.

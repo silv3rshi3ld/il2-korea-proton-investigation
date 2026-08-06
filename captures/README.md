@@ -15,6 +15,9 @@ This directory contains ignored local evidence:
 - `curated/e03-no-descriptor-buffer/`: menu, 4,858 m, and 1,121 m screenshots
   from the first descriptor-buffer-disabled run; hashes are recorded in
   `docs/evidence-e03-no-descriptor-buffer.md`;
+- `curated/d04-upstream/`: menu and 6,400 m screenshots from the unmodified
+  current-upstream control; hashes are recorded in
+  `docs/evidence-d04-upstream-result.md`;
 - `runs/`: exact compressed Proton logs, compact module/summary files,
   metadata, and observations;
 - `comparisons/`: generated log comparisons.

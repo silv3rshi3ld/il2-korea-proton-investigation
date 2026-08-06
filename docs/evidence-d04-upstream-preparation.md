@@ -42,14 +42,17 @@ Build directory:
 The build header identifies `0x84c87c8390d9df7`. File inspection confirms
 PE32+ x86-64 for the x64 pair and PE32 i386 for the x86 pair.
 
-## Safety and remaining step
+## Isolated custom tool
 
-The intended custom tool is
-`IL2-Korea-D04-Upstream-84c87c83`. Its first creation attempt safely refused
-because Steam was running. No custom-tool file, prefix DLL, Proton
-Experimental file, or earlier diagnostic tool was changed.
+The custom tool `IL2-Korea-D04-Upstream-84c87c83` was created after Steam
+exited. Its first creation attempt had safely refused while Steam was running.
+Recursive comparison against Proton Experimental reports exactly the intended
+four VKD3D-Proton DLL differences, plus the custom manifest and diagnostic
+metadata. All installed DLL hashes match the build table above. No prefix DLL,
+Proton Experimental file, or earlier diagnostic tool was changed during tool
+creation.
 
-After Steam is fully stopped, create the isolated tool with:
+Creation command:
 
 ```bash
 ./scripts/create-custom-proton.sh \
@@ -61,5 +64,11 @@ After Steam is fully stopped, create the isolated tool with:
 ```
 
 Rollback is selecting Proton Experimental or any retained earlier custom tool.
-If D04 is fixed, bisect the complete VKD3D-Proton range rather than attributing
-the result directly to `dxil-spirv`. If unchanged, proceed to descriptor QA.
+The decision rule was to bisect the complete VKD3D-Proton range only if D04
+fixed the scene; an unchanged result would close the source-version lead.
+
+Prepared run: `D04-upstream-r1`. It uses only baseline logging and the existing
+OpenMP startup mitigation; no VKD3D configuration flag is enabled.
+
+D04 is now complete and unchanged. See
+[`evidence-d04-upstream-result.md`](evidence-d04-upstream-result.md).

@@ -155,6 +155,21 @@
     control-flow structurizer changes. MSFS 2024 demonstrates that a scene-
     selected translator bug can evade `spirv-val`; this makes an unmodified
     current-upstream D04 run a justified discriminator, not a claimed fix.
+35. D04 is visually unchanged at the menu and at 6,400 m. All four post-run
+    prefix DLL hashes match unmodified current VKD3D-Proton `84c87c83`, so the
+    selected source definitely ran. No Proton log was created, but valid DLL
+    provenance and the screenshots are sufficient to close the broad
+    current-upstream version lead without a repeat.
+36. The game-owned D04 `tex.log` records 18 provider failures. Six are exact
+    Korea winter terrain inputs and six are `GLASS_MAIN.DDS`. Static inspection
+    of `dxBackend12.dll` shows that the message follows a failed provider call
+    and the path then requests `graphics\textures\defWhite.bmp`. These are real
+    fallback substitutions, not merely attempted-path diagnostics.
+37. `Maps6.gtp` contains configuration references to all six failed Korea
+    winter paths. D04's `packman.log` reports all map packages enumerated, a
+    45,100-node package tree, 11,575 package-opened files, and no package-open
+    or decode error. The precise lookup/decode/create failure stage remains
+    unisolated, and the failures are not causal until compared with Windows.
 
 ## Observations not yet promoted to findings
 
@@ -164,6 +179,10 @@
   their temporal/resource relationship to corruption is unknown.
 - The game creates `BlocksCache` CPU threads on mission entry. The ordinary log
   does not connect them to a D3D12 resource or the visible missing pages.
+- During D04 the mission loading display advanced from 25% to 26% and then
+  entered flight. The UI percentage is absent from available logs, so this is
+  not yet evidence of premature completion. Its value depends on comparison
+  with the same current-build scenario on native Windows.
 - Screenshot evidence shows strong altitude/distance dependence across several
   configurations. The user reports that additional low-fidelity assets begin
   loading below roughly 1,500 m, while captures near 5,000 m show substantially
@@ -197,10 +216,9 @@ MSFS 2024 supplies a different and now higher-value precedent: grass or
 near-ground rendering selected a `dxil-spirv` bug which `spirv-val` did not
 catch. MSFS 2020's `host_import_fallback` advice instead belongs to an
 exceptional 16 GiB `OpenExistingHeapFromAddress` path and is not transferable
-without IL-2 host-import evidence. The installed VKD3D-Proton commit already
-contains all reviewed historical MSFS fixes, while current upstream contains
-36 newer `dxil-spirv` commits. This selects an unmodified current-upstream
-control before descriptor QA; see `prior-art-msfs.md`.
+without IL-2 host-import evidence. D04 tested the newer translator and is
+unchanged, so no MSFS-derived fix path remains selected. See
+`prior-art-msfs.md` and `evidence-d04-upstream-result.md`.
 
 ## Root-cause assessment
 
@@ -216,6 +234,8 @@ control before descriptor QA; see `prior-art-msfs.md`.
 | No-upload SRV class | Corrected D02 analysis finds 405 pre-copy-cap placed multi-mip BC3 textures with SRVs but no logged incoming upload/copy; actual binding/use is unknown. | Medium for relevance, low for defect/cause |
 | Placed-resource aliasing | D03 matches all 585 same-run pre-cap candidates and finds zero range overlap plus zero explicit legacy alias barriers. | Excluded for covered class, high |
 | Descriptor-buffer backend | One verified disable run on the D03-derived build is visually unchanged and uses the mutable-descriptor fallback; stock-Proton confirmation remains. | Medium that descriptor buffers are not the primary cause |
+| Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
+| Game texture-provider failure | Six exact Korea winter terrain inputs fail and fall back to `defWhite.bmp` during the corrupted D04 run. Whether Windows logs the same failures is unknown. | High that failures occur; medium-low that they cause the corruption |
 
 No behavior-changing upstream patch is justified yet. Focused diagnostic
 instrumentation is prepared for a dedicated custom Proton runtime.
@@ -240,7 +260,10 @@ development-build stage.
 6. E03-r1 disables the active descriptor-buffer extension and is visually
    unchanged on the D03-derived tool with its telemetry gates off. A stock
    confirmation remains desirable but is not the next source-level gate.
-7. Build and run unmodified current VKD3D-Proton `84c87c83` with
-   `dxil-spirv` `cc75a0c9`. If unchanged, proceed to descriptor QA; if fixed,
-   bisect the source range.
-8. Investigate the NUMA caller separately with focused API tracing.
+7. D04 is complete and unchanged on unmodified current VKD3D-Proton
+   `84c87c83`; do not repeat it or bisect the source range.
+8. Compare the Linux `tex.log` against the same current-build Korea winter
+   scenario on native Windows. If the failures are Linux-only, isolate the
+   package lookup/decode/backend-create boundary; otherwise proceed to
+   descriptor QA.
+9. Investigate the NUMA caller separately with focused API tracing.
