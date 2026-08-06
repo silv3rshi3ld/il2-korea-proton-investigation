@@ -76,11 +76,14 @@ BC3 baked-terrain caches and issues 432 internal border uploads measuring
 `BakedTerrain`/`stitchBorders`. Current VKD3D forwards those one-texel extents
 unchanged to Vulkan, whose BC3 transfers are 4x4-block granular. This is the
 strongest current cause for the magenta terrain seams and a possible contributor
-to whole-page loss. It does not yet explain the menu blocks. D05 now provides
-the gated block-normalization build needed to test causality; it has not yet
-been run. See
+to whole-page loss. It does not yet explain the menu blocks. D05a loaded but
+matched zero copies because its source-side filter was too strict, so its
+visually unchanged run is invalid as a causal test. D05b now accepts both
+source-box and footprint-only forms and adds candidate/rejection telemetry; it
+is built but intentionally not installed or run while testing is paused. See
 [`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md)
-and [`docs/evidence-d05-preparation.md`](docs/evidence-d05-preparation.md).
+[`docs/evidence-d05-result.md`](docs/evidence-d05-result.md), and
+[`docs/evidence-d05b-preparation.md`](docs/evidence-d05b-preparation.md).
 
 D03 is complete and visually unchanged. In its same-run pre-cap class, all 585
 candidates have placed-resource records, none overlaps any traced placed buffer
@@ -236,6 +239,12 @@ Compare collected runs with:
   unchanged result and game texture-provider fallback evidence
 - [`docs/evidence-d05-preparation.md`](docs/evidence-d05-preparation.md): gated
   BC3 normalization build, exact hashes, launch option, and decision rule
+- [`docs/evidence-d05-result.md`](docs/evidence-d05-result.md): why D05a is an
+  invalid zero-match run rather than a failed normalization result
+- [`docs/evidence-d05b-preparation.md`](docs/evidence-d05b-preparation.md):
+  revised footprint-aware build retained for a later test
+- [`docs/community-update-draft-2026-08-06.md`](docs/community-update-draft-2026-08-06.md):
+  review-only Proton and VKD3D-Proton issue updates; nothing posted yet
 - [`docs/evidence-e03-no-descriptor-buffer.md`](docs/evidence-e03-no-descriptor-buffer.md):
   first verified descriptor-buffer-disabled result and provenance caveat
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only

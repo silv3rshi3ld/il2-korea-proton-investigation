@@ -1,5 +1,9 @@
 # D05 gated BC3 border normalization: preparation
 
+> Status: D05a was run but adjusted zero copies, invalidating the behavioral
+> comparison. See [`evidence-d05-result.md`](evidence-d05-result.md). D05b is
+> the revised, built but unrun diagnostic.
+
 ## Question
 
 D02 demonstrates that the game's baked-terrain cache issues 432 one-texel BC3

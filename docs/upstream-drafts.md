@@ -1,5 +1,9 @@
 # Upstream drafts (review only; do not post automatically)
 
+> Superseded for current review by
+> [`community-update-draft-2026-08-06.md`](community-update-draft-2026-08-06.md),
+> which includes the invalid D05a zero-match result and paused D05b state.
+
 The focused draft immediately below reflects the newest D02 compressed-copy
 analysis. The older broad drafts remain as historical context and need revision
 before use. Attach only selected, reviewed screenshots and filtered logs; do

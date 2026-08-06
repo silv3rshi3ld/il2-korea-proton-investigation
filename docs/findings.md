@@ -258,7 +258,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Descriptor-buffer backend | One verified disable run on the D03-derived build is visually unchanged and uses the mutable-descriptor fallback; stock-Proton confirmation remains. | Medium that descriptor buffers are not the primary cause |
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea winter terrain inputs fail and fall back to `defWhite.bmp` during the corrupted D04 run. Whether Windows logs the same failures is unknown. | High that failures occur; medium-low that they cause the corruption |
-| BC3 baked-terrain border copies | D02 contains 432 internal one-texel border regions into active 2048x2048 BC3 cache textures; VKD3D emits them unchanged as Vulkan copies despite 4x4 block granularity. | High for invalid emitted Vulkan and magenta-seam relevance; medium-low for whole-page loss |
+| BC3 baked-terrain border copies | D02 contains 432 internal one-texel border regions into active 2048x2048 BC3 cache textures; VKD3D emits them unchanged as Vulkan copies despite 4x4 block granularity. D05a loaded but adjusted zero copies, so it did not test normalization. | High for invalid emitted Vulkan and magenta-seam relevance; medium-low for whole-page loss |
 
 No permanent upstream patch or application override is justified yet. A single
 opt-in block-normalization experiment is now justified to test behavioral
@@ -288,10 +288,12 @@ development-build stage.
 7. D04 is complete and unchanged on unmodified current VKD3D-Proton
    `84c87c83`; do not repeat it or bisect the source range.
 8. Re-analysis of D02 finds 432 invalid internal one-texel BC3 border regions
-   in the active baked-terrain cache. D05 is the next source-level gate: expand
-   only that dimension to a complete physical block behind an opt-in diagnostic
-   gate and record the visual effect.
-9. If D05 fixes only the seams, restrict descriptor QA and copy-to-sample
+   in the active baked-terrain cache. D05a's binary and enable marker are valid,
+   but its zero adjustments invalidate the visual comparison.
+9. D05b is compiled but unrun. It accepts source-box and footprint-only forms,
+   logs every candidate, and records explicit source-capacity rejection masks.
+   This is the retained next causal test when work resumes.
+10. If D05b fixes only the seams, restrict descriptor QA and copy-to-sample
    correlation to the 2048x2048 cache pool. A later Windows `tex.log` and D3D12
-   debug-layer comparison will refine ownership but does not block D05.
-10. Investigate the NUMA caller separately with focused API tracing.
+   debug-layer comparison will refine ownership but does not block D05b.
+11. Investigate the NUMA caller separately with focused API tracing.

@@ -261,8 +261,10 @@ collect_run() {
     fi
 
     if grep -q -- 'IL2BCCOPY enabled ' "$source_log"; then
-        "$script_dir/analyze-bc3-border-copy.py" "$source_log" \
-            --output "$run_dir/bc3-border-copy-analysis.md"
+        if ! "$script_dir/analyze-bc3-border-copy.py" "$source_log" \
+                --output "$run_dir/bc3-border-copy-analysis.md"; then
+            printf 'BC3 diagnostic validation failed; preserving the run as invalid evidence.\n' >&2
+        fi
     fi
 
     if ((include_system_info)) && [[ ! -f "$run_dir/system-info.txt" ]]; then

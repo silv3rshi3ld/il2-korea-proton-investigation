@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the bounded D05 BC3 border-copy diagnostic log."""
+"""Validate the bounded D05/D05b BC3 border-copy diagnostic log."""
 
 from __future__ import annotations
 
@@ -10,15 +10,36 @@ import re
 import sys
 
 
+CANDIDATE_RE = re.compile(
+    r"IL2BCCOPY candidate seq=(?P<sequence>\d+) list_type=(?P<list_type>\d+) "
+    r"dst_cookie=(?P<cookie>\d+) src_box_present=(?P<src_box_present>\d+) "
+    r"src_format=(?P<src_format>0x[0-9a-f]+) dst_format=(?P<dst_format>0x[0-9a-f]+) "
+    r"original_extent=(?P<ow>\d+)x(?P<oh>\d+)x(?P<od>\d+) "
+    r"image_offset=(?P<ix>-?\d+),(?P<iy>-?\d+),(?P<iz>-?\d+) "
+    r"source_origin=(?P<sl>\d+),(?P<st>\d+),(?P<sf>\d+) "
+    r"source_extent=(?P<sw>\d+)x(?P<sh>\d+)x(?P<sd>\d+) "
+    r"footprint=(?P<fw>\d+)x(?P<fh>\d+)x(?P<fd>\d+) "
+    r"row_pitch=(?P<row_pitch>\d+) buffer_row_length=(?P<buffer_row_length>\d+) "
+    r"buffer_image_height=(?P<buffer_image_height>\d+) buffer_offset=(?P<buffer_offset>\d+)\."
+)
+
 ADJUSTMENT_RE = re.compile(
-    r"IL2BCCOPY adjust seq=(?P<sequence>\d+) list_type=(?P<list_type>\d+) "
-    r"dst_cookie=(?P<cookie>\d+) original_extent=(?P<ow>\d+)x(?P<oh>\d+)x(?P<od>\d+) "
+    r"IL2BCCOPY adjust seq=(?P<sequence>\d+) candidate_seq=(?P<candidate_sequence>\d+) "
+    r"list_type=(?P<list_type>\d+) dst_cookie=(?P<cookie>\d+) "
+    r"src_box_present=(?P<src_box_present>\d+) src_format=(?P<src_format>0x[0-9a-f]+) "
+    r"dst_format=(?P<dst_format>0x[0-9a-f]+) "
+    r"original_extent=(?P<ow>\d+)x(?P<oh>\d+)x(?P<od>\d+) "
     r"emitted_extent=(?P<ew>\d+)x(?P<eh>\d+)x(?P<ed>\d+) "
     r"image_offset=(?P<ix>-?\d+),(?P<iy>-?\d+),(?P<iz>-?\d+) "
-    r"src_box=(?P<sl>\d+),(?P<st>\d+),(?P<sf>\d+)-"
-    r"(?P<sr>\d+),(?P<sb>\d+),(?P<sk>\d+) "
+    r"source_origin=(?P<sl>\d+),(?P<st>\d+),(?P<sf>\d+) "
+    r"source_extent=(?P<sw>\d+)x(?P<sh>\d+)x(?P<sd>\d+) "
     r"footprint=(?P<fw>\d+)x(?P<fh>\d+)x(?P<fd>\d+) "
-    r"row_pitch=(?P<row_pitch>\d+) buffer_offset=(?P<buffer_offset>\d+)\."
+    r"row_pitch=(?P<row_pitch>\d+) buffer_row_length=(?P<buffer_row_length>\d+) "
+    r"buffer_image_height=(?P<buffer_image_height>\d+) buffer_offset=(?P<buffer_offset>\d+)\."
+)
+
+REJECTION_RE = re.compile(
+    r"IL2BCCOPY reject candidate_seq=(?P<candidate_sequence>\d+) mask=(?P<mask>0x[0-9a-f]+)\."
 )
 
 EXPECTED_TRANSFORMS = {
@@ -36,38 +57,70 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def parse_records(pattern: re.Pattern[str], text: str) -> list[dict[str, int]]:
+    records = []
+    for match in pattern.finditer(text):
+        records.append({key: int(value, 0) for key, value in match.groupdict().items()})
+    return records
+
+
+def contiguous(records: list[dict[str, int]], field: str = "sequence") -> bool:
+    values = [record[field] for record in records]
+    return not values or values == list(range(1, len(values) + 1))
+
+
 def main() -> int:
     args = parse_args()
     text = args.log.read_text(encoding="utf-8", errors="replace")
     enabled_count = text.count("IL2BCCOPY enabled ")
     limit_count = text.count("IL2BCCOPY adjustment log limit")
-    records = [{key: int(value) for key, value in match.groupdict().items()}
-               for match in ADJUSTMENT_RE.finditer(text)]
+    candidates = parse_records(CANDIDATE_RE, text)
+    adjustments = parse_records(ADJUSTMENT_RE, text)
+    rejections = parse_records(REJECTION_RE, text)
 
     errors: list[str] = []
     warnings: list[str] = []
     shapes: collections.Counter[tuple[int, int, int]] = collections.Counter()
-    emitted_shapes: collections.Counter[tuple[int, int, int]] = collections.Counter()
     footprints: collections.Counter[tuple[int, int, int, int]] = collections.Counter()
+    source_forms: collections.Counter[str] = collections.Counter()
+    source_formats: collections.Counter[int] = collections.Counter()
+    rejection_masks: collections.Counter[int] = collections.Counter()
     cookies: set[int] = set()
 
     if enabled_count != 1:
         errors.append(f"expected one enable marker, found {enabled_count}")
-    if not records:
-        errors.append("the diagnostic was enabled but no matching border copy was adjusted")
+    if not candidates:
+        errors.append("the diagnostic was enabled but no target-class candidate was recorded")
+    if not adjustments:
+        errors.append("no candidate passed the physical-block safety checks and was adjusted")
+    if not contiguous(candidates):
+        errors.append("candidate sequence numbers are missing, duplicated, or out of order")
+    if not contiguous(adjustments):
+        errors.append("adjustment sequence numbers are missing, duplicated, or out of order")
     if limit_count:
         warnings.append("the 1,024-line adjustment cap was reached; later matching copies were still normalized")
 
-    sequences = [record["sequence"] for record in records]
-    if sequences and sequences != list(range(1, len(sequences) + 1)):
-        errors.append("adjustment sequence numbers are missing, duplicated, or out of order")
+    candidate_ids = {record["sequence"] for record in candidates}
+    adjusted_ids = {record["candidate_sequence"] for record in adjustments}
+    rejected_ids = {record["candidate_sequence"] for record in rejections}
+    for record in rejections:
+        rejection_masks[record["mask"]] += 1
+    if adjusted_ids & rejected_ids:
+        errors.append("one or more candidates were both adjusted and rejected")
+    if (adjusted_ids | rejected_ids) - candidate_ids:
+        errors.append("an adjustment or rejection refers to an unlogged candidate")
+    if candidates and len(candidates) < 1024 and candidate_ids != adjusted_ids | rejected_ids:
+        errors.append("one or more logged candidates have neither an adjustment nor rejection record")
+    if rejections:
+        errors.append(f"{len(rejections)} target-class candidates failed the safety checks")
 
-    for record in records:
+    for record in adjustments:
         original = (record["ow"], record["oh"], record["od"])
         emitted = (record["ew"], record["eh"], record["ed"])
         shapes[original] += 1
-        emitted_shapes[emitted] += 1
         footprints[(record["fw"], record["fh"], record["fd"], record["row_pitch"])] += 1
+        source_forms["explicit source box" if record["src_box_present"] else "footprint only"] += 1
+        source_formats[record["src_format"]] += 1
         cookies.add(record["cookie"])
 
         if original not in EXPECTED_TRANSFORMS:
@@ -76,21 +129,23 @@ def main() -> int:
             errors.append(
                 f"sequence {record['sequence']} emitted {emitted}, expected {EXPECTED_TRANSFORMS[original]}"
             )
+        if record["dst_format"] != 0x4D:
+            errors.append(f"sequence {record['sequence']} has unexpected destination format {record['dst_format']:#x}")
         if record["ix"] < 0 or record["iy"] < 0 or record["iz"] != 0:
             errors.append(f"sequence {record['sequence']} has an invalid destination offset")
         if record["ix"] % 4 or record["iy"] % 4:
             errors.append(f"sequence {record['sequence']} has a non-block-aligned destination offset")
         if record["sl"] % 4 or record["st"] % 4 or record["sf"] != 0:
             errors.append(f"sequence {record['sequence']} has a non-block-aligned source offset")
-        source_extent = (
-            record["sr"] - record["sl"],
-            record["sb"] - record["st"],
-            record["sk"] - record["sf"],
-        )
-        if source_extent != original:
-            errors.append(f"sequence {record['sequence']} source box {source_extent} differs from {original}")
+        if (record["sw"] < record["ow"] or record["sh"] < record["oh"] or
+                record["sd"] != record["od"]):
+            errors.append(f"sequence {record['sequence']} has an insufficient virtual source extent")
         if record["ix"] + record["ew"] > 2048 or record["iy"] + record["eh"] > 2048:
             errors.append(f"sequence {record['sequence']} exceeds the destination mip")
+        if record["buffer_row_length"] < record["ew"]:
+            errors.append(f"sequence {record['sequence']} lacks enough physical blocks per buffer row")
+        if record["buffer_image_height"] < record["eh"]:
+            errors.append(f"sequence {record['sequence']} lacks enough physical block rows")
 
         # BC3 needs 16 bytes for each physical 4x4 block. A footprint whose
         # virtual thin dimension is one texel still owns that complete block.
@@ -98,9 +153,9 @@ def main() -> int:
         if record["fd"] != 1 or record["row_pitch"] < physical_blocks_per_row * 16:
             errors.append(f"sequence {record['sequence']} source footprint lacks a complete BC3 row")
 
-    if records and len(records) != 432:
+    if adjustments and len(adjustments) != 432:
         warnings.append(
-            f"D05 logged {len(records)} adjustments; D02 logged 432, but scene duration and cache demand can change the count"
+            f"D05b logged {len(adjustments)} adjustments; D02 logged 432, but scene duration and cache demand can change the count"
         )
 
     status = "valid" if not errors else "invalid"
@@ -109,7 +164,9 @@ def main() -> int:
         "",
         f"- Instrumentation validity: **{status}**",
         f"- Enable markers: {enabled_count}",
-        f"- Logged adjustments: {len(records)}",
+        f"- Target-class candidates: {len(candidates)}",
+        f"- Logged adjustments: {len(adjustments)}",
+        f"- Rejected candidates: {len(rejections)}",
         f"- Destination resources: {len(cookies)}",
         f"- Adjustment-log cap markers: {limit_count}",
         "",
@@ -123,9 +180,20 @@ def main() -> int:
         emitted_text = "unknown" if emitted is None else f"{emitted[0]}x{emitted[1]}x{emitted[2]}"
         lines.append(f"| {original[0]}x{original[1]}x{original[2]} | {emitted_text} | {count} |")
 
+    lines.extend(["", "## Source representation", "", "| Form | Count |", "|---|---:|"])
+    for source_form, count in sorted(source_forms.items()):
+        lines.append(f"| {source_form} | {count} |")
+    lines.extend(["", "| Source DXGI format | Count |", "|---|---:|"])
+    for source_format, count in sorted(source_formats.items()):
+        lines.append(f"| `{source_format:#x}` | {count} |")
+
     lines.extend(["", "## Source footprints", "", "| Width x height x depth | Row pitch | Count |", "|---|---:|---:|"])
     for (width, height, depth, row_pitch), count in sorted(footprints.items()):
         lines.append(f"| {width}x{height}x{depth} | {row_pitch} | {count} |")
+    if rejection_masks:
+        lines.extend(["", "## Rejection masks", "", "| Mask | Count |", "|---|---:|"])
+        for mask, count in sorted(rejection_masks.items()):
+            lines.append(f"| `{mask:#x}` | {count} |")
 
     if warnings:
         lines.extend(["", "## Warnings", ""])
@@ -140,10 +208,11 @@ def main() -> int:
         "",
         "## Interpretation",
         "",
-        "A valid result proves that D05 recognized only the observed Korea terrain-cache border class, "
-        "that every source row contained at least one complete physical BC3 block, and that the emitted "
-        "Vulkan extents were block-complete and remained inside the 2048x2048 mip. Visual classification "
-        "is still required to decide whether this compatibility behavior affects seams, missing pages, both, or neither.",
+        "A valid result proves that D05b recognized only the observed Korea terrain-cache border class, "
+        "that every source footprint contained the complete physical BC3 blocks consumed by the expanded "
+        "copy, and that the emitted Vulkan extents were block-complete and remained inside the 2048x2048 mip. "
+        "Visual classification is still required to decide whether this compatibility behavior affects seams, "
+        "missing pages, both, or neither.",
         "",
     ])
     output = "\n".join(lines)

@@ -33,6 +33,13 @@ dimension to a full four-texel physical block and emits bounded `IL2BCCOPY`
 records. Its runtime result determines whether any permanent compatibility
 behavior is justified.
 
+`0005-vkd3d-Handle-footprint-only-IL-2-BC3-border-copies.patch` is the D05b
+follow-up. D05a emitted one enable marker but zero adjustments, so it never
+tested the behavior. D05b accepts a footprint-only source, permits a physically
+compatible BC3 source format, and logs target candidates and explicit safety-
+rejection masks before changing the extent. It is compiled but unrun and is
+still diagnostic-only.
+
 ## Why there is no application override
 
 - The repeatable E00 baseline confirms the defect but does not identify a

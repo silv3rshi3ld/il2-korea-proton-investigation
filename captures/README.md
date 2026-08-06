@@ -18,6 +18,9 @@ This directory contains ignored local evidence:
 - `curated/d04-upstream/`: menu and 6,400 m screenshots from the unmodified
   current-upstream control; hashes are recorded in
   `docs/evidence-d04-upstream-result.md`;
+- `curated/d05-bc3-normalization/`: D05a's unchanged 1,416 m screenshot. The
+  visual artifact is retained, but the causal run is invalid because the gate
+  adjusted zero copies; its hash is in `docs/evidence-d05-result.md`;
 - `runs/`: exact compressed Proton logs, compact module/summary files,
   metadata, and observations;
 - `comparisons/`: generated log comparisons.
