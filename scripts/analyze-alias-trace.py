@@ -22,6 +22,7 @@ FIELD_RE = re.compile(r"([a-z_]+)=([^\s]+)")
 BLOCK_COMPRESSED_COLOR_FORMATS = {
     71, 72, 74, 75, 77, 78, 80, 81, 83, 84, 95, 96, 98, 99,
 }
+TEXTURE_TRACE_COPY_EVENT = 2
 FORMAT_NAMES = {
     71: "BC1_UNORM",
     72: "BC1_UNORM_SRGB",
@@ -132,10 +133,13 @@ def main() -> int:
     alias_counts: collections.Counter[str] = collections.Counter()
     texture_counts: collections.Counter[str] = collections.Counter()
     texture_creates: dict[int, dict[str, Any]] = {}
+    texture_create_lines: dict[int, int] = {}
+    first_srv_lines: dict[int, int] = {}
     texture_activity: dict[int, collections.Counter[str]] = collections.defaultdict(collections.Counter)
     resources: dict[int, PlacedResource] = {}
     pending_destroys: dict[int, int] = {}
     barriers: list[tuple[int, dict[str, Any]]] = []
+    copy_suppression_line: int | None = None
 
     with open_log(args.log) as stream:
         for line_number, line in enumerate(stream, 1):
@@ -145,12 +149,18 @@ def main() -> int:
                 fields = parse_fields(texture_match.group(2))
                 texture_counts[event] += 1
                 if event == "create":
-                    texture_creates[int(fields["cookie"])] = fields
+                    cookie = int(fields["cookie"])
+                    texture_creates[cookie] = fields
+                    texture_create_lines[cookie] = line_number
                 elif event == "srv":
-                    texture_activity[int(fields["cookie"])]["srv"] += 1
+                    cookie = int(fields["cookie"])
+                    texture_activity[cookie]["srv"] += 1
+                    first_srv_lines.setdefault(cookie, line_number)
                 elif event in ("copy", "copy_resource"):
                     texture_activity[int(fields["src_cookie"])]["copy_src"] += 1
                     texture_activity[int(fields["dst_cookie"])]["copy_dst"] += 1
+                elif event == "suppressed" and fields.get("event") == TEXTURE_TRACE_COPY_EVENT:
+                    copy_suppression_line = line_number
 
             alias_match = ALIAS_EVENT_RE.search(line)
             if not alias_match:
@@ -175,13 +185,22 @@ def main() -> int:
             elif event == "barrier":
                 barriers.append((line_number, fields))
 
-    target_cookies = {
+    broad_target_cookies = {
         cookie for cookie, fields in texture_creates.items()
         if fields.get("format") in BLOCK_COMPRESSED_COLOR_FORMATS
         and int(fields.get("mips", 1)) > 1
         and texture_activity[cookie]["srv"] > 0
         and texture_activity[cookie]["copy_dst"] == 0
     }
+    target_cookies = {
+        cookie for cookie in broad_target_cookies
+        if copy_suppression_line is None
+        or (
+            texture_create_lines[cookie] < copy_suppression_line
+            and first_srv_lines[cookie] < copy_suppression_line
+        )
+    }
+    post_cap_excluded = broad_target_cookies - target_cookies
     traced_targets = [resources[cookie] for cookie in target_cookies if cookie in resources]
     missing_target_creates = target_cookies - resources.keys()
 
@@ -255,7 +274,8 @@ def main() -> int:
     output: list[str] = [
         "# Placed-resource alias trace analysis",
         "",
-        "This report correlates D02 no-incoming-copy SRV textures with D03 placed-resource "
+        "This report correlates no-incoming-copy SRV textures observable before D03's copy-event "
+        "cap with placed-resource "
         "ranges and explicit D3D12 alias barriers. Range overlap is evidence of shared heap "
         "address space, not by itself evidence of invalid aliasing or a translation defect.",
         "",
@@ -274,11 +294,13 @@ def main() -> int:
         f"Placed resources: {len(resources)} across {len(by_heap)} heaps "
         f"({resource_kinds.get('buffer', 0)} buffers, {resource_kinds.get('texture', 0)} textures).",
         "",
-        "## D02 no-incoming-copy SRV class",
+        "## Pre-cap no-incoming-copy SRV class",
         "",
-        f"Candidate textures from the same run: {len(target_cookies)}; candidates with a "
+        f"Candidate textures observable before the copy cap: {len(target_cookies)}; candidates with a "
         f"matching IL2ALIAS placed-resource record: {len(traced_targets)}; missing: "
         f"{len(missing_target_creates)}.",
+        f"Broad candidates excluded because creation or first SRV occurred after copy "
+        f"suppression: {len(post_cap_excluded)}.",
         "",
     ])
     output.extend(markdown_table(
@@ -316,8 +338,9 @@ def main() -> int:
         "",
         "## Interpretation gate",
         "",
-        "A target with no live range overlap and no explicit alias barrier is evidence against "
-        "placed-resource aliasing as its population path. A live overlap or barrier selects a "
+        "A pre-cap target with no live range overlap and no explicit alias barrier is evidence against "
+        "placed-resource aliasing as its population path during the observable interval. A later "
+        "post-cap copy cannot be excluded by this bounded trace. A live overlap or barrier selects a "
         "narrower descriptor/resource-use trace, but still does not justify a behavior-changing "
         "flag without demonstrating that the target reaches a shader and changes rendering.",
     ])

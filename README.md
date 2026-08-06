@@ -52,28 +52,28 @@ configurations. E01 is therefore inconclusive pending matched-altitude A/B.
 E02 (`single_queue`) is complete and unchanged across two runs. Disabling
 asynchronous compute/transfer queues does not remove either defect.
 
-E03 (descriptor buffer disabled) and E04 (`no_upload_hvv,single_queue`) were
-not run. They remain explicitly inconclusive rather than being counted as
-unchanged. The user reports that below roughly 1,500 m some low-fidelity assets
+E03 (descriptor buffer disabled) is now the prepared next control; E04
+(`no_upload_hvv,single_queue`) was not run. Both remain explicitly inconclusive
+rather than being counted as unchanged. The user reports that below roughly 1,500 m some low-fidelity assets
 begin to load; around 5,000 m the failure is much more severe. Current logs do
 not expose the relevant altitude, mip, tile-mapping, or residency state.
 
-The current root-cause confidence is **low**, but D02 has narrowed the next
+The defective layer remains unisolated, but D02 and D03 have narrowed the next
 step. During a valid corrupted run, 2,355 multi-mip compressed textures received
 geometrically complete buffer uploads, no partial mip chain was found, every
 logged SRV used a zero minimum-LOD clamp, and no logged operation followed
-resource destruction. A separate class of 433 placed BC3 textures received an
-SRV but no logged incoming upload/copy. D03 will first determine whether those
-resources overlap live buffers/textures or participate in explicit alias
-barriers. Actual descriptor use is a follow-up only if that result requires it. See
-[`docs/evidence-d02-ordinary-texture-trace.md`](docs/evidence-d02-ordinary-texture-trace.md)
-and [`patches/README.md`](patches/README.md).
+resource destruction. Corrected cap-aware analysis leaves 405 pre-cap placed
+BC3 textures with an SRV but no logged incoming upload/copy.
 
-D03 is prepared at diagnostic commit `cfca234e`. A separate custom Proton tool
-will correlate those same resource cookies with placed buffer/texture heap
-ranges, lifetimes, and explicit alias barriers. It remains telemetry-only; no
-descriptor or aliasing workaround has been enabled. See
-[`docs/evidence-d03-preparation.md`](docs/evidence-d03-preparation.md).
+D03 is complete and visually unchanged. In its same-run pre-cap class, all 585
+candidates have placed-resource records, none overlaps any traced placed buffer
+or texture range, and the full run records zero explicit legacy alias barriers.
+This excludes D3D12 placed-resource memory aliasing for the covered class with
+high confidence; it does not test descriptor-heap image/buffer type reuse.
+E03 therefore disables only the active descriptor-buffer extension. See
+[`docs/evidence-d02-ordinary-texture-trace.md`](docs/evidence-d02-ordinary-texture-trace.md)
+and [`docs/evidence-d03-alias-trace.md`](docs/evidence-d03-alias-trace.md).
+No descriptor or aliasing workaround has been enabled.
 
 An unmodified development build of the exact installed VKD3D-Proton commit was
 built successfully, but D00 did not validate it: stock Proton recopies its own
@@ -179,6 +179,8 @@ Compare collected runs with:
   valid D02 runtime result and next diagnostic discriminator
 - [`docs/evidence-d03-preparation.md`](docs/evidence-d03-preparation.md): D03
   build, isolated custom tool, exact launch option, and rollback
+- [`docs/evidence-d03-alias-trace.md`](docs/evidence-d03-alias-trace.md): valid
+  D03 runtime result excluding placed-resource range aliasing
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated

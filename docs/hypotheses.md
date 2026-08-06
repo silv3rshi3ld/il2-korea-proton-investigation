@@ -22,11 +22,11 @@ not establish what Wine reports through Win32 processor groups and NUMA APIs.
 |---|---|---|---|
 | G1 | Host-visible VRAM/ReBAR upload-heap behavior exposes an application or VKD3D lifetime/visibility bug. | `no_upload_hvv` alone; inspect VKD3D memory-topology lines. | Compare ReBAR on/off, allocation path, and upload resource lifecycle. |
 | G2 | A missing or insufficient cross-queue dependency affects streamed terrain or menu compute work. | `single_queue` alone; then the planned combination only after G1/G2 individual results. | Queue-specific logging, semaphore/timeline analysis, then narrow instrumentation. |
-| G3 | Descriptor-buffer lifetime/type/reuse behavior exposes invalid game descriptors or a translation/driver defect. | Disable only `VK_EXT_descriptor_buffer`; inspect enabled extension path. | Descriptor QA or filtered descriptor telemetry. |
+| G3 | Descriptor-buffer lifetime/type/reuse behavior exposes invalid game descriptors or a translation/driver defect. | E03 disables only `VK_EXT_descriptor_buffer`; D03 excluded placed-resource range aliasing but did not test descriptor-heap image/buffer type reuse. | Descriptor QA or filtered descriptor telemetry. |
 | G4 | The game omits a UAV/resource barrier and native drivers implicitly serialize the sequence. | Look for a repeatable change under single queue or controlled heavy synchronization; correlate a specific compute shader/resource sequence. | Narrow shader/resource instrumentation; only then consider a shader-specific barrier quirk. |
 | G5 | Reserved/sparse terrain resources or residency updates are mishandled. | Valid D01b trace records zero reserved-resource and tile-mapping calls during reproduction. | Excluded for the tested path; do not pursue without contradictory new evidence. |
 | G6 | Incorrect mip/LOD state causes distant terrain to sample absent mips. | D02 found zero non-zero SRV minimum-LOD clamps and complete geometric uploads for 2,355 compressed mip chains, weakening the broad form of this hypothesis. | Correlate the remaining no-upload SRV class with actual binding and explicit-LOD shader use. |
-| G7 | Image/buffer descriptor type reuse or placed-resource aliasing exposes invalid game use or a translation/driver defect. | D02 found 433 placed BC3 textures with SRVs but no incoming upload; D03 records heap identity/ranges, buffers, and alias barriers before any broader descriptor-use trace. | Use descriptor QA, `avoid_image_buffer_aliasing`, or descriptor-buffer disabling only after the traced sequence selects that behavior. |
+| G7 | Image/buffer descriptor type reuse exposes invalid game use or a translation/driver defect. | D03 found no placed-resource range overlap for all 585 pre-cap candidates and zero explicit legacy alias barriers, excluding resource-memory aliasing for the covered class. E03 now isolates the descriptor-buffer backend. | Use descriptor QA after E03; select `avoid_image_buffer_aliasing` only if descriptor evidence specifically supports image/buffer type confusion. |
 | G8 | The repeated split-barrier `END_ONLY` warnings are incidental because VKD3D conservatively completes them. | Count and correlate warning timestamps with resources and visible failures; compare behavior, not warning count alone. | Instrument a suspicious resource's before/after states and layouts. |
 | G9 | RADV is given valid Vulkan but mishandles a specific path. | Reproduce with another AMD Vulkan driver or Mesa version, one variable at a time. | Vulkan validation, RenderDoc/trace if lawful and practical, then minimal Vulkan reproducer. |
 | G10 | Shader translation produces incorrect code for a menu/terrain shader. | Artifact is invariant under memory, queue, and descriptor controls; shader debug/hash points to a stable stage. | Shader replacement/bisection and minimal shader test. |
@@ -43,9 +43,11 @@ the executable names high-level tiled terrain/LOD classes, while
 subresource updates, and copies. This selects G1/G6 for focused telemetry but
 does not establish whether the game, VKD3D-Proton, or RADV mishandles them. D02
 shows complete mip uploads for most compressed textures and zero non-zero SRV
-minimum-LOD clamps, but also a distinct class of 433 SRV-bearing BC3 textures
+minimum-LOD clamps, but also a distinct pre-cap class of 405 SRV-bearing BC3 textures
 without an observed incoming upload. That class is not yet proven to be sampled
-or defective.
+or defective. D03 excludes placed-resource range aliasing as its population
+path during the covered interval, leaving descriptor propagation/use as the
+next discriminator.
 
 ## Direct public report
 

@@ -118,11 +118,26 @@
     multi-mip block-compressed resources have complete geometric upload
     coverage and none are partial. All observed SRVs use
     `ResourceMinLODClamp = 0`, and no logged SRV or copy follows destruction.
-28. A narrower class remains unresolved: 433 placed multi-mip BC3 textures
+28. A narrower pre-cap class remains unresolved: 405 placed multi-mip BC3 textures
     have an SRV but no logged buffer upload or incoming texture copy. SRV
     creation alone does not prove shader use, and D02 lacks buffer/heap overlap,
     alias-barrier, descriptor-copy, and draw-use correlation. This class
     justifies D03 instrumentation but not an aliasing workaround.
+29. D03-r1 is a valid trace-only run at diagnostic commit `cfca234e`: both
+    telemetry gates occur once, all runtime D3D12/D3D12Core hashes match the
+    custom tool, D3D12/DXGI load without D3D11, and the user reports the same
+    visual corruption. No screenshot was saved for this run.
+30. D03 corrects for its copy-event cap rather than treating late resources as
+    missing uploads. It finds 585 block-compressed multi-mip textures created
+    and exposed through an SRV before suppression with no logged incoming copy;
+    every candidate has a matching placed-resource record. Another 952 broad
+    candidates first became observable after suppression and are excluded.
+31. None of the 585 covered candidates overlaps any traced placed buffer or
+    texture range, including ranges reused outside overlapping lifetimes. The
+    full run also records zero explicit legacy D3D12 alias barriers. D3D12
+    placed-resource memory aliasing is therefore excluded with high confidence
+    as the population path for the covered class. Descriptor-heap image/buffer
+    type reuse remains a distinct, untested mechanism.
 
 ## Observations not yet promoted to findings
 
@@ -165,7 +180,8 @@ tracing; they do not justify copying an override.
 | Streaming/residency/LOD | D02 confirms active ordinary compressed-texture streaming and narrows it to complete uploads plus an unresolved no-upload SRV class; it does not identify which resources produce the visible pages. | Medium for relevance, low for mechanism |
 | D3D12 sparse/tiled resources | Valid D01b instrumentation records zero reserved-resource and tile-mapping API use during reproduction. | Excluded for this path, high |
 | Ordinary mip uploads | D02 geometrically verifies complete buffer uploads for 2,355 multi-mip compressed resources, zero partial resources, and zero non-zero SRV minimum-LOD clamps. | Broad incomplete-mip/min-LOD explanation weakened, medium-high |
-| No-upload SRV class | D02 finds 433 placed multi-mip BC3 textures with SRVs but no logged incoming upload/copy; actual binding/use and aliasing are unknown. | Medium for relevance, low for defect/cause |
+| No-upload SRV class | Corrected D02 analysis finds 405 pre-copy-cap placed multi-mip BC3 textures with SRVs but no logged incoming upload/copy; actual binding/use is unknown. | Medium for relevance, low for defect/cause |
+| Placed-resource aliasing | D03 matches all 585 same-run pre-cap candidates and finds zero range overlap plus zero explicit legacy alias barriers. | Excluded for covered class, high |
 
 No behavior-changing upstream patch is justified yet. Focused diagnostic
 instrumentation is prepared for a dedicated custom Proton runtime.
@@ -183,9 +199,9 @@ has resumed at the development-build stage.
 3. D01b is complete and excludes D3D12 reserved/tiled resources from the
    failing path.
 4. D02 is complete. It weakens broad missing-mip and minimum-LOD explanations
-   and identifies 433 SRV-bearing compressed textures without a logged upload.
-5. D03 adds bounded placed-buffer/texture heap ranges and aliasing barriers for
-   that exact resource class. Use a descriptor-QA build only if D03 finds live
-   overlap or a barrier sequence that points to descriptor reuse or
-   image/buffer type confusion.
-6. Investigate the NUMA caller separately with focused API tracing.
+   and identifies 405 pre-cap SRV-bearing compressed textures without a logged upload.
+5. D03 is complete and excludes placed-resource range aliasing for all 585
+   same-run pre-cap candidates. It does not test descriptor-heap type reuse.
+6. E03 now disables only the active descriptor-buffer extension. If unchanged,
+   use a descriptor-QA build rather than another broad allocation trace.
+7. Investigate the NUMA caller separately with focused API tracing.

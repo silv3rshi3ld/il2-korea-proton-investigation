@@ -28,9 +28,8 @@ presented upstream as a remedy.
 - `VKD3D_CONFIG=single_queue` is unchanged across two runs.
 - `VKD3D_CONFIG=no_upload_hvv` was enabled successfully, but its apparent
   vegetation improvement is confounded by altitude and map location.
-- Descriptor-buffer disabling and the combined upload/single-queue control
-  have not been run; D02 first identified a resource class that can make a
-  later descriptor control evidence-driven.
+- Descriptor-buffer disabling is the prepared E03 control; the combined
+  upload/single-queue control has not been run.
 - Ground pages and magenta borders remain in every captured configuration.
 
 Adding `.NO_UPLOAD_HVV`, `.NO_STAGGERED_SUBMIT`, or another executable override
@@ -43,10 +42,13 @@ Valid D01b telemetry excludes D3D12 reserved/tiled resources. D02 supplies
 ordinary texture identifiers, mip ranges, upload copies, and lifetime order:
 2,355 compressed resources have complete geometric mip uploads, zero partial
 resources were found, and all SRV minimum-LOD clamps are zero. It also finds
-433 placed BC3 textures with an SRV but no logged incoming upload/copy. Because
-SRV creation does not prove shader use and D02 does not correlate heap overlap,
-aliasing barriers, descriptor propagation, or draw use, the defective layer
-still cannot be assigned to the game, VKD3D-Proton, or RADV.
+405 pre-cap placed BC3 textures with an SRV but no logged incoming upload/copy.
+D03 matches all 585 same-run pre-cap candidates and finds no overlap with any
+traced placed buffer/texture range and zero explicit legacy alias barriers.
+This excludes placed-resource memory aliasing for the covered class, but SRV
+creation still does not prove shader use and descriptor propagation/use remains
+untraced. The defective layer cannot yet be assigned to the game,
+VKD3D-Proton, or RADV.
 
 The prefix-only installation attempts did not load the local DLLs because
 stock Proton restored its packaged copies during launch. A dedicated custom

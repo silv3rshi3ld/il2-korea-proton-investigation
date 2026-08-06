@@ -58,7 +58,8 @@ capture both conditions before exiting:
 5. record whether underlying ground, vegetation, roads, page edges, and
    magenta seams change independently.
 
-D03 adds filtered heap-range, buffer, and alias-barrier telemetry for the D02
-no-upload resource class. Descriptor-use telemetry follows only if this first
-correlation selects it. Logging every GPU operation indiscriminately is not
+D03 found no placed-resource range overlap for its same-run pre-cap no-upload
+resource class and no explicit legacy alias barriers. E03 therefore isolates
+the active descriptor-buffer backend. Descriptor QA follows only if that
+control is unchanged. Logging every GPU operation indiscriminately is not
 justified.

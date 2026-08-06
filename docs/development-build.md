@@ -226,8 +226,8 @@ hashes match the D02 build table above. See
 D02-r1 subsequently passed the runtime validity gates. The corruption remained
 visible at 1,385 m, 2,355 multi-mip block-compressed resources had complete
 geometric upload coverage, no partial resource was found, and all 4,185 SRV
-descriptions used a zero minimum-LOD clamp. The remaining discriminator is 433
-placed BC3 textures with an SRV but no logged incoming upload/copy. See
+descriptions used a zero minimum-LOD clamp. The corrected pre-cap discriminator
+is 405 placed BC3 textures with an SRV but no logged incoming upload/copy. See
 [`evidence-d02-ordinary-texture-trace.md`](evidence-d02-ordinary-texture-trace.md).
 
 ## D03 placed-resource alias trace build
@@ -248,3 +248,9 @@ match the retained build, and recursive comparison with Proton Experimental
 reports only those four intended differences after excluding the custom
 manifest and metadata. Exact hashes, launch options, and rollback are recorded
 in [`evidence-d03-preparation.md`](evidence-d03-preparation.md).
+
+D03-r1 passed both runtime trace gates and the DLL-hash verification. All 585
+same-run candidate textures observable before the copy cap have matching
+placed-resource records; none overlaps any traced placed buffer or texture
+range. The full run records zero explicit legacy alias barriers. See
+[`evidence-d03-alias-trace.md`](evidence-d03-alias-trace.md).

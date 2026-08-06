@@ -2,7 +2,7 @@
 
 ## Diagnostic question
 
-D02 found 433 placed, multi-mip BC3 textures that receive an SRV but no logged
+D02's corrected cap-aware analysis found 405 pre-cap placed, multi-mip BC3 textures that receive an SRV but no logged
 incoming upload or texture copy. D03 asks whether those resources:
 
 - overlap a placed buffer or another texture in the same D3D12 heap;

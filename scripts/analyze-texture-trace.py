@@ -28,6 +28,7 @@ FORMAT_NAMES = {
     99: "BC7_UNORM_SRGB",
 }
 BLOCK_COMPRESSED_COLOR_FORMATS = {71, 72, 74, 75, 77, 78, 80, 81, 83, 84, 95, 96, 98, 99}
+TEXTURE_TRACE_COPY_EVENT = 2
 RESOURCE_DIMENSION_NAMES = {
     0: "UNKNOWN",
     1: "BUFFER",
@@ -164,6 +165,8 @@ def main() -> int:
 
     counts = collections.Counter(event for _, event, _ in events)
     creates: dict[int, dict[str, Any]] = {}
+    create_lines: dict[int, int] = {}
+    first_srv_lines: dict[int, int] = {}
     activity: dict[int, collections.Counter[str]] = collections.defaultdict(collections.Counter)
     destroyed_at: dict[int, int] = {}
     after_destroy: list[tuple[int, str, int]] = []
@@ -176,11 +179,13 @@ def main() -> int:
         int, dict[int, list[tuple[tuple[int, int, int], tuple[int, int, int]]]]
     ] = collections.defaultdict(lambda: collections.defaultdict(list))
     full_uploads: dict[int, bool] = collections.defaultdict(lambda: True)
+    copy_suppression_line: int | None = None
 
     for line_number, event, fields in events:
         if event == "create":
             cookie = int(fields["cookie"])
             creates[cookie] = fields
+            create_lines[cookie] = line_number
             shape_counts[
                 (
                     fields.get("allocation"),
@@ -197,6 +202,7 @@ def main() -> int:
         elif event == "srv":
             cookie = int(fields["cookie"])
             activity[cookie]["srv"] += 1
+            first_srv_lines.setdefault(cookie, line_number)
             srv_counts[
                 (
                     fields.get("first_mip"),
@@ -240,6 +246,8 @@ def main() -> int:
             cookie = int(fields["cookie"])
             activity[cookie]["destroy"] += 1
             destroyed_at[cookie] = line_number
+        elif event == "suppressed" and fields.get("event") == TEXTURE_TRACE_COPY_EVENT:
+            copy_suppression_line = line_number
 
     active_rows = []
     for cookie, cookie_activity in activity.items():
@@ -284,14 +292,20 @@ def main() -> int:
             continue
         expected = expected_subresource_count(created)
         actual = len(uploaded_subresources.get(cookie, set()))
+        created_after_copy_cap = (
+            copy_suppression_line is not None
+            and create_lines[cookie] >= copy_suppression_line
+        )
         if upload_geometrically_covers_resource(created, upload_regions.get(cookie, {})):
             classification = "complete"
+        elif created_after_copy_cap:
+            classification = "created after copy cap"
         elif actual == 0:
-            classification = "no buffer upload logged"
+            classification = "no buffer upload logged before copy cap"
         else:
-            classification = "partial"
+            classification = "partial before copy cap"
         compressed_completeness[classification] += 1
-        if classification == "partial":
+        if classification == "partial before copy cap":
             partial_compressed_rows.append(
                 (
                     cookie,
@@ -301,7 +315,7 @@ def main() -> int:
                     "yes" if full_uploads[cookie] else "no",
                 )
             )
-        elif classification == "no buffer upload logged":
+        elif classification == "no buffer upload logged before copy cap":
             no_upload_shape_counts[
                 (
                     created.get("dimension"),
@@ -313,10 +327,15 @@ def main() -> int:
                 )
             ] += 1
             cookie_activity = activity[cookie]
+            first_srv_line = first_srv_lines.get(cookie)
             if cookie_activity["copy_dst"]:
                 activity_class = "incoming texture copy"
+            elif first_srv_line is not None and (
+                copy_suppression_line is None or first_srv_line < copy_suppression_line
+            ):
+                activity_class = "SRV before cap with no logged incoming copy"
             elif cookie_activity["srv"]:
-                activity_class = "SRV with no logged incoming copy"
+                activity_class = "SRV only after copy cap"
             else:
                 activity_class = "no SRV or incoming copy logged"
             no_upload_activity_counts[activity_class] += 1
@@ -399,6 +418,11 @@ def main() -> int:
         "near or after suppression appear partial; a complete result is positive evidence "
         "that every expected subresource was fully written."
     )
+    if copy_suppression_line is not None:
+        output.append(
+            f" The copy-event cap was reached at log line {copy_suppression_line}. "
+            "Resources created after that line are classified as unobservable rather than missing uploads."
+        )
     output.extend(["", *markdown_table(
         ["classification", "resources"], compressed_completeness.most_common()
     )])
@@ -408,15 +432,15 @@ def main() -> int:
             partial_compressed_rows,
         )])
     if no_upload_shape_counts:
-        output.extend(["", "Most common shapes with no logged buffer upload:", "", *markdown_table(
+        output.extend(["", "Most common shapes with no logged buffer upload before the copy cap:", "", *markdown_table(
             ["resources", "dimension", "width", "height", "depth/layers", "mips", "format"],
             ((count, dimension_name(shape[0]), *shape[1:5], format_name(shape[5]))
              for shape, count in no_upload_shape_counts.most_common(15)),
         )])
-        output.extend(["", "Activity of resources with no logged buffer upload:", "", *markdown_table(
+        output.extend(["", "Activity of resources with no logged buffer upload before the copy cap:", "", *markdown_table(
             ["classification", "resources"], no_upload_activity_counts.most_common()
         )])
-        output.extend(["", "First resources with no logged buffer upload:", "", *markdown_table(
+        output.extend(["", "First resources with no logged buffer upload before the copy cap:", "", *markdown_table(
             ["cookie", "created shape", "SRVs", "copies into", "copies out", "heap offset"],
             sorted(no_upload_activity_rows, key=lambda row: (row[3], row[2]), reverse=True)[:50],
         )])

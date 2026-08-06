@@ -1,6 +1,6 @@
 # Upstream drafts (review only; do not post automatically)
 
-These drafts describe the completed E00-E02, D01b, and D02 investigation
+These drafts describe the completed E00-E02 and D01b-D03 investigation
 accurately. They do not claim a root cause or fix. Attach only selected,
 reviewed screenshots and filtered logs; do not upload the game, prefix,
 credentials, or unfiltered large artifacts.
@@ -52,7 +52,7 @@ Controlled results (two runs each)
 - E02, VKD3D_CONFIG=single_queue: menu and terrain defects unchanged in both
   runs. Ordinary async compute/transfer queue selection is unlikely to be the
   primary trigger.
-- E03, descriptor buffer disabled: not run.
+- E03, descriptor buffer disabled: prepared but not yet run.
 - E04, no_upload_hvv plus single_queue: not run.
 - D01b, dedicated custom Proton with gated resource telemetry: the trace build
   is verified active and records zero CreateReservedResource,
@@ -63,8 +63,16 @@ Controlled results (two runs each)
   defect remains visible at 1,385 m. Of the multi-mip block-compressed
   resources, 2,355 have complete geometric buffer-upload coverage, none are
   partial, and all 4,185 SRV descriptions use ResourceMinLODClamp 0. A separate
-  class of 433 placed BC3 textures has an SRV but no logged incoming upload or
-  texture copy. SRV creation alone does not establish shader use.
+  pre-cap class of 405 placed BC3 textures has an SRV but no logged incoming
+  upload or texture copy. Another 28 textures were created only after copy
+  suppression and are classified as unobservable rather than missing uploads.
+  SRV creation alone does not establish shader use.
+- D03, dedicated custom Proton with bounded placed-resource telemetry: visually
+  unchanged. All 585 same-run candidates created and exposed by an SRV before
+  the copy cap have matching placed-resource records; none overlaps any traced
+  placed buffer/texture range. The full run records zero explicit legacy alias
+  barriers. Another 952 broad candidates first appeared after copy suppression
+  and were excluded from the correlation.
 
 No run reported device loss, GPU hang/reset, or out-of-memory errors. Repeated
 split END_ONLY barrier warnings remain uncorrelated with an affected resource
@@ -74,10 +82,11 @@ Assessment
 The altitude dependence and rectangular pages make ordinary texture streaming,
 descriptor propagation/use, or explicit LOD behavior the leading hypothesis
 class. D01b excludes API-level sparse residency. D02 weakens broad incomplete-
-mip and non-zero minimum-LOD explanations, but does not prove that its 433
-no-upload SRV resources are sampled. The next trace will correlate their heap
-ranges, buffer overlap, and alias barriers before any descriptor-use trace. The
-defective layer (game, VKD3D-Proton, or RADV) remains unisolated; no override or
+mip and non-zero minimum-LOD explanations. D03 excludes placed-resource range
+aliasing for the covered class but does not prove whether these SRVs are bound
+or sampled. The next single control disables the active descriptor-buffer
+extension; descriptor QA follows only if it remains unchanged. The defective
+layer (game, VKD3D-Proton, or RADV) remains unisolated; no override or
 behavior-changing source patch is proposed.
 
 Attachments proposed after review
@@ -119,26 +128,31 @@ Results, two runs per completed configuration:
 - A second valid diagnostic run traced ordinary textures. The same missing
   pages remain at 1,385 m. It found 2,355 complete block-compressed mip uploads,
   zero partial resources, zero non-zero SRV minimum-LOD clamps, and no logged
-  operation after resource destruction. It also found 433 placed BC3 textures
-  with SRVs but no logged incoming upload/copy; actual binding/use is not yet
-  known.
+  operation after resource destruction. Cap-aware analysis found 405 pre-cap
+  placed BC3 textures with SRVs but no logged incoming upload/copy; actual
+  binding/use is not yet known.
+- A third valid diagnostic run added placed-resource range and legacy alias-
+  barrier telemetry. All 585 same-run pre-cap candidates have matching resource
+  records, none overlaps any traced placed buffer/texture range, and no explicit
+  legacy alias barrier occurs in the full run. This excludes placed-resource
+  memory aliasing for the covered class, but not descriptor-heap type reuse.
 
 There is a strong altitude/distance dependency across configurations. The user
 observes some low-fidelity assets loading below roughly 1,500 m, while captures
 near 5,000 m show almost entirely absent ground. D02 now supplies stable
 ordinary-resource IDs and mip ranges, but it does not yet correlate the
 suspicious no-upload class with descriptor propagation or actual shader use.
-This still does not distinguish descriptor, aliasing, barrier, application, or
-driver behavior.
+The next one-variable test disables `VK_EXT_descriptor_buffer`. This still does
+not distinguish application, VKD3D-Proton, or driver behavior.
 
 No device loss, GPU reset/hang, or OOM was found. Split END_ONLY barrier
 warnings are frequent but have no resource correlation, and the current
 VKD3D-Proton code already handles END_ONLY as a conservative full transition.
 
-Current conclusion: no game override or general patch is justified. The next
-step is a bounded trace of placed buffer/texture heap ranges and alias barriers
-for the D02 no-upload SRV class. Only a demonstrated sequence should select
-descriptor QA, a descriptor/alias control, or a source fix.
+Current conclusion: no game override or general patch is justified. D03 rules
+out a speculative placed-resource alias workaround. E03 now tests the active
+descriptor-buffer backend in isolation; only a repeatable visual change or a
+descriptor-QA finding should select a descriptor workaround or source fix.
 ```
 
 ## Wine or Proton startup report outline

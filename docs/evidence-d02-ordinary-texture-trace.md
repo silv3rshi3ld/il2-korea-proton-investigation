@@ -76,7 +76,8 @@ with multiple mips:
 | Upload classification | Resources |
 |---|---:|
 | Geometrically complete buffer-to-image mip chain | 2,355 |
-| No logged buffer upload | 433 |
+| No logged buffer upload before the copy cap | 405 |
+| Created after the copy cap; upload unobservable | 28 |
 | Partial mip/subresource coverage | 0 |
 
 This is evidence against a broad failure to upload the expected mips. It does
@@ -96,15 +97,15 @@ explanations.
 
 ## Suspicious resource class
 
-All 433 block-compressed resources without a logged buffer upload are placed
+All 405 pre-cap block-compressed resources without a logged buffer upload are placed
 BC3 textures, have an SRV, and have no logged incoming texture copy. Their most
 common shapes are:
 
 | Resources | Shape |
 |---|---|
-| 172 | 256x256, 9 mips, BC3 |
-| 124 | 128x128, 8 mips, BC3 |
+| 166 | 256x256, 9 mips, BC3 |
 | 102 | 512x512, 10 mips, BC3 |
+| 102 | 128x128, 8 mips, BC3 |
 | 34 | 1024x1024, 11 mips, BC3 |
 | 1 | Texture2D array, 2048x2048x16 layers, 12 mips, BC3 |
 
@@ -125,7 +126,7 @@ ranges, aliasing barriers, descriptor copies, or draw-time descriptor use.
 - `AVOID_IMAGE_BUFFER_ALIASING` cannot yet be selected from the visual symptom.
   In this VKD3D-Proton version that flag changes descriptor-heap image/buffer
   placement; it does not directly prove D3D placed-resource memory overlap.
-- The next diagnostic must correlate the 433-resource class with heap ranges,
+- The next diagnostic must correlate the 405-resource class with heap ranges,
   buffer overlap, aliasing barriers, descriptor propagation, and actual use.
 
 No behavior-changing application override, general VKD3D-Proton patch, or RADV
