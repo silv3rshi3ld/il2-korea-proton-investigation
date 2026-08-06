@@ -28,6 +28,7 @@ FORMAT_NAMES = {
     99: "BC7_UNORM_SRGB",
 }
 BLOCK_COMPRESSED_COLOR_FORMATS = {71, 72, 74, 75, 77, 78, 80, 81, 83, 84, 95, 96, 98, 99}
+BLOCK_EXTENTS = {format_id: (4, 4) for format_id in BLOCK_COMPRESSED_COLOR_FORMATS}
 TEXTURE_TRACE_COPY_EVENT = 2
 RESOURCE_DIMENSION_NAMES = {
     0: "UNKNOWN",
@@ -179,6 +180,9 @@ def main() -> int:
         int, dict[int, list[tuple[tuple[int, int, int], tuple[int, int, int]]]]
     ] = collections.defaultdict(lambda: collections.defaultdict(list))
     full_uploads: dict[int, bool] = collections.defaultdict(lambda: True)
+    buffer_to_compressed_copy_count = 0
+    invalid_compressed_copy_shapes: collections.Counter[str] = collections.Counter()
+    invalid_compressed_copy_classes: collections.Counter[tuple[Any, ...]] = collections.Counter()
     copy_suppression_line: int | None = None
 
     for line_number, event, fields in events:
@@ -240,6 +244,46 @@ def main() -> int:
                     extent = parse_vec3(fields.get("extent"), "x")
                     if offset is not None and extent is not None:
                         upload_regions[dst_cookie][fields["dst_subresource"]].append((offset, extent))
+                        created = creates.get(dst_cookie)
+                        block_extent = BLOCK_EXTENTS.get(created.get("format")) if created else None
+                        if (
+                            created
+                            and block_extent
+                            and fields.get("src_location") == 1
+                            and fields.get("dst_location") == 0
+                            and isinstance(fields.get("image_mip"), int)
+                        ):
+                            buffer_to_compressed_copy_count += 1
+                            mip = int(fields["image_mip"])
+                            mip_width = max(1, int(created["width"]) >> mip)
+                            mip_height = max(1, int(created["height"]) >> mip)
+                            block_width, block_height = block_extent
+                            invalid = (
+                                offset[0] % block_width != 0
+                                or offset[1] % block_height != 0
+                                or (
+                                    extent[0] % block_width != 0
+                                    and offset[0] + extent[0] != mip_width
+                                )
+                                or (
+                                    extent[1] % block_height != 0
+                                    and offset[1] + extent[1] != mip_height
+                                )
+                            )
+                            if invalid:
+                                invalid_compressed_copy_shapes[
+                                    f"{extent[0]}x{extent[1]}x{extent[2]}"
+                                ] += 1
+                                invalid_compressed_copy_classes[
+                                    (
+                                        created.get("dimension"),
+                                        created.get("width"),
+                                        created.get("height"),
+                                        created.get("depth_or_layers"),
+                                        created.get("mips"),
+                                        created.get("format"),
+                                    )
+                                ] += 1
                 if fields.get("full_subresource") != 1:
                     full_uploads[dst_cookie] = False
         elif event == "destroy":
@@ -409,6 +453,28 @@ def main() -> int:
              for shape, count in upload_shape_counts.most_common(25)),
         )
     )
+
+    output.extend(["", "## Compressed buffer-to-image copy alignment", ""])
+    invalid_compressed_copy_count = sum(invalid_compressed_copy_shapes.values())
+    output.append(
+        f"Checked {buffer_to_compressed_copy_count} buffer-to-image copies into recognized "
+        f"4x4 block-compressed textures. {invalid_compressed_copy_count} regions have an "
+        "internal offset or extent which is not block-aligned and does not end at the mip edge. "
+        "This is the Vulkan compressed-image transfer validity test; it deliberately accepts "
+        "complete 1x1 or 2x2 terminal mips."
+    )
+    if invalid_compressed_copy_shapes:
+        output.extend(["", "Affected copy shapes:", "", *markdown_table(
+            ["regions", "extent"],
+            ((count, shape) for shape, count in invalid_compressed_copy_shapes.most_common()),
+        )])
+        output.extend(["", "Affected destination resource classes:", "", *markdown_table(
+            ["regions", "dimension", "width", "height", "depth/layers", "mips", "format"],
+            (
+                (count, dimension_name(shape[0]), *shape[1:5], format_name(shape[5]))
+                for shape, count in invalid_compressed_copy_classes.most_common()
+            ),
+        )])
 
     output.extend(["", "## Block-compressed mip-chain completeness", ""])
     output.append(

@@ -117,6 +117,21 @@ ranges, aliasing barriers, descriptor copies, or draw-time descriptor use.
 
 ## Consequences
 
+### Post-run compressed-copy analysis
+
+The original D02 report focused on mip-chain completeness. A later alignment
+pass over the same retained trace found a more concrete class: all 24,444
+recognized block-compressed buffer-to-image regions were checked against the
+destination mip size and 4x4 block granularity. Exactly 432 are invalid internal
+regions, all targeting the 2048x2048, one-mip BC3 cache class. Their shapes are
+`128x1` (118), `1x128` (112), `64x1` (110), and `1x64` (92).
+
+These copies coincide with the game module's `BakedTerrain` and
+`stitchBorders` architecture and current VKD3D forwards the extents unchanged
+to `vkCmdCopyBufferToImage2`. This supersedes the no-upload SRV class as the
+first behavioral discriminator. See
+[`evidence-d02-bc3-border-copies.md`](evidence-d02-bc3-border-copies.md).
+
 - D3D12 sparse/reserved resources remain excluded by D01b.
 - A general missing-mip or non-zero SRV-minimum-LOD explanation is not
   supported by D02.
@@ -126,8 +141,10 @@ ranges, aliasing barriers, descriptor copies, or draw-time descriptor use.
 - `AVOID_IMAGE_BUFFER_ALIASING` cannot yet be selected from the visual symptom.
   In this VKD3D-Proton version that flag changes descriptor-heap image/buffer
   placement; it does not directly prove D3D placed-resource memory overlap.
-- The next diagnostic must correlate the 405-resource class with heap ranges,
-  buffer overlap, aliasing barriers, descriptor propagation, and actual use.
+- If the gated BC3 border-normalization test fixes only the seams, the next
+  diagnostic must correlate the 2048x2048 baked-cache pool with descriptor
+  propagation, copy-to-sample visibility, and actual draw use.
 
-No behavior-changing application override, general VKD3D-Proton patch, or RADV
-patch is justified by D02 alone.
+No permanent application override, general VKD3D-Proton patch, or RADV patch is
+justified yet. One gated behavior-changing diagnostic is now justified by the
+same D02 trace.

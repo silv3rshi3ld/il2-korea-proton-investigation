@@ -1,9 +1,71 @@
 # Upstream drafts (review only; do not post automatically)
 
-These drafts describe the completed E00-E02 and D01b-D03 investigation
-accurately. They do not claim a root cause or fix. Attach only selected,
-reviewed screenshots and filtered logs; do not upload the game, prefix,
-credentials, or unfiltered large artifacts.
+The focused draft immediately below reflects the newest D02 compressed-copy
+analysis. The older broad drafts remain as historical context and need revision
+before use. Attach only selected, reviewed screenshots and filtered logs; do
+not upload the game, prefix, credentials, or unfiltered large artifacts.
+
+## Current focused update for VKD3D-Proton issue #3134
+
+Use this as a review draft only. Do not post automatically.
+
+```text
+I have isolated a concrete compressed-copy problem on the active terrain-cache
+path. This is from a separate RX 7800 XT / RADV 26.1.6 reproduction on game
+build 24596901.
+
+A verified custom VKD3D trace recorded 39,978 CopyTextureRegion calls while the
+rectangular missing terrain and magenta page edges were visible. The game does
+not use D3D12 reserved/tiled-resource APIs. Read-only inspection of its terrain
+module instead exposes an application-managed path named BlocksCache,
+BakedTerrainCache, BakedTerrain, g_tTiles, CDistantLOD, and stitchBorders.
+
+The run creates 164 placed 2048x2048, one-mip DXGI_FORMAT_BC3_UNORM textures.
+Before the screenshot, fourteen members receive 382 invalid border regions; by
+the trace cap, the total is 432 across sixteen members. The affected members
+also receive observed 64x64 or 128x128 interior page uploads. The same active
+pool's border copies have these extents:
+
+- 118 x 128x1
+- 112 x 1x128
+- 110 x 64x1
+- 92 x 1x64
+
+Their image offsets are multiples of four, but the one-texel dimension does not
+reach the 2048x2048 mip edge. Representative emitted regions are
+extent=1x128 at offset=1020,1536 and extent=128x1 at offset=1024,1536.
+
+Current vk_buffer_image_copy_from_d3d12() copies the D3D12 source-box extent
+directly into VkBufferImageCopy2.imageExtent, and the buffer-to-image path then
+submits it to vkCmdCopyBufferToImage2. The same code remains in current upstream
+commit 84c87c83, which I also tested unmodified with no visual improvement.
+
+For BC3, Vulkan transfer granularity is scaled by the 4x4 compressed texel
+block. These internal one-texel regions therefore violate
+VUID-vkCmdCopyBufferToImage2-imageOffset-07738. VKD3D-Proton's own
+d3d12_invalid_usage cross-test also classifies non-block-sized compressed-copy
+coordinates as invalid D3D12 usage. My current assessment is invalid game usage
+tolerated by native Windows plus a VKD3D compatibility gap, not evidence of a
+RADV bug.
+
+Confidence is high that this explains the magenta seams because the resource
+class, border-only shapes, engine stitchBorders name, and visual result all
+agree. It is not yet proven to explain the large black/absent pages: the
+interior 64/128-page uploads are block-valid. The menu block effect is also not
+yet correlated and may be separate.
+
+The next controlled test will be an opt-in diagnostic build which expands only
+these aligned internal one-texel BC3 regions to the complete four-texel physical
+block and logs each adjustment. I am not proposing an application override or
+permanent patch before that behavioral result.
+
+Proposed attachments:
+- compact D02 alignment analysis and exact counts
+- representative filtered copy lines and resource-create records
+- D02 screenshot at 1,385 m
+- source line references for the converted VkBufferImageCopy2 path
+- full environment and DLL hashes
+```
 
 ## ValveSoftware/Proton issue #9906 update
 

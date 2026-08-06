@@ -170,6 +170,28 @@
     45,100-node package tree, 11,575 package-opened files, and no package-open
     or decode error. The precise lookup/decode/create failure stage remains
     unisolated, and the failures are not causal until compared with Windows.
+38. The game binary's terrain module names an application-managed cache path:
+    `BlocksCache`, `BakedTerrainCache`, `BakedTerrain`, `g_tTiles`,
+    `stitchBorders`, and multiple distant-LOD selectors. D01b's zero sparse-API
+    result and D02's ordinary-copy trace agree with this architecture.
+39. D02 creates 164 placed 2048x2048, one-mip BC3 textures at mission setup.
+    Fourteen receive 382 invalid border regions before the screenshot; the
+    class reaches 432 regions across sixteen members before the trace cap. The
+    affected members also receive observed 64x64 or 128x128 interior pages.
+40. The same pool receives exactly 432 buffer-to-image regions with internal
+    dimensions incompatible with BC3's 4x4 physical blocks: 118 `128x1`, 112
+    `1x128`, 110 `64x1`, and 92 `1x64`. All offsets are block-aligned, but the
+    one-texel extent neither forms a block nor reaches the mip edge.
+41. Current VKD3D-Proton passes the D3D12 source-box extent directly through
+    `vk_buffer_image_copy_from_d3d12()` to `vkCmdCopyBufferToImage2()`. It does
+    not normalize these internal BC3 regions. The code is unchanged in tested
+    upstream commit `84c87c83`, explaining why D04 could not fix this path.
+42. Vulkan requires compressed buffer-image regions to respect transfer
+    granularity scaled by the compressed block size. VKD3D-Proton's own native
+    cross-test classifies non-block-sized compressed-copy coordinates as
+    invalid D3D12 usage. The best current attribution is therefore invalid game
+    copy parameters tolerated by native Windows plus a VKD3D compatibility gap,
+    not a demonstrated RADV defect.
 
 ## Observations not yet promoted to findings
 
@@ -225,7 +247,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Track | Assessment | Confidence |
 |---|---|---|
 | Startup | Affinity discovery in the shipped OpenMP path is bypassed by the current environment variables; the responsible Wine API/topology/runtime behavior is unproven. | Low |
-| Graphics | The game definitely uses D3D12 through VKD3D-Proton and DXVK's DXGI on this setup. The defective layer and mechanism are not isolated. | High for path, low for cause |
+| Graphics | The game definitely uses D3D12 through VKD3D-Proton and DXVK's DXGI. A concrete invalid BC3 border-copy path is isolated for terrain seams; the whole-page and menu defects are not yet fully isolated. | High for path and seam mechanism; medium-low for whole-page causality |
 | Queue selection | Two `single_queue` runs leave the defects unchanged, making ordinary asynchronous compute/transfer queue selection unlikely to be the primary trigger. | Medium |
 | Upload allocation | `no_upload_hvv` changes the allocation path, but its apparent improvement is inseparable from lower capture altitude. | Low/inconclusive |
 | Streaming/residency/LOD | D02 confirms active ordinary compressed-texture streaming and narrows it to complete uploads plus an unresolved no-upload SRV class; it does not identify which resources produce the visible pages. | Medium for relevance, low for mechanism |
@@ -236,9 +258,12 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Descriptor-buffer backend | One verified disable run on the D03-derived build is visually unchanged and uses the mutable-descriptor fallback; stock-Proton confirmation remains. | Medium that descriptor buffers are not the primary cause |
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea winter terrain inputs fail and fall back to `defWhite.bmp` during the corrupted D04 run. Whether Windows logs the same failures is unknown. | High that failures occur; medium-low that they cause the corruption |
+| BC3 baked-terrain border copies | D02 contains 432 internal one-texel border regions into active 2048x2048 BC3 cache textures; VKD3D emits them unchanged as Vulkan copies despite 4x4 block granularity. | High for invalid emitted Vulkan and magenta-seam relevance; medium-low for whole-page loss |
 
-No behavior-changing upstream patch is justified yet. Focused diagnostic
-instrumentation is prepared for a dedicated custom Proton runtime.
+No permanent upstream patch or application override is justified yet. A single
+opt-in block-normalization experiment is now justified to test behavioral
+causality before choosing a game fix, VKD3D compatibility quirk, or broader
+translation change.
 
 ## Source-level investigation gate
 
@@ -262,8 +287,11 @@ development-build stage.
    confirmation remains desirable but is not the next source-level gate.
 7. D04 is complete and unchanged on unmodified current VKD3D-Proton
    `84c87c83`; do not repeat it or bisect the source range.
-8. Compare the Linux `tex.log` against the same current-build Korea winter
-   scenario on native Windows. If the failures are Linux-only, isolate the
-   package lookup/decode/backend-create boundary; otherwise proceed to
-   descriptor QA.
-9. Investigate the NUMA caller separately with focused API tracing.
+8. Re-analysis of D02 finds 432 invalid internal one-texel BC3 border regions
+   in the active baked-terrain cache. D05 is the next source-level gate: expand
+   only that dimension to a complete physical block behind an opt-in diagnostic
+   gate and record the visual effect.
+9. If D05 fixes only the seams, restrict descriptor QA and copy-to-sample
+   correlation to the 2048x2048 cache pool. A later Windows `tex.log` and D3D12
+   debug-layer comparison will refine ownership but does not block D05.
+10. Investigate the NUMA caller separately with focused API tracing.

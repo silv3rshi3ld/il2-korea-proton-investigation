@@ -61,12 +61,22 @@ The user reports that below roughly 1,500 m some low-fidelity assets
 begin to load; around 5,000 m the failure is much more severe. Current logs do
 not expose the relevant altitude, mip, tile-mapping, or residency state.
 
-The defective layer remains unisolated, but D02 and D03 have narrowed the next
-step. During a valid corrupted run, 2,355 multi-mip compressed textures received
+The whole defect is not yet isolated, but re-analysis of D02 now identifies one
+concrete terrain-path incompatibility. During a valid corrupted run, 2,355 multi-mip compressed textures received
 geometrically complete buffer uploads, no partial mip chain was found, every
 logged SRV used a zero minimum-LOD clamp, and no logged operation followed
 resource destruction. Corrected cap-aware analysis leaves 405 pre-cap placed
 BC3 textures with an SRV but no logged incoming upload/copy.
+
+More importantly, the game creates a pool of 164 placed 2048x2048 single-mip
+BC3 baked-terrain caches and issues 432 internal border uploads measuring
+`1x64`, `64x1`, `1x128`, or `128x1`. The terrain module names this path
+`BakedTerrain`/`stitchBorders`. Current VKD3D forwards those one-texel extents
+unchanged to Vulkan, whose BC3 transfers are 4x4-block granular. This is the
+strongest current cause for the magenta terrain seams and a possible contributor
+to whole-page loss. It does not yet explain the menu blocks. The next test is
+one gated block-normalization build, not another batch of generic flags. See
+[`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md).
 
 D03 is complete and visually unchanged. In its same-run pre-cap class, all 585
 candidates have placed-resource records, none overlaps any traced placed buffer
@@ -90,12 +100,12 @@ translator commits in unmodified current VKD3D-Proton and is visually
 unchanged, closing that lead after one run. See
 [`docs/prior-art-msfs.md`](docs/prior-art-msfs.md).
 
-D04 also produced a more direct lead in the game's own `tex.log`: six exact
+D04 also produced a separate, lower-ranked lead in the game's own `tex.log`: six exact
 Korea winter terrain inputs fail, and static inspection shows that
 `dxBackend12.dll` then substitutes `graphics\textures\defWhite.bmp`. All map
 packages were enumerated without a reported package error. A matched native-
-Windows `tex.log` is required before calling these failures causal; if Windows
-also records them while rendering correctly, descriptor QA remains next. See
+Windows `tex.log` remains useful before calling these failures causal, but it
+does not block the now-selected BC3 border-copy experiment. See
 [`docs/evidence-d04-upstream-result.md`](docs/evidence-d04-upstream-result.md).
 
 An unmodified development build of the exact installed VKD3D-Proton commit was
@@ -210,6 +220,8 @@ Compare collected runs with:
   build and isolated custom-tool verification
 - [`docs/evidence-d02-ordinary-texture-trace.md`](docs/evidence-d02-ordinary-texture-trace.md):
   valid D02 runtime result and next diagnostic discriminator
+- [`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md):
+  concrete compressed-copy validity finding and one causal next test
 - [`docs/evidence-d03-preparation.md`](docs/evidence-d03-preparation.md): D03
   build, isolated custom tool, exact launch option, and rollback
 - [`docs/evidence-d03-alias-trace.md`](docs/evidence-d03-alias-trace.md): valid
@@ -224,6 +236,8 @@ Compare collected runs with:
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/rendering-path-assessment.md`](docs/rendering-path-assessment.md):
   evidence-backed terrain data-flow model, exclusions, and leading mechanisms
+- [`docs/root-cause-assessment.md`](docs/root-cause-assessment.md): ranked
+  causal assessment, confidence levels, and the single next discriminator
 - [`docs/prior-art-msfs.md`](docs/prior-art-msfs.md): MSFS 2020/2024 shader,
   host-import, and driver precedent and its exact consequences for IL-2
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated

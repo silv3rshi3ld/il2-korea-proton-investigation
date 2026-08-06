@@ -10,7 +10,8 @@ map archives / BlocksCache threads
         -> CPU loading or decompression
         -> UpdateSubresource / CopyTextureRegion
         -> ordinary upload buffer
-        -> separately ranged placed BC3 texture blocks with mip chains
+        -> placed BC3 texture blocks with mip chains and 2048x2048 baked caches
+        -> 64/128-texel page uploads plus one-texel border stitching
         -> SRV in a shader-visible descriptor heap
         -> terrain shader chooses a block and mip/LOD from camera distance
         -> the existing terrain mesh samples that surface page
@@ -35,10 +36,12 @@ eligible and additional pages and trees appear. The low-altitude scene is still
 wrong, so altitude changes resource selection and severity rather than fixing
 the mechanism.
 
-The menu aircraft also shows rectangular corruption. That makes damaged map
-files an unlikely common cause and suggests a rendering-resource problem shared
-by terrain and menu effects, such as descriptor contents, resource visibility,
-or translated shader access. The precise menu resource has not been identified.
+The menu aircraft also shows rectangular corruption, but the intact aircraft
+texture is visible below a screen-space block pattern. The terrain now has a
+specific BC3-cache operation which has not been tied to the menu. The safer
+model is therefore two defects until a shared resource dependency is proven:
+one in baked-terrain cache population/borders and another in a menu effect,
+shadow, or temporal resource.
 
 ## Proven exclusions and weakened explanations
 
@@ -59,12 +62,14 @@ draw. They are not yet a root-cause explanation.
 
 ## Leading explanations
 
-1. **Texture-provider lookup, decode, or creation failure.** D04's game-owned
-   `tex.log` names six failed Korea winter terrain inputs, and the backend
-   substitutes `defWhite.bmp` after the provider returns failure. A native
-   Windows `tex.log` comparison is required because these may be optional
-   inputs which also fail on the correctly rendered platform.
-2. **Descriptor contents, index, or lifetime common to both backends.** A
+1. **Invalid BC3 terrain-cache border copies.** D02 contains 432 one-texel-wide
+   or one-texel-high buffer uploads into active 2048x2048 BC3 cache textures.
+   The game binary names `BakedTerrain`, `stitchBorders`, and the distant-LOD
+   cache path. VKD3D forwards these internal, non-block-sized regions to Vulkan
+   unchanged even though BC3 transfers are 4x4-block granular. This is high-
+   confidence for the magenta seams and a concrete possible contributor to
+   broader page corruption. See `evidence-d02-bc3-border-copies.md`.
+2. **Descriptor contents, index, or lifetime on the baked-terrain cache.** A
    shader may read an uninitialized, stale, destroyed, out-of-range, or wrong-
    type descriptor. Disabling descriptor buffers would not necessarily fix
    invalid D3D12 descriptor use because the fallback backend preserves the
@@ -77,7 +82,11 @@ draw. They are not yet a root-cause explanation.
    shader may choose the wrong page or mip index, especially in distant-LOD
    paths. The zero SRV minimum clamp does not test explicit shader LOD or
    descriptor-index arithmetic.
-5. **RADV handling of otherwise valid Vulkan.** This remains possible but
+5. **Texture-provider lookup, decode, or creation failure.** D04's game-owned
+   `tex.log` names six failed Korea winter terrain inputs and substitutes
+   `defWhite.bmp`, but `packman.log` reports successful package enumeration and
+   no archive/decode error. This may be a secondary or optional-material path.
+6. **RADV handling of otherwise valid Vulkan.** This remains possible but
    requires a driver comparison, validation finding, or minimal Vulkan
    reproduction before Mesa attribution.
 
@@ -87,28 +96,19 @@ sampled it, and a later copy after telemetry suppression cannot be excluded.
 
 ## Next discriminator
 
-D04 has completed unchanged, removing the broad “already fixed upstream”
-possibility. Before descriptor QA, compare the current Linux `tex.log` with a
-native Windows run of the same Korea winter free-flight scenario and game
-build. This is narrower and cheaper than another Proton option:
+The next test is one opt-in diagnostic VKD3D build, not another generic launch
+flag. It will expand only the observed one-texel BC3 border-copy dimension to a
+complete 4-texel physical block and record every adjustment. One matched
+high-altitude run will tell us whether the invalid border operation explains
+only the magenta seams or also destabilizes whole baked-terrain pages.
 
-- Linux-only failed terrain inputs select the game's package
-  lookup/decode/backend-create boundary under Wine.
-- The same failures on correctly rendered Windows make them non-causal and
-  return the investigation to VKD3D-Proton's existing GPU-assisted descriptor
-  QA. That QA can report heap out-of-range access, descriptor-type mismatch,
-  and access to a destroyed resource with shader hash, instruction number,
-  heap cookie, resource/view cookie, and descriptor index.
+If only the seams improve, descriptor QA and a copy-to-sample trace should be
+limited to the 2048x2048 cache pool for the remaining black pages. A native
+Windows `tex.log` and D3D12 debug-layer capture remain useful for final
+ownership, but lack of current Windows access no longer blocks the first
+causal terrain experiment.
 
-- A repeatable descriptor-QA fault correlated with the corrupted scene selects
-  descriptor propagation, lifetime, or invalid game usage.
-- A clean descriptor-QA run moves the investigation to a filtered
-  copy/barrier/draw-use trace for the terrain resource class and explicit shader
-  LOD/index analysis.
-- Only after VKD3D's Vulkan commands are shown valid should the investigation
-  attribute the result to RADV or prepare a Mesa reproducer.
-
-No current evidence justifies a game-specific application override.
+No current evidence justifies a permanent game-specific application override.
 
 See [`prior-art-msfs.md`](prior-art-msfs.md) for the exact upstream cases and
 why the MSFS host-import fallback is not selected for IL-2. See

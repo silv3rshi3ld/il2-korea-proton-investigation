@@ -1,6 +1,10 @@
 # Patch status
 
-No behavior-changing fix is currently justified.
+No permanent behavior-changing fix is currently justified. D02 now justifies
+one opt-in diagnostic behavior change: normalize only the observed internal
+one-texel BC3 border-copy extent to a complete physical block and measure the
+visual result. That diagnostic patch has not been created yet and must not be
+treated as an application override.
 
 `0001-il2-korea-sparse-resource-diagnostics.patch` is a temporary, gated
 instrumentation patch, not a candidate fix. It records the D3D12 reserved and
@@ -47,8 +51,14 @@ D03 matches all 585 same-run pre-cap candidates and finds no overlap with any
 traced placed buffer/texture range and zero explicit legacy alias barriers.
 This excludes placed-resource memory aliasing for the covered class, but SRV
 creation still does not prove shader use and descriptor propagation/use remains
-untraced. The defective layer cannot yet be assigned to the game,
-VKD3D-Proton, or RADV.
+untraced. The broad missing-page defect cannot yet be assigned to the game,
+VKD3D-Proton, or RADV. Separately, D02 contains 432 one-texel internal BC3
+border copies which VKD3D emits as invalid Vulkan regions. VKD3D's own
+cross-test classifies such non-block-sized D3D12 compressed-copy coordinates as
+invalid application usage, making the likely origin the game and the native-
+Windows difference a compatibility behavior. A gated normalization run is
+required before deciding whether this is only the magenta-seam cause or also
+affects whole-page loss.
 
 The prefix-only installation attempts did not load the local DLLs because
 stock Proton restored its packaged copies during launch. A dedicated custom
