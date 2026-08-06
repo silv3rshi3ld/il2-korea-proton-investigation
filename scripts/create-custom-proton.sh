@@ -162,11 +162,14 @@ install -m 0644 -- "$build_dir/x86/d3d12core.dll" \
     printf 'source_version='; tr '\n' ' ' <"$source_tool/version"; printf '\n'
     printf 'diagnostic_build=%s\n' "$build_dir"
     printf 'diagnostic_dll_sha256:\n'
-    sha256sum \
-        "$staging/files/lib/wine/vkd3d-proton/x86_64-windows/d3d12.dll" \
-        "$staging/files/lib/wine/vkd3d-proton/x86_64-windows/d3d12core.dll" \
-        "$staging/files/lib/wine/vkd3d-proton/i386-windows/d3d12.dll" \
-        "$staging/files/lib/wine/vkd3d-proton/i386-windows/d3d12core.dll"
+    (
+        cd -- "$staging"
+        sha256sum \
+            files/lib/wine/vkd3d-proton/x86_64-windows/d3d12.dll \
+            files/lib/wine/vkd3d-proton/x86_64-windows/d3d12core.dll \
+            files/lib/wine/vkd3d-proton/i386-windows/d3d12.dll \
+            files/lib/wine/vkd3d-proton/i386-windows/d3d12core.dll
+    )
 } >"$staging/il2-korea-diagnostic-metadata.txt"
 
 cmp --silent "$build_dir/x64/d3d12.dll" \

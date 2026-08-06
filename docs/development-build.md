@@ -163,3 +163,9 @@ Restart Steam and select `IL2-Korea-Diagnostic-3dfc6f07` for AppID 247970.
 The next log must contain `IL2TRACE enabled` before any API counts are
 interpreted. Rollback is selecting Proton Experimental again; the custom tool
 must not be removed while Steam is running.
+
+The custom tool was created and verified on 2026-08-06. A recursive comparison
+against Proton Experimental reports only the four intended DLL differences,
+plus the new manifest and diagnostic metadata. All recorded DLL hashes verify.
+On Btrfs its apparent size is 1.45 GiB, while the clone shares 974.88 MiB of
+extents and reports only 16 KiB exclusive before runtime-generated files.

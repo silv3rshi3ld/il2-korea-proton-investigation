@@ -70,7 +70,8 @@ packaged D3D12 DLLs into the prefix during every launch. Steam then auto-updated
 before D01 ran. U00 confirms the updated game has the same corruption and the
 same Linux D3D12 path. A later D01 prefix-install attempt was also overwritten;
 its absent trace marker and post-run DLL hashes prove the method ineffective.
-The next run will use a dedicated custom Proton tool. See
+The verified `IL2-Korea-Diagnostic-3dfc6f07` custom Proton tool is now created,
+and D01b is prepared. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The user also confirms that the game renders correctly on native Windows. This
