@@ -27,6 +27,9 @@ I have a revised diagnostic build ready, but it has not been run yet. I also
 have a small sanitized handoff bundle with the useful logs, trace excerpt,
 results and diagnostic patches if somebody wants to reproduce or continue the
 investigation.
+
+The notes, scripts and sanitized bundle are public here:
+https://github.com/silv3rshi3ld/il2-korea-proton-investigation
 ```
 
 ## Draft for VKD3D-Proton #3134
@@ -62,6 +65,9 @@ I have a sanitized handoff bundle with the focused trace, analysis, logs,
 hashes and diagnostic patches available. Guidance on whether VKD3D should
 tolerate this invalid D3D12 copy pattern would be useful before proceeding
 further.
+
+The notes, scripts and sanitized bundle are public here:
+https://github.com/silv3rshi3ld/il2-korea-proton-investigation
 ```
 
 ## Proposed attachments
