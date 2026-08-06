@@ -8,7 +8,7 @@ the D3D12 rendering corruption. No application override has been added.
 
 The launch-option matrix E00-E02 is complete as of 2026-08-06. The
 investigation has now moved to source-level diagnosis; no application override
-or source patch has been added. The verified environment is:
+or behavior-changing source patch has been added. The verified environment is:
 
 - Launch executable: `bin/game/IL2Series.exe`
 - Steam library: `/home/silv3rshi3ld/.local/share/Steam`
@@ -25,8 +25,8 @@ or source patch has been added. The verified environment is:
 `d3d12.dll` and `dxgi.dll`; the prefix copies hash-identically to the selected
 Proton build's 64-bit VKD3D-Proton D3D12 DLLs and DXVK DXGI DLL. A DXVK
 `d3d11.dll` is installed in the prefix but is not statically imported by the
-D3D12 backend. All six controlled runtime logs load DXGI, D3D12, D3D12Core,
-and `dxBackend12.dll`, with no D3D11 module load.
+D3D12 backend. All seven collected controlled runtime logs load DXGI, D3D12,
+D3D12Core, and `dxBackend12.dll`, with no D3D11 module load.
 
 The currently required startup mitigation is:
 
@@ -62,12 +62,18 @@ streaming, residency, or mip/LOD behavior is the leading class of hypotheses,
 but the defective layer is unknown. See [`patches/README.md`](patches/README.md)
 for the evidence-based no-patch decision.
 
-An unmodified development build of the exact installed VKD3D-Proton commit now
-exists for x64 and x86 and is installed in the AppID 247970 prefix with a
-verified DLL-only rollback backup. The next required control is to confirm that
-those locally built DLLs reproduce the Proton-supplied behavior before adding
-focused instrumentation. See
+An unmodified development build of the exact installed VKD3D-Proton commit
+reproduced the Proton-supplied behavior in D00. This validates the local
+compiler/build/install path. A trace-only build is now installed for D01; it
+records reserved-resource and tile-mapping API use without changing rendering,
+synchronization, allocation, or descriptor behavior. See
 [`docs/development-build.md`](docs/development-build.md).
+
+The user also confirms that the game renders correctly on native Windows. This
+establishes Windows as the functional control and confines reproduction to the
+Linux compatibility/driver path. It does not by itself prove that every D3D12
+operation issued by the game is specification-valid, because native drivers may
+tolerate undefined application behavior.
 
 The same missing, tile-shaped terrain and menu-square corruption is documented
 in the open [VKD3D-Proton issue #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134)
@@ -136,6 +142,8 @@ Compare collected runs with:
 - [`docs/experiment-matrix.md`](docs/experiment-matrix.md): one-variable test plan
 - [`docs/development-build.md`](docs/development-build.md): exact local build and
   source-level investigation status
+- [`docs/evidence-d00-local-build.md`](docs/evidence-d00-local-build.md): local
+  unmodified-build parity result
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status
 - [`docs/upstream-drafts.md`](docs/upstream-drafts.md): review-only issue drafts
 - [`patches/README.md`](patches/README.md): why no patch is justified

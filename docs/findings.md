@@ -47,10 +47,20 @@
     remain unchanged. Async compute/transfer queue selection is therefore
     unlikely to be the primary cause; single-queue execution does not rule out
     synchronization or lifetime defects within the remaining queue path.
-15. An unmodified x64/x86 VKD3D-Proton development build now succeeds from the
+15. An unmodified x64/x86 VKD3D-Proton development build succeeds from the
     exact installed source commit using the official retained-build method.
-    Its architecture and exports are valid. Runtime parity with the packaged
-    Proton DLLs is the next control and has not yet been claimed.
+    D00 reproduces the established menu and terrain corruption, logs build ID
+    `0x3dfc6f07d0953b1`, loads no D3D11 module, and differs only slightly from
+    E00-r2 in duration-dependent warning counts. The local build path therefore
+    has runtime parity with the packaged build for this defect.
+16. The user confirms correct rendering on native Windows. The problem is
+    consequently reproducible only on the tested Linux compatibility/driver
+    path. This does not yet distinguish a VKD3D-Proton defect, a RADV defect,
+    or invalid/undefined D3D12 usage tolerated by the native Windows driver.
+17. A trace-only VKD3D-Proton build at local commit `d0b4421f` is installed for
+    D01. It logs reserved resource creation, resource tiling queries, and tile
+    map/copy operations behind `VKD3D_IL2_RESOURCE_TRACE=1`; it makes no
+    behavior-changing application override or rendering-path change.
 
 ## Observations not yet promoted to findings
 
@@ -91,8 +101,8 @@ tracing; they do not justify copying an override.
 | Upload allocation | `no_upload_hvv` changes the allocation path, but its apparent improvement is inseparable from lower capture altitude. | Low/inconclusive |
 | Streaming/residency/LOD | The cross-configuration altitude threshold and rectangular terrain pages make this the leading hypothesis class, but current logs contain no resource-level evidence. | Medium for relevance, low for mechanism |
 
-No upstream patch is justified yet. This is an evidence-based stopping point,
-not a claim that no fix is possible.
+No behavior-changing upstream patch is justified yet. Focused diagnostic
+instrumentation is active to decide the next resource path.
 
 ## Source-level investigation gate
 
@@ -101,8 +111,8 @@ upload-path runs, and two single-queue runs all retained the core defect. E03
 and E04 were not run and must not be described as unchanged. The investigation
 has resumed at the development-build stage.
 
-1. Install and run the unmodified local build once to confirm parity with E00.
-2. Determine with focused API telemetry whether the title uses D3D12 reserved
+1. D00 is complete: the unmodified local build has parity with E00.
+2. Use D01 focused API telemetry to determine whether the title uses D3D12 reserved
    resources and tile mappings for the affected terrain.
 3. If it does, correlate tile map/unmap operations, mips, queue submissions,
    and destruction for stable resource cookies. If it does not, instrument the

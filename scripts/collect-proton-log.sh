@@ -16,6 +16,7 @@ usage() {
         "Variants:" \
         "  baseline" \
         "  local-vkd3d-baseline" \
+        "  resource-trace" \
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
@@ -33,6 +34,9 @@ variant_environment() {
     case "$1" in
         baseline|local-vkd3d-baseline)
             printf '%s' ''
+            ;;
+        resource-trace)
+            printf '%s' 'VKD3D_IL2_RESOURCE_TRACE=1 '
             ;;
         no-upload-hvv)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv '
@@ -184,7 +188,7 @@ collect_run() {
 
     awk '
         BEGIN { IGNORECASE = 1 }
-        /vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
+        /IL2TRACE|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
     ' "$source_log" >"$run_dir/filtered.log"
 
     awk '
@@ -204,6 +208,12 @@ collect_run() {
         printf 'd3d11_module_lines=%s\n' "$(count_matches 'd3d11\.dll' "$run_dir/modules.log")"
         printf 'descriptor_buffer_lines=%s\n' "$(count_matches 'descriptor.buffer|VK_EXT_descriptor_buffer' "$source_log")"
         printf 'queue_lines=%s\n' "$(count_matches 'queue family|queue.*(compute|transfer|graphics)|single.queue' "$source_log")"
+        printf 'il2trace_enabled_count=%s\n' "$(count_matches 'IL2TRACE enabled:' "$source_log")"
+        printf 'reserved_create_count=%s\n' "$(count_matches 'IL2TRACE reserved_create' "$source_log")"
+        printf 'get_tiling_count=%s\n' "$(count_matches 'IL2TRACE get_tiling' "$source_log")"
+        printf 'tile_update_count=%s\n' "$(count_matches 'IL2TRACE tile_update cookie=' "$source_log")"
+        printf 'tile_update_submit_count=%s\n' "$(count_matches 'IL2TRACE tile_update_submit' "$source_log")"
+        printf 'tile_copy_count=%s\n' "$(count_matches 'IL2TRACE tile_copy' "$source_log")"
     } >"$run_dir/summary.txt"
 
     if ((include_system_info)) && [[ ! -f "$run_dir/system-info.txt" ]]; then

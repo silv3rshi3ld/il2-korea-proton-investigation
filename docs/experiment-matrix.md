@@ -21,8 +21,8 @@ Allowed final values: **fixed**, **improved**, **unchanged**, **regressed**,
 
 | ID | Single changed variable | Status | Required observation | Classification |
 |---|---|---|---|---|
-| D00 | Locally compiled, otherwise unmodified VKD3D-Proton at `3dfc6f07…` | installed; runtime pending | Confirm the same menu and terrain corruption before any source instrumentation | inconclusive |
-| D01 | Focused diagnostic instrumentation | blocked on D00 parity | Identify actual reserved/tiled-resource, mip/view, descriptor, upload, and lifetime behavior | inconclusive |
+| D00 | Locally compiled, otherwise unmodified VKD3D-Proton at `3dfc6f07…` | [completed](evidence-d00-local-build.md) | Same menu and terrain corruption reproduced; local build has parity with E00 | unchanged |
+| D01 | `VKD3D_IL2_RESOURCE_TRACE=1`; trace-only build at `d0b4421f…` | prepared; runtime pending | Determine whether the title calls reserved/tiled-resource APIs on the failing path | inconclusive |
 
 For each completed cell, link a run directory or curated evidence file and
 record new warning/error fingerprints from `compare-logs.py`.

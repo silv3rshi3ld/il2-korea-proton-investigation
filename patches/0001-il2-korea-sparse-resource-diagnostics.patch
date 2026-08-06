@@ -1,0 +1,188 @@
+From d0b4421f129b72e6127e6b9abd4028e8df946ea7 Mon Sep 17 00:00:00 2001
+From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+Date: Thu, 6 Aug 2026 18:06:16 +0200
+Subject: [PATCH] Add focused IL-2 sparse resource diagnostics
+
+---
+ libs/vkd3d/command.c       | 33 +++++++++++++++++++++++++++++++++
+ libs/vkd3d/device.c        | 14 +++++++++++++-
+ libs/vkd3d/resource.c      | 38 ++++++++++++++++++++++++++++++++++++++
+ libs/vkd3d/vkd3d_private.h |  1 +
+ 4 files changed, 85 insertions(+), 1 deletion(-)
+
+diff --git a/libs/vkd3d/command.c b/libs/vkd3d/command.c
+index 611e373b..f1f412ef 100644
+--- a/libs/vkd3d/command.c
++++ b/libs/vkd3d/command.c
+@@ -22463,6 +22463,24 @@ static void STDMETHODCALLTYPE d3d12_command_queue_UpdateTileMappings(ID3D12Comma
+             iface, resource, region_count, region_coords, region_sizes, heap,
+             range_count, range_flags, heap_range_offsets, range_tile_counts, flags);
+ 
++    if (vkd3d_il2_resource_trace_enabled())
++    {
++        unsigned int null_ranges = 0, reuse_ranges = 0, skip_ranges = 0;
++
++        for (i = 0; i < range_count; i++)
++        {
++            D3D12_TILE_RANGE_FLAGS trace_flag = range_flags ? range_flags[i] : D3D12_TILE_RANGE_FLAG_NONE;
++            null_ranges += trace_flag == D3D12_TILE_RANGE_FLAG_NULL;
++            reuse_ranges += trace_flag == D3D12_TILE_RANGE_FLAG_REUSE_SINGLE_TILE;
++            skip_ranges += trace_flag == D3D12_TILE_RANGE_FLAG_SKIP;
++        }
++
++        INFO("IL2TRACE tile_update cookie=%u regions=%u ranges=%u null_ranges=%u reuse_ranges=%u "
++                "skip_ranges=%u heap_bytes=%"PRIu64" flags=%#x.\n",
++                res->res.cookie.index, region_count, range_count, null_ranges, reuse_ranges, skip_ranges,
++                memory_heap ? memory_heap->desc.SizeInBytes : 0, flags);
++    }
++
+     /* This can be a fallback sparse resource, just ignore any UpdateTileMapping calls on this. */
+     if (!(res->flags & VKD3D_RESOURCE_RESERVED))
+     {
+@@ -22618,6 +22636,10 @@ static void STDMETHODCALLTYPE d3d12_command_queue_UpdateTileMappings(ID3D12Comma
+     if (sub.bind_sparse.bind_count == 0)
+         goto fail;
+ 
++    if (vkd3d_il2_resource_trace_enabled())
++        INFO("IL2TRACE tile_update_submit cookie=%u binds=%u.\n",
++                res->res.cookie.index, sub.bind_sparse.bind_count);
++
+     vkd3d_free(bound_tiles);
+ 
+     d3d12_resource_incref(res);
+@@ -22646,6 +22668,17 @@ static void STDMETHODCALLTYPE d3d12_command_queue_CopyTileMappings(ID3D12Command
+             iface, dst_resource, dst_region_start_coordinate, src_resource,
+             src_region_start_coordinate, region_size, flags);
+ 
++    if (vkd3d_il2_resource_trace_enabled())
++    {
++        INFO("IL2TRACE tile_copy dst_cookie=%u src_cookie=%u tiles=%u "
++                "dst_subresource=%u dst_xyz=%u,%u,%u src_subresource=%u src_xyz=%u,%u,%u flags=%#x.\n",
++                dst_res->res.cookie.index, src_res->res.cookie.index, region_size->NumTiles,
++                dst_region_start_coordinate->Subresource, dst_region_start_coordinate->X,
++                dst_region_start_coordinate->Y, dst_region_start_coordinate->Z,
++                src_region_start_coordinate->Subresource, src_region_start_coordinate->X,
++                src_region_start_coordinate->Y, src_region_start_coordinate->Z, flags);
++    }
++
+     sub.type = VKD3D_SUBMISSION_BIND_SPARSE;
+     sub.bind_sparse.mode = VKD3D_SPARSE_MEMORY_BIND_MODE_COPY;
+     sub.bind_sparse.bind_count = region_size->NumTiles;
+diff --git a/libs/vkd3d/device.c b/libs/vkd3d/device.c
+index f6db6954..bfb81f6e 100644
+--- a/libs/vkd3d/device.c
++++ b/libs/vkd3d/device.c
+@@ -33,6 +33,7 @@ static uint32_t vkd3d_get_vk_version(void)
+ {
+     int major, minor, patch;
+ 
++    (void)vkd3d_il2_resource_trace_enabled();
+     vkd3d_parse_version(PACKAGE_VERSION, &major, &minor, &patch);
+     INFO("vkd3d-proton - applicationVersion: %d.%d.%d.\n", major, minor, patch);
+     return VK_MAKE_VERSION(major, minor, patch);
+@@ -8141,7 +8142,8 @@ static void STDMETHODCALLTYPE d3d12_device_GetResourceTiling(d3d12_device_iface
+         D3D12_TILE_SHAPE *tile_shape, UINT *tiling_count, UINT first_tiling,
+         D3D12_SUBRESOURCE_TILING *tilings)
+ {
+-    struct d3d12_sparse_info *sparse = &impl_from_ID3D12Resource(resource)->sparse;
++    struct d3d12_resource *d3d12_resource = impl_from_ID3D12Resource(resource);
++    struct d3d12_sparse_info *sparse = &d3d12_resource->sparse;
+     unsigned int max_tiling_count, i;
+ 
+     TRACE("iface %p, resource %p, tile_count %p, packed_mip_info %p, "
+@@ -8149,6 +8151,16 @@ static void STDMETHODCALLTYPE d3d12_device_GetResourceTiling(d3d12_device_iface
+             iface, resource, tile_count, packed_mip_info, tile_shape, tiling_count,
+             first_tiling, tilings);
+ 
++    if (vkd3d_il2_resource_trace_enabled())
++    {
++        INFO("IL2TRACE get_tiling cookie=%u tiles=%u tilings=%u first_tiling=%u requested_tilings=%u "
++                "packed_mips=%u standard_mips=%u tile_shape=%ux%ux%u.\n",
++                d3d12_resource->res.cookie.index, sparse->tile_count, sparse->tiling_count, first_tiling,
++                tiling_count ? *tiling_count : 0, sparse->packed_mips.NumPackedMips,
++                sparse->packed_mips.NumStandardMips, sparse->tile_shape.WidthInTexels,
++                sparse->tile_shape.HeightInTexels, sparse->tile_shape.DepthInTexels);
++    }
++
+     if (tile_count)
+         *tile_count = sparse->tile_count;
+ 
+diff --git a/libs/vkd3d/resource.c b/libs/vkd3d/resource.c
+index e521ec69..9a9d05a2 100644
+--- a/libs/vkd3d/resource.c
++++ b/libs/vkd3d/resource.c
+@@ -33,6 +33,24 @@
+ 
+ static UINT global_cookie_counter;
+ static UINT global_cookie_va_timestamp;
++static pthread_once_t il2_resource_trace_once = PTHREAD_ONCE_INIT;
++static bool il2_resource_trace;
++
++static void vkd3d_il2_resource_trace_init(void)
++{
++    char value[16];
++
++    il2_resource_trace = vkd3d_get_env_var("VKD3D_IL2_RESOURCE_TRACE", value, sizeof(value)) &&
++            strcmp(value, "0") != 0;
++    if (il2_resource_trace)
++        INFO("IL2TRACE enabled: reserved-resource and tile-mapping telemetry.\n");
++}
++
++bool vkd3d_il2_resource_trace_enabled(void)
++{
++    pthread_once(&il2_resource_trace_once, vkd3d_il2_resource_trace_init);
++    return il2_resource_trace;
++}
+ 
+ static bool d3d12_resource_supports_small_resource_alignment(const D3D12_RESOURCE_DESC1 *desc,
+         const struct vkd3d_format *format);
+@@ -4813,6 +4831,16 @@ static HRESULT d3d12_resource_create_reserved_fallback(
+     if (FAILED(hr = d3d12_resource_init_sparse_info(object, device, &object->sparse)))
+         goto fail;
+ 
++    if (vkd3d_il2_resource_trace_enabled())
++    {
++        INFO("IL2TRACE reserved_create cookie=%u fallback=1 dim=%u width=%"PRIu64" height=%u depth_layers=%u "
++                "mips=%u format=%u layout=%u flags=%#x tiles=%u tilings=%u packed_mips=%u standard_mips=%u.\n",
++                object->res.cookie.index, object->desc.Dimension, object->desc.Width, object->desc.Height,
++                object->desc.DepthOrArraySize, object->desc.MipLevels, object->desc.Format, object->desc.Layout,
++                object->desc.Flags, object->sparse.tile_count, object->sparse.tiling_count,
++                object->sparse.packed_mips.NumPackedMips, object->sparse.packed_mips.NumStandardMips);
++    }
++
+     *resource = object;
+     return S_OK;
+ 
+@@ -4867,6 +4895,16 @@ HRESULT d3d12_resource_create_reserved(struct d3d12_device *device,
+     if (FAILED(hr = d3d12_resource_init_sparse_info(object, device, &object->sparse)))
+         goto fail;
+ 
++    if (vkd3d_il2_resource_trace_enabled())
++    {
++        INFO("IL2TRACE reserved_create cookie=%u fallback=0 dim=%u width=%"PRIu64" height=%u depth_layers=%u "
++                "mips=%u format=%u layout=%u flags=%#x tiles=%u tilings=%u packed_mips=%u standard_mips=%u.\n",
++                object->res.cookie.index, object->desc.Dimension, object->desc.Width, object->desc.Height,
++                object->desc.DepthOrArraySize, object->desc.MipLevels, object->desc.Format, object->desc.Layout,
++                object->desc.Flags, object->sparse.tile_count, object->sparse.tiling_count,
++                object->sparse.packed_mips.NumPackedMips, object->sparse.packed_mips.NumStandardMips);
++    }
++
+     if (d3d12_resource_is_buffer(object))
+     {
+         object->res.size = adjust_sparse_buffer_size(object->desc.Width);
+diff --git a/libs/vkd3d/vkd3d_private.h b/libs/vkd3d/vkd3d_private.h
+index a2a78000..27e6b074 100644
+--- a/libs/vkd3d/vkd3d_private.h
++++ b/libs/vkd3d/vkd3d_private.h
+@@ -1233,6 +1233,7 @@ HRESULT d3d12_resource_validate_heap_properties(const D3D12_RESOURCE_DESC1 *desc
+ 
+ struct vkd3d_cookie vkd3d_allocate_cookie(void);
+ UINT vkd3d_allocate_cookie_va_timestamp(void);
++bool vkd3d_il2_resource_trace_enabled(void);
+ 
+ static inline struct vkd3d_cookie vkd3d_null_cookie(void)
+ {
+-- 
+2.55.0
+
+

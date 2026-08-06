@@ -114,6 +114,24 @@ of each single-variable variant before any combined test:
 Use `r2` only after completing and recording `r1`. Do not combine descriptor
 buffer disabling with another flag in this first matrix.
 
+## D01 focused resource trace
+
+D01 uses the installed trace-only development build. Prepare it with:
+
+```bash
+./scripts/collect-proton-log.sh prepare D01-sparse-resource-trace-r1 resource-trace
+```
+
+For this diagnostic gate, reach the menu and load the established Singo-dong
+mission far enough to reproduce the missing terrain. A new screenshot is not
+required unless the rendering unexpectedly changes. Exit normally and collect
+the log. The collector reports whether the trace gate was active and counts
+reserved-resource creation, tiling queries, tile updates, and tile copies.
+
+This run is not an A/B visual experiment: the DLL behavior is unchanged. Its
+question is whether the failing path uses D3D12 tiled/reserved resources at
+all. One representative run is sufficient to answer that binary API-use gate.
+
 ## Performance notes
 
 Record menu FPS, in-mission FPS, and obvious frame-pacing changes from the same

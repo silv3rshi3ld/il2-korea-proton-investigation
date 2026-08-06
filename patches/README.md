@@ -1,6 +1,12 @@
 # Patch status
 
-No patch is currently justified.
+No behavior-changing fix is currently justified.
+
+`0001-il2-korea-sparse-resource-diagnostics.patch` is a temporary, gated
+instrumentation patch, not a candidate fix. It records the D3D12 reserved and
+tiled-resource API path only when `VKD3D_IL2_RESOURCE_TRACE=1` is set. It is
+retained so D01 is exactly reproducible and must not be proposed upstream as a
+remedy.
 
 ## Why there is no application override
 
@@ -25,6 +31,6 @@ terrain. They also contain no Vulkan validation failure, device loss, GPU hang,
 or cross-driver comparison. The defective layer cannot be assigned to the
 game, VKD3D-Proton, or RADV.
 
-If work resumes, first perform matched-location low/high-altitude captures,
-then use filtered instrumentation for candidate terrain resources. Only a
-demonstrated semantic defect should produce a patch.
+The unmodified local build now has runtime parity with E00, and D01 focused
+instrumentation is active. Only a demonstrated semantic defect should produce
+a behavior-changing patch.

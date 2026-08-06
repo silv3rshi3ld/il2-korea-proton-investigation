@@ -46,7 +46,7 @@ Directory:
 
 Different hashes from Proton's packaged DLLs are expected because the local
 compiler and link environment differ. Architecture and D3D12 export names were
-checked; runtime parity remains the relevant control.
+checked; D00 subsequently established runtime parity for the reported defect.
 
 ## Safety state
 
@@ -81,19 +81,42 @@ Rollback, with Steam and the game stopped:
   --yes
 ```
 
-## D00 parity procedure
+## D00 parity result
 
-1. Start Steam with the unmodified local DLLs already installed.
-2. Use the prepared `D00-local-vkd3d-unmodified-r1` launch option.
-3. Check the menu aircraft for the established moving block artifacts.
-4. Enter the established Singo-dong flight and observe once below 1,500 m and
-   once near 5,000 m.
-5. Exit and collect the log.
-6. Confirm the logged build identifier and compare with E00.
+D00 completed on 2026-08-06. The user reports the same menu and terrain
+corruption as E00. The log identifies the exact local build, loads DXGI,
+D3D12/D3D12Core, and the game backend with no D3D11 module, and contains no
+device-loss or out-of-memory signature. See
+[`evidence-d00-local-build.md`](evidence-d00-local-build.md).
 
-Only after D00 reproduces the defect should a diagnostic build add filtered
-telemetry. The first instrumentation gate is whether the game actually calls
-`CreateReservedResource`, `GetResourceTiling`, `UpdateTileMappings`, or
-`CopyTileMappings`. If it does not, investigation shifts to the game's own
-texture atlas, mip-range SRVs, upload copies, descriptors, and resource
-lifetime rather than Vulkan sparse residency.
+## D01 trace-only build
+
+- Source base: `3dfc6f07d0953b1e8b41705275c2c59cc7374fc5`
+- Local diagnostic commit: `d0b4421f` (`il2-korea-resource-trace`)
+- Build directory: `build/vkd3d-proton-il2-resource-trace-3dfc6f07/`
+- Gate: `VKD3D_IL2_RESOURCE_TRACE=1`
+
+The instrumentation records stable resource cookies and the parameters of
+`CreateReservedResource`, `GetResourceTiling`, `UpdateTileMappings`, and
+`CopyTileMappings`. Logging is disabled unless the gate is set. It does not
+alter synchronization, image layouts, descriptors, allocations, queues, or
+resource lifetime.
+
+| File | Architecture | SHA-256 |
+|---|---|---|
+| `x64/d3d12.dll` | PE32+ x86-64 | `37a302c0768f5755f47dca7c26724cdfc1ccd291825b3b397ccd64f5260d8942` |
+| `x64/d3d12core.dll` | PE32+ x86-64 | `e8b4de0df971fbf6e4e4b267210815b8bad1f38479c00d6bc8c7e8ebd484ac19` |
+| `x86/d3d12.dll` | PE32 i386 | `7b867e13c54908dac7adf044c01a8a9985c59d538af4377871c52c6091962807` |
+| `x86/d3d12core.dll` | PE32 i386 | `3260a153211725afa7e84364d3bc931be7e81b4df841e78a8acd4610d35c5d04` |
+
+Installation displaced the unmodified local DLLs into the verified rollback
+directory:
+
+```text
+/home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T160657Z
+```
+
+The first gate is whether D01 contains any reserved/tiled-resource calls. If it
+does not, the next build will trace ordinary texture creation, mip-range SRVs,
+upload copies, descriptors, and resource lifetime rather than Vulkan sparse
+residency.
