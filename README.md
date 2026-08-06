@@ -77,7 +77,8 @@ made, excluding D3D12 sparse/tiled resources from the failing path. Read-only
 inspection of the compiled game/backend binaries independently points to the
 game's ordinary committed/placed textures, async `UpdateSubresource`, mip SRVs,
 and copy operations. D02 telemetry for those paths is built at local commit
-`54797ad3`; its runtime capture is next. See
+`54797ad3`. The separately named D02 custom Proton tool is created and its four
+diagnostic DLL hashes are verified; its runtime capture is next. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The user also confirms that the game renders correctly on native Windows. This
@@ -159,6 +160,8 @@ Compare collected runs with:
   proof that stock Proton overwrote the trace DLLs
 - [`docs/evidence-d01b-sparse-trace.md`](docs/evidence-d01b-sparse-trace.md):
   valid trace excluding the D3D12 reserved/tiled-resource path
+- [`docs/evidence-d02-preparation.md`](docs/evidence-d02-preparation.md): D02
+  build and isolated custom-tool verification
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated

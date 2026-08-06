@@ -25,7 +25,7 @@ Allowed final values: **fixed**, **improved**, **unchanged**, **regressed**,
 | U00 | Game build `24596901`; Proton-supplied VKD3D at `3dfc6f07…` | [completed](evidence-u00-game-update.md) | Same menu and terrain corruption; update did not change the defect | unchanged |
 | D01a | Prefix copy plus `VKD3D_IL2_RESOURCE_TRACE=1`; trace-only build at `d0b4421f…` | [invalid](evidence-d01-invalid-prefix-install.md) | No trace marker; post-run hashes exactly match packaged Proton DLLs | inconclusive |
 | D01b | Dedicated custom Proton plus the same trace build | [completed](evidence-d01b-sparse-trace.md) | Valid marker and diagnostic hashes; zero reserved-resource or tile-mapping calls | unchanged visually; sparse path excluded |
-| D02 | Ordinary texture, mip-view, upload-copy, and lifetime census at local commit `54797ad3…` | instrumentation built; runtime pending | Valid `IL2TEX enabled` marker, diagnostic DLL hashes, and automatically correlated texture classes | inconclusive |
+| D02 | Ordinary texture, mip-view, upload-copy, and lifetime census at local commit `54797ad3…` | [custom tool verified; runtime pending](evidence-d02-preparation.md) | Valid `IL2TEX enabled` marker, diagnostic DLL hashes, and automatically correlated texture classes | inconclusive |
 
 For each completed cell, link a run directory or curated evidence file and
 record new warning/error fingerprints from `compare-logs.py`.

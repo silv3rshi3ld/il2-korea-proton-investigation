@@ -101,6 +101,12 @@
     creation/destruction, normalized SRV mip ranges, `CopyTextureRegion`, and
     texture `CopyResource` calls by stable resource cookie. It changes no
     rendering behavior and awaits a controlled runtime capture.
+25. The separate `IL2-Korea-D02-Texture-Trace-54797ad3` custom Proton tool was
+    created only after Steam exited. Recursive comparison against Proton
+    Experimental shows exactly the intended four VKD3D-Proton DLL differences
+    after excluding the custom manifest and metadata; every installed hash
+    matches the D02 build. Proton Experimental, the D01 tool, game files, and
+    prefix remain unchanged by creation.
 
 ## Observations not yet promoted to findings
 
@@ -158,7 +164,8 @@ has resumed at the development-build stage.
 3. D01b is complete and excludes D3D12 reserved/tiled resources from the
    failing path.
 4. D02 ordinary texture creation, mip-range SRV, upload-copy, and lifetime
-   telemetry is built; run it through a separately named custom Proton tool.
+   telemetry and its separately named custom Proton tool are verified; collect
+   one representative runtime trace.
 5. Use descriptor QA only after the resource path is known, or earlier if the
    focused trace reports suspicious descriptor reuse/destruction.
 6. Investigate the NUMA caller separately with focused API tracing.

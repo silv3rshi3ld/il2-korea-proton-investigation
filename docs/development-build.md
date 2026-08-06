@@ -215,3 +215,10 @@ After Steam is fully stopped, create it with:
 
 The first creation attempt safely refused because Steam was still running; no
 custom-tool file was created or overwritten.
+
+After Steam exited, the same command succeeded at
+`2026-08-06T17:39:03+00:00`. A recursive comparison against Proton Experimental
+reports exactly the intended four D3D12/D3D12Core differences after excluding
+the new compatibility manifest and diagnostic metadata. All four installed
+hashes match the D02 build table above. See
+[`evidence-d02-preparation.md`](evidence-d02-preparation.md).
