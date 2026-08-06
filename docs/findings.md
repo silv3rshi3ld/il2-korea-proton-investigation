@@ -57,10 +57,15 @@
     consequently reproducible only on the tested Linux compatibility/driver
     path. This does not yet distinguish a VKD3D-Proton defect, a RADV defect,
     or invalid/undefined D3D12 usage tolerated by the native Windows driver.
-17. A trace-only VKD3D-Proton build at local commit `d0b4421f` is installed for
+17. A trace-only VKD3D-Proton build at local commit `d0b4421f` was built for
     D01. It logs reserved resource creation, resource tiling queries, and tile
     map/copy operations behind `VKD3D_IL2_RESOURCE_TRACE=1`; it makes no
     behavior-changing application override or rendering-path change.
+18. Before D01 ran, Steam auto-updated the game from build `24577563` to
+    `24596901` (886,044,096 bytes downloaded; 5,418,273,475 bytes staged; 51
+    files updated). Proton Experimental and VKD3D-Proton remained unchanged,
+    while the update's install step restored the prefix D3D12 DLLs to the
+    Proton-supplied hashes. U00 must establish the new game-build baseline.
 
 ## Observations not yet promoted to findings
 
@@ -102,7 +107,7 @@ tracing; they do not justify copying an override.
 | Streaming/residency/LOD | The cross-configuration altitude threshold and rectangular terrain pages make this the leading hypothesis class, but current logs contain no resource-level evidence. | Medium for relevance, low for mechanism |
 
 No behavior-changing upstream patch is justified yet. Focused diagnostic
-instrumentation is active to decide the next resource path.
+instrumentation is prepared and will resume after the updated-game baseline.
 
 ## Source-level investigation gate
 
@@ -112,12 +117,14 @@ and E04 were not run and must not be described as unchanged. The investigation
 has resumed at the development-build stage.
 
 1. D00 is complete: the unmodified local build has parity with E00.
-2. Use D01 focused API telemetry to determine whether the title uses D3D12 reserved
-   resources and tile mappings for the affected terrain.
-3. If it does, correlate tile map/unmap operations, mips, queue submissions,
+2. Run U00 once with the new game build and Proton-supplied D3D12 DLLs.
+3. If the defect remains, reinstall the trace-only build and use D01 focused
+   API telemetry to determine whether the title uses D3D12 reserved resources
+   and tile mappings for the affected terrain.
+4. If it does, correlate tile map/unmap operations, mips, queue submissions,
    and destruction for stable resource cookies. If it does not, instrument the
    game's texture atlas, mip-range SRVs, upload copies, descriptors, and
    lifetime instead.
-4. Use descriptor QA only after the resource path is known, or earlier if the
+5. Use descriptor QA only after the resource path is known, or earlier if the
    focused trace reports suspicious descriptor reuse/destruction.
-5. Investigate the NUMA caller separately with focused API tracing.
+6. Investigate the NUMA caller separately with focused API tracing.

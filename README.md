@@ -14,7 +14,8 @@ or behavior-changing source patch has been added. The verified environment is:
 - Steam library: `/home/silv3rshi3ld/.local/share/Steam`
 - Game directory: `/home/silv3rshi3ld/.local/share/Steam/steamapps/common/IL2Series`
 - Prefix: `/home/silv3rshi3ld/.local/share/Steam/steamapps/compatdata/247970`
-- Game build ID: `24577563`
+- Game build ID: `24596901` (Steam auto-update on 2026-08-06; prior controlled
+  build was `24577563`)
 - Selected compatibility tool: Proton Experimental
   `experimental-11.0-20260724c` (`11.0-100` prefix)
 - VKD3D-Proton commit: `3dfc6f07d0953b1e8b41705275c2c59cc7374fc5`
@@ -64,9 +65,10 @@ for the evidence-based no-patch decision.
 
 An unmodified development build of the exact installed VKD3D-Proton commit
 reproduced the Proton-supplied behavior in D00. This validates the local
-compiler/build/install path. A trace-only build is now installed for D01; it
-records reserved-resource and tile-mapping API use without changing rendering,
-synchronization, allocation, or descriptor behavior. See
+compiler/build/install path. Steam then auto-updated the game from build
+`24577563` to `24596901` and restored the prefix's Proton-supplied D3D12 DLLs
+before D01 ran. U00 is the required new-build baseline; the trace-only D01 build
+will be reinstalled only if the defect remains. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The user also confirms that the game renders correctly on native Windows. This

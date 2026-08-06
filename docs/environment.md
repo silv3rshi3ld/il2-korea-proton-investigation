@@ -62,7 +62,7 @@ queue family 0. Both E02 runs are visually unchanged.
 | Steam library | `/home/silv3rshi3ld/.local/share/Steam` |
 | Manifest | `steamapps/appmanifest_247970.acf` |
 | Install directory | `steamapps/common/IL2Series` |
-| Build ID | `24577563` |
+| Build ID | `24596901` (auto-updated 2026-08-06; previous baseline `24577563`) |
 | Executable | `bin/game/IL2Series.exe` (PE32+, x86-64) |
 | Prefix | `steamapps/compatdata/247970` |
 | Prefix version | `11.0-100` |
