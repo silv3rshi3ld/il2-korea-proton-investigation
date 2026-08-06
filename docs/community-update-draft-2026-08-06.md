@@ -1,9 +1,10 @@
-# Community update drafts — review only
+# Community updates — posted 2026-08-06
 
-Nothing below has been posted. The two versions target the open reports in
-[ValveSoftware/Proton #9906](https://github.com/ValveSoftware/Proton/issues/9906)
+The concise versions below were posted to
+[ValveSoftware/Proton #9906](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5209002066)
 and
-[VKD3D-Proton #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134).
+[VKD3D-Proton #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5209002942).
+The handoff archive was not uploaded; it remains available locally on request.
 
 ## Draft for ValveSoftware/Proton #9906
 
