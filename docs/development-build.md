@@ -52,11 +52,20 @@ checked; runtime parity remains the relevant control.
 
 The full prefix backup
 `il2-korea-247970-prefix-20260806T114004Z.tar.zst` exists under the user's local
-state directory and passes its SHA-256 verification. The active prefix DLLs
-still match the original Proton payload as of this build step. No custom DLL
-has yet been installed.
+state directory and passes its SHA-256 verification.
 
-Installation is restricted to the four D3D12 DLLs in the AppID 247970 prefix:
+The unmodified local DLLs were installed into the AppID 247970 prefix on
+2026-08-06. Immediately before installation, the installer created and
+verified this DLL-only backup:
+
+```text
+/home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T155429Z
+```
+
+The four installed DLL hashes match the build-artifact table above. No Proton
+installation file was modified.
+
+Installation was restricted to the four D3D12 DLLs in the AppID 247970 prefix:
 
 ```bash
 ./scripts/install-vkd3d-build.sh install \
@@ -64,16 +73,20 @@ Installation is restricted to the four D3D12 DLLs in the AppID 247970 prefix:
   --yes
 ```
 
-The script creates another DLL-only backup and prints the exact rollback
-command. Steam and the game must be stopped.
+Rollback, with Steam and the game stopped:
+
+```bash
+./scripts/install-vkd3d-build.sh restore \
+  --backup-dir /home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T155429Z \
+  --yes
+```
 
 ## D00 parity procedure
 
-1. Install the unmodified local DLLs with Steam stopped.
-2. Prepare `D00-local-vkd3d-unmodified-r1` with variant
-   `local-vkd3d-baseline`.
+1. Start Steam with the unmodified local DLLs already installed.
+2. Use the prepared `D00-local-vkd3d-unmodified-r1` launch option.
 3. Check the menu aircraft for the established moving block artifacts.
-4. Enter the established Singo-dong flight and capture once below 1,500 m and
+4. Enter the established Singo-dong flight and observe once below 1,500 m and
    once near 5,000 m.
 5. Exit and collect the log.
 6. Confirm the logged build identifier and compare with E00.

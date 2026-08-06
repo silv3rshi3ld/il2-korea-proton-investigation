@@ -63,9 +63,10 @@ but the defective layer is unknown. See [`patches/README.md`](patches/README.md)
 for the evidence-based no-patch decision.
 
 An unmodified development build of the exact installed VKD3D-Proton commit now
-exists for x64 and x86. The next required control is to confirm that those
-locally built DLLs reproduce the Proton-supplied behavior before adding focused
-instrumentation. See
+exists for x64 and x86 and is installed in the AppID 247970 prefix with a
+verified DLL-only rollback backup. The next required control is to confirm that
+those locally built DLLs reproduce the Proton-supplied behavior before adding
+focused instrumentation. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The same missing, tile-shaped terrain and menu-square corruption is documented
