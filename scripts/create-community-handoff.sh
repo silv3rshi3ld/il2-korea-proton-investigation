@@ -30,11 +30,18 @@ done
 mkdir -p -- "$output_dir/logs" "$output_dir/analysis" "$output_dir/patches" "$output_dir/screenshots"
 
 sanitize() {
-    sed -E \
-        -e 's#/home/silv3rshi3ld#/home/USER#gI' \
-        -e 's/silv3rshi3ld/USER/gI' \
-        -e 's/DreamHQ/HOST/g' \
+    local current_user=${USER:-}
+    local -a expressions=(
+        -e 's#/home/[^/[:space:]]+#/home/USER#gI'
+        -e 's/DreamHQ/HOST/g'
         -e 's/[0-9]{17}/STEAM_ID/g'
+    )
+
+    if [[ -n "$current_user" ]]; then
+        expressions+=( -e "s/$current_user/USER/gI" )
+    fi
+
+    sed -E "${expressions[@]}"
 }
 
 gzip -cd -- "$d02/proton.log.gz" | sanitize | gzip -n -9 >"$output_dir/logs/D02-proton-redacted.log.gz"

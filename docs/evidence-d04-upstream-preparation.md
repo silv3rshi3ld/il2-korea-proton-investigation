@@ -56,9 +56,9 @@ Creation command:
 
 ```bash
 ./scripts/create-custom-proton.sh \
-  --source-tool "/home/silv3rshi3ld/.local/share/Steam/steamapps/common/Proton - Experimental" \
+  --source-tool "/home/USER/.local/share/Steam/steamapps/common/Proton - Experimental" \
   --build-dir "$PWD/build/vkd3d-proton-il2-upstream-84c87c83" \
-  --destination "/home/silv3rshi3ld/.local/share/Steam/compatibilitytools.d/IL2-Korea-D04-Upstream-84c87c83" \
+  --destination "/home/USER/.local/share/Steam/compatibilitytools.d/IL2-Korea-D04-Upstream-84c87c83" \
   --tool-name IL2-Korea-D04-Upstream-84c87c83 \
   --yes
 ```

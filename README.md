@@ -4,6 +4,17 @@ This repository tracks a controlled investigation of **Korea. IL-2 Series**
 (Steam AppID 247970). It deliberately separates the startup/NUMA failure from
 the D3D12 rendering corruption. No application override has been added.
 
+## Public handoff
+
+- [ValveSoftware/Proton #9906](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5209002066)
+- [VKD3D-Proton #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5209002942)
+- [Sanitized logs and focused evidence bundle](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/handoff-2026-08-06)
+
+The release bundle is intentionally small. It contains filtered/redacted logs,
+the BC3 trace excerpt, analysis, diagnostic patches, hashes, and one labeled
+comparison screenshot. It contains no game packages, prefix, credentials,
+shader cache, or unfiltered large trace.
+
 ## Current status
 
 The launch-option matrix E00-E02 is complete as of 2026-08-06. The
@@ -13,9 +24,9 @@ which is inert unless its investigation-only environment variable is set. The
 verified environment is:
 
 - Launch executable: `bin/game/IL2Series.exe`
-- Steam library: `/home/silv3rshi3ld/.local/share/Steam`
-- Game directory: `/home/silv3rshi3ld/.local/share/Steam/steamapps/common/IL2Series`
-- Prefix: `/home/silv3rshi3ld/.local/share/Steam/steamapps/compatdata/247970`
+- Steam library: `/home/USER/.local/share/Steam`
+- Game directory: `/home/USER/.local/share/Steam/steamapps/common/IL2Series`
+- Prefix: `/home/USER/.local/share/Steam/steamapps/compatdata/247970`
 - Game build ID: `24596901` (Steam auto-update on 2026-08-06; prior controlled
   build was `24577563`)
 - Selected compatibility tool: Proton Experimental
@@ -244,7 +255,7 @@ Compare collected runs with:
 - [`docs/evidence-d05b-preparation.md`](docs/evidence-d05b-preparation.md):
   revised footprint-aware build retained for a later test
 - [`docs/community-update-draft-2026-08-06.md`](docs/community-update-draft-2026-08-06.md):
-  review-only Proton and VKD3D-Proton issue updates; nothing posted yet
+  the concise updates posted to Proton and VKD3D-Proton, with direct links
 - [`docs/evidence-e03-no-descriptor-buffer.md`](docs/evidence-e03-no-descriptor-buffer.md):
   first verified descriptor-buffer-disabled result and provenance caveat
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only

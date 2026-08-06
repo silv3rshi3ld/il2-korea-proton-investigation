@@ -60,7 +60,7 @@ The unmodified local DLLs were installed into the AppID 247970 prefix on
 verified this DLL-only backup:
 
 ```text
-/home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T155429Z
+/home/USER/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T155429Z
 ```
 
 The four DLL hashes matched the build-artifact table immediately after
@@ -79,7 +79,7 @@ Rollback, with Steam and the game stopped:
 
 ```bash
 ./scripts/install-vkd3d-build.sh restore \
-  --backup-dir /home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T155429Z \
+  --backup-dir /home/USER/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T155429Z \
   --yes
 ```
 
@@ -116,7 +116,7 @@ Installation displaced the unmodified local DLLs into the verified rollback
 directory:
 
 ```text
-/home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T160657Z
+/home/USER/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T160657Z
 ```
 
 Before D01 launched, Steam auto-updated the game to build `24596901`. Its
@@ -130,7 +130,7 @@ The trace build was copied into the prefix again after U00 on 2026-08-06. The
 clean Proton-DLL rollback point was:
 
 ```text
-/home/silv3rshi3ld/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T165614Z
+/home/USER/.local/state/il2-korea-proton-investigation/vkd3d-dll-backups/vkd3d-dll-backup-20260806T165614Z
 ```
 
 D01a contained no `IL2TRACE` marker. Post-run prefix hashes exactly matched the
@@ -152,9 +152,9 @@ After Steam is stopped, create the tool with:
 
 ```bash
 ./scripts/create-custom-proton.sh \
-  --source-tool "/home/silv3rshi3ld/.local/share/Steam/steamapps/common/Proton - Experimental" \
+  --source-tool "/home/USER/.local/share/Steam/steamapps/common/Proton - Experimental" \
   --build-dir "$PWD/build/vkd3d-proton-il2-resource-trace-3dfc6f07" \
-  --destination "/home/silv3rshi3ld/.local/share/Steam/compatibilitytools.d/IL2-Korea-Diagnostic-3dfc6f07" \
+  --destination "/home/USER/.local/share/Steam/compatibilitytools.d/IL2-Korea-Diagnostic-3dfc6f07" \
   --tool-name IL2-Korea-Diagnostic-3dfc6f07 \
   --yes
 ```
@@ -206,9 +206,9 @@ After Steam is fully stopped, create it with:
 
 ```bash
 ./scripts/create-custom-proton.sh \
-  --source-tool "/home/silv3rshi3ld/.local/share/Steam/steamapps/common/Proton - Experimental" \
+  --source-tool "/home/USER/.local/share/Steam/steamapps/common/Proton - Experimental" \
   --build-dir "$PWD/build/vkd3d-proton-il2-resource-trace-3dfc6f07" \
-  --destination "/home/silv3rshi3ld/.local/share/Steam/compatibilitytools.d/IL2-Korea-D02-Texture-Trace-54797ad3" \
+  --destination "/home/USER/.local/share/Steam/compatibilitytools.d/IL2-Korea-D02-Texture-Trace-54797ad3" \
   --tool-name IL2-Korea-D02-Texture-Trace-54797ad3 \
   --yes
 ```

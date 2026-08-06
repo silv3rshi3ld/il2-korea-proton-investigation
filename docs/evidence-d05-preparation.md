@@ -69,7 +69,7 @@ String inspection of the x64 core DLL confirms the environment gate and the
 Steam and the game were stopped before creating:
 
 ```text
-/home/silv3rshi3ld/.local/share/Steam/compatibilitytools.d/IL2-Korea-D05-BC3-35bd875c
+/home/USER/.local/share/Steam/compatibilitytools.d/IL2-Korea-D05-BC3-35bd875c
 ```
 
 It was copied from Proton Experimental
