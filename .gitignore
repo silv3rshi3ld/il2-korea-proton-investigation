@@ -1,0 +1,13 @@
+# Generated investigation artifacts can be large and may contain local paths.
+captures/*
+!captures/.gitkeep
+!captures/README.md
+
+# Local source/build trees are intentionally kept out of the evidence repository.
+build/
+src/
+
+# Python and editor noise.
+__pycache__/
+*.py[cod]
+*.swp
