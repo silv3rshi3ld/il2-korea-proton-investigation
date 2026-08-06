@@ -6,9 +6,9 @@ the D3D12 rendering corruption. No application override has been added.
 
 ## Current status
 
-The initial controlled investigation is complete as of 2026-08-06. Runtime
-testing ended after E00-E02 at the user's request. No application override or
-source patch has been added. The verified environment is:
+The launch-option matrix E00-E02 is complete as of 2026-08-06. The
+investigation has now moved to source-level diagnosis; no application override
+or source patch has been added. The verified environment is:
 
 - Launch executable: `bin/game/IL2Series.exe`
 - Steam library: `/home/silv3rshi3ld/.local/share/Steam`
@@ -61,6 +61,12 @@ The current root-cause confidence is **low**. Altitude/distance-dependent
 streaming, residency, or mip/LOD behavior is the leading class of hypotheses,
 but the defective layer is unknown. See [`patches/README.md`](patches/README.md)
 for the evidence-based no-patch decision.
+
+An unmodified development build of the exact installed VKD3D-Proton commit now
+exists for x64 and x86. The next required control is to confirm that those
+locally built DLLs reproduce the Proton-supplied behavior before adding focused
+instrumentation. See
+[`docs/development-build.md`](docs/development-build.md).
 
 The same missing, tile-shaped terrain and menu-square corruption is documented
 in the open [VKD3D-Proton issue #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134)
@@ -127,6 +133,8 @@ Compare collected runs with:
 - [`docs/reproduction.md`](docs/reproduction.md): fixed visual reproductions
 - [`docs/hypotheses.md`](docs/hypotheses.md): ranked hypotheses and prior art
 - [`docs/experiment-matrix.md`](docs/experiment-matrix.md): one-variable test plan
+- [`docs/development-build.md`](docs/development-build.md): exact local build and
+  source-level investigation status
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status
 - [`docs/upstream-drafts.md`](docs/upstream-drafts.md): review-only issue drafts
 - [`patches/README.md`](patches/README.md): why no patch is justified

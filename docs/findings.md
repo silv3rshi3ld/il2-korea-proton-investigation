@@ -47,6 +47,10 @@
     remain unchanged. Async compute/transfer queue selection is therefore
     unlikely to be the primary cause; single-queue execution does not rule out
     synchronization or lifetime defects within the remaining queue path.
+15. An unmodified x64/x86 VKD3D-Proton development build now succeeds from the
+    exact installed source commit using the official retained-build method.
+    Its architecture and exports are valid. Runtime parity with the packaged
+    Proton DLLs is the next control and has not yet been claimed.
 
 ## Observations not yet promoted to findings
 
@@ -90,17 +94,20 @@ tracing; they do not justify copying an override.
 No upstream patch is justified yet. This is an evidence-based stopping point,
 not a claim that no fix is possible.
 
-## Stopping point and evidence gate if work resumes
+## Source-level investigation gate
 
-Runtime testing ended after E02 because two baseline runs, two upload-path
-runs, and two single-queue runs all retained the core defect. E03 and E04 were
-not run and must not be described as unchanged.
+Launch-option testing ended after E02 because two baseline runs, two
+upload-path runs, and two single-queue runs all retained the core defect. E03
+and E04 were not run and must not be described as unchanged. The investigation
+has resumed at the development-build stage.
 
-1. Complete E03 twice with only descriptor buffers disabled and with matched
-   captures below 1,500 m and near 5,000 m.
-2. Re-test E01 at matched altitude before treating `no_upload_hvv` as useful.
-3. If controls remain inconclusive, build the installed VKD3D-Proton commit
-   unchanged, confirm parity, then instrument terrain resource creation,
-   mip/tile/residency changes, descriptors, and the operation that makes a page
-   visible.
-4. Investigate the NUMA caller separately with focused API tracing.
+1. Install and run the unmodified local build once to confirm parity with E00.
+2. Determine with focused API telemetry whether the title uses D3D12 reserved
+   resources and tile mappings for the affected terrain.
+3. If it does, correlate tile map/unmap operations, mips, queue submissions,
+   and destruction for stable resource cookies. If it does not, instrument the
+   game's texture atlas, mip-range SRVs, upload copies, descriptors, and
+   lifetime instead.
+4. Use descriptor QA only after the resource path is known, or earlier if the
+   focused trace reports suspicious descriptor reuse/destruction.
+5. Investigate the NUMA caller separately with focused API tracing.

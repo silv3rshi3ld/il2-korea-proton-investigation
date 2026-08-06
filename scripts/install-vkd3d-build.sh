@@ -211,8 +211,9 @@ if [[ "$mode" == "install" ]]; then
     printf 'Original DLL backup: %s\n' "$original_backup"
     {
         printf 'build_dir=%s\n' "$build_dir"
-        if git -C "$build_dir" rev-parse HEAD >/dev/null 2>&1; then
-            printf 'build_git_commit=%s\n' "$(git -C "$build_dir" rev-parse HEAD)"
+        if [[ -f "$build_dir/build.64/vkd3d_build.h" ]]; then
+            printf 'vkd3d_build_header='
+            sed -n 's/.*vkd3d_build = \([^;]*\);/\1/p' "$build_dir/build.64/vkd3d_build.h"
         fi
         sha256sum "$build_dir/x64/d3d12.dll" "$build_dir/x64/d3d12core.dll" \
             "$build_dir/x86/d3d12.dll" "$build_dir/x86/d3d12core.dll"

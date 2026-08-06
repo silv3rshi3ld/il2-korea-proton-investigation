@@ -17,6 +17,13 @@ Allowed final values: **fixed**, **improved**, **unchanged**, **regressed**,
 | E03 | `VKD3D_DISABLE_EXTENSIONS=VK_EXT_descriptor_buffer` | not run | not run | — | — | — | — | — | — | inconclusive | Runtime testing ended after E02; no result is claimed |
 | E04 | `VKD3D_CONFIG=no_upload_hvv,single_queue` | not run | not run | — | — | — | — | — | — | inconclusive | Runtime testing ended after E02; combination was not evaluated |
 
+## Development controls
+
+| ID | Single changed variable | Status | Required observation | Classification |
+|---|---|---|---|---|
+| D00 | Locally compiled, otherwise unmodified VKD3D-Proton at `3dfc6f07…` | build complete; runtime pending | Confirm the same menu and terrain corruption before any source instrumentation | inconclusive |
+| D01 | Focused diagnostic instrumentation | blocked on D00 parity | Identify actual reserved/tiled-resource, mip/view, descriptor, upload, and lifetime behavior | inconclusive |
+
 For each completed cell, link a run directory or curated evidence file and
 record new warning/error fingerprints from `compare-logs.py`.
 

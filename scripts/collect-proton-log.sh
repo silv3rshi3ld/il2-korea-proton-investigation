@@ -15,6 +15,7 @@ usage() {
         "" \
         "Variants:" \
         "  baseline" \
+        "  local-vkd3d-baseline" \
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
@@ -30,7 +31,7 @@ validate_run_id() {
 
 variant_environment() {
     case "$1" in
-        baseline)
+        baseline|local-vkd3d-baseline)
             printf '%s' ''
             ;;
         no-upload-hvv)
