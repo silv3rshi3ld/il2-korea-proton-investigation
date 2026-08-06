@@ -82,6 +82,25 @@
     build. Across the corrupted menu and mission it records zero reserved
     resource creations, tiling queries, tile-map updates, or tile copies.
     D3D12 reserved/tiled resources are therefore not used on the failing path.
+22. Read-only inspection of the updated `IL2Series.exe` and `dxBackend12.dll`
+    supports an ordinary-resource streaming path. The game binary contains
+    RTTI/symbol strings for `CBFManagerTiled`, `CBlocksArrayTiled`,
+    `CDistantLOD`, and `CTerrainArray`, while the D3D12 backend exposes
+    committed/placed resource creation, subresource/whole-resource copies,
+    async subresource updates, mip generation, mip-level selection, and
+    mip/slice SRV creation. No `CreateReservedResource` symbol was found in the
+    focused backend scan. “Tiled” therefore describes the game's higher-level
+    terrain organization here; it is not evidence of D3D12 sparse resources.
+23. The backend contains explicit diagnostics for insufficient free buffer
+    space during both async-thread and main-graphics-thread
+    `UpdateSubresource` paths. This makes ordinary upload allocation and
+    lifetime a focused lead, but no such assertion has yet been observed in a
+    runtime log and no game defect is claimed from a compiled string alone.
+24. D02's bounded, opt-in ordinary texture telemetry builds successfully for
+    x86-64 and x86 at local VKD3D-Proton commit `54797ad3`. It records texture
+    creation/destruction, normalized SRV mip ranges, `CopyTextureRegion`, and
+    texture `CopyResource` calls by stable resource cookie. It changes no
+    rendering behavior and awaits a controlled runtime capture.
 
 ## Observations not yet promoted to findings
 
@@ -138,8 +157,8 @@ has resumed at the development-build stage.
 2. U00 is complete: the updated game build is unchanged for the defect.
 3. D01b is complete and excludes D3D12 reserved/tiled resources from the
    failing path.
-4. Instrument ordinary texture creation, mip-range SRVs, upload copies,
-   descriptors, and lifetime with bounded logging and stable cookies.
+4. D02 ordinary texture creation, mip-range SRV, upload-copy, and lifetime
+   telemetry is built; run it through a separately named custom Proton tool.
 5. Use descriptor QA only after the resource path is known, or earlier if the
    focused trace reports suspicious descriptor reuse/destruction.
 6. Investigate the NUMA caller separately with focused API tracing.

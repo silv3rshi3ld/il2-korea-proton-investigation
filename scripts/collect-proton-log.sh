@@ -17,6 +17,7 @@ usage() {
         "  baseline" \
         "  local-vkd3d-baseline" \
         "  resource-trace" \
+        "  texture-trace" \
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
@@ -37,6 +38,9 @@ variant_environment() {
             ;;
         resource-trace)
             printf '%s' 'VKD3D_IL2_RESOURCE_TRACE=1 '
+            ;;
+        texture-trace)
+            printf '%s' 'VKD3D_IL2_TEXTURE_TRACE=1 '
             ;;
         no-upload-hvv)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv '
@@ -66,7 +70,7 @@ prepare_run() {
     local run_id=$1
     local variant=$2
     local run_dir="$runs_dir/$run_id"
-    local extra launch_options quoted_dir
+    local extra launch_options quoted_dir short_log_dir
 
     validate_run_id "$run_id"
     extra=$(variant_environment "$variant")
@@ -75,8 +79,15 @@ prepare_run() {
         exit 1
     fi
 
+    short_log_dir="/tmp/il2-$run_id"
+    if [[ -e "$short_log_dir" || -L "$short_log_dir" ]]; then
+        printf 'Short log path already exists; remove or choose another run ID: %s\n' "$short_log_dir" >&2
+        exit 1
+    fi
+
     mkdir -p -- "$run_dir"
-    printf -v quoted_dir '%q' "$run_dir"
+    ln -s -- "$run_dir" "$short_log_dir"
+    printf -v quoted_dir '%q' "$short_log_dir"
     launch_options="PROTON_LOG=1 PROTON_LOG_DIR=$quoted_dir OMP_NUM_THREADS=16 KMP_AFFINITY=disabled ${extra}%command%"
 
     printf '%s\n' "$variant" >"$run_dir/variant.txt"
@@ -188,7 +199,7 @@ collect_run() {
 
     awk '
         BEGIN { IGNORECASE = 1 }
-        /IL2TRACE|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
+        /IL2TRACE|IL2TEX|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
     ' "$source_log" >"$run_dir/filtered.log"
 
     awk '
@@ -214,7 +225,19 @@ collect_run() {
         printf 'tile_update_count=%s\n' "$(count_matches 'IL2TRACE tile_update cookie=' "$source_log")"
         printf 'tile_update_submit_count=%s\n' "$(count_matches 'IL2TRACE tile_update_submit' "$source_log")"
         printf 'tile_copy_count=%s\n' "$(count_matches 'IL2TRACE tile_copy' "$source_log")"
+        printf 'il2tex_enabled_count=%s\n' "$(count_matches 'IL2TEX enabled:' "$source_log")"
+        printf 'texture_create_count=%s\n' "$(count_matches 'IL2TEX create ' "$source_log")"
+        printf 'texture_srv_count=%s\n' "$(count_matches 'IL2TEX srv ' "$source_log")"
+        printf 'texture_copy_region_count=%s\n' "$(count_matches 'IL2TEX copy ' "$source_log")"
+        printf 'texture_copy_resource_count=%s\n' "$(count_matches 'IL2TEX copy_resource ' "$source_log")"
+        printf 'texture_destroy_count=%s\n' "$(count_matches 'IL2TEX destroy ' "$source_log")"
+        printf 'texture_trace_suppressed_count=%s\n' "$(count_matches 'IL2TEX suppressed ' "$source_log")"
     } >"$run_dir/summary.txt"
+
+    if grep -q -- 'IL2TEX enabled:' "$source_log"; then
+        "$script_dir/analyze-texture-trace.py" "$source_log" \
+            --output "$run_dir/texture-trace-analysis.md"
+    fi
 
     if ((include_system_info)) && [[ ! -f "$run_dir/system-info.txt" ]]; then
         "$script_dir/collect-system-info.sh" --output "$run_dir/system-info.txt"
@@ -235,6 +258,9 @@ collect_run() {
     printf '  filtered: %s\n' "$run_dir/filtered.log"
     printf '  modules:  %s\n' "$run_dir/modules.log"
     printf '  summary:  %s\n' "$run_dir/summary.txt"
+    if [[ -f "$run_dir/texture-trace-analysis.md" ]]; then
+        printf '  texture analysis: %s\n' "$run_dir/texture-trace-analysis.md"
+    fi
     printf '\nKey counts:\n'
     sed -n '1,120p' "$run_dir/summary.txt"
 }

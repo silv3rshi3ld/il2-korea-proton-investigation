@@ -8,6 +8,13 @@ tiled-resource API path only when `VKD3D_IL2_RESOURCE_TRACE=1` is set. It is
 retained so D01 is exactly reproducible and must not be proposed upstream as a
 remedy.
 
+`0002-Add-bounded-ordinary-texture-telemetry-for-IL-2.patch` is the D02
+diagnostic patch, also not a candidate fix. Behind
+`VKD3D_IL2_TEXTURE_TRACE=1`, it records a bounded census of ordinary texture
+creation/destruction, normalized SRV mip ranges, and texture copies by stable
+cookie. It is retained to make the diagnostic build reproducible and must not
+be presented upstream as a rendering remedy.
+
 ## Why there is no application override
 
 - The repeatable E00 baseline confirms the defect but does not identify a
@@ -25,11 +32,13 @@ permanent game-specific behavior. That is unsuitable for upstream review.
 
 ## Why there is no general VKD3D-Proton or Mesa patch
 
-The current logs contain no resource identifiers, mip ranges, tile mappings,
-residency changes, layouts, or synchronization sequence for the affected
-terrain. They also contain no Vulkan validation failure, device loss, GPU hang,
-or cross-driver comparison. The defective layer cannot be assigned to the
-game, VKD3D-Proton, or RADV.
+Valid D01b telemetry excludes D3D12 reserved/tiled resources, but the current
+completed logs still contain no ordinary-texture identifiers, mip ranges,
+layouts, or synchronization sequence for the affected terrain. They also
+contain no Vulkan validation failure, device loss, GPU hang, or cross-driver
+comparison. D02 is designed to supply the next resource-level discriminator;
+until it runs, the defective layer cannot be assigned to the game,
+VKD3D-Proton, or RADV.
 
 The prefix-only installation attempts did not load the local DLLs because
 stock Proton restored its packaged copies during launch. A dedicated custom

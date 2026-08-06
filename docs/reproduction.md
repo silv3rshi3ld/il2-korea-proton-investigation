@@ -138,6 +138,43 @@ interpreted without it. Its diagnostic question is then whether the failing
 path uses D3D12 tiled/reserved resources at all. One representative valid run
 is sufficient to answer that binary API-use gate.
 
+## D02 ordinary texture trace
+
+D01b excluded the D3D12 reserved-resource API path. D02 uses a separately
+named custom Proton tool containing diagnostic commit `54797ad3`; do not
+replace the D01 tool. Select the D02 tool for AppID 247970, then prepare:
+
+```bash
+./scripts/collect-proton-log.sh prepare D02-r1 texture-trace
+```
+
+The preparation script creates a short `/tmp/il2-D02-r1` symlink so the Steam
+launch option is not vulnerable to line wrapping inside a long log path. Paste
+the printed launch option exactly.
+
+In-game:
+
+1. Wait at the main menu until the block artifacts are visible on the aircraft.
+2. Load the same Singo-dong mission used for D01b.
+3. Reach roughly 1,900-2,500 m and bank until the missing rectangular ground
+   pages and magenta borders are visible. A higher-altitude pass is useful but
+   not required if the defect is already clear.
+4. Keep the defective view visible for about 15 seconds, then exit normally.
+
+Collect with:
+
+```bash
+./scripts/collect-proton-log.sh collect D02-r1
+```
+
+Collection is automatic: it validates/counts the `IL2TEX` markers, compresses
+the full log, and writes `texture-trace-analysis.md` with the most common
+texture shapes, normalized SRV mip ranges, copy classes, active resource
+cookies, and a lifetime-ordering diagnostic. The first validity gate is
+exactly one `IL2TEX enabled` marker plus post-run diagnostic DLL hashes. This
+is an API census, not a visual A/B fix test; one valid representative run is
+enough before narrowing the trace.
+
 ## Performance notes
 
 Record menu FPS, in-mission FPS, and obvious frame-pacing changes from the same

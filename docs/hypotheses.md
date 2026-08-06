@@ -37,6 +37,12 @@ instrumentation excludes D3D12 reserved/tiled resources, so the remaining
 streaming lead is the game's ordinary texture paging, mip/LOD, descriptors, or
 uploads rather than API-level sparse residency.
 
+Read-only inspection of the compiled game files is consistent with that split:
+the executable names high-level tiled terrain/LOD classes, while
+`dxBackend12.dll` exposes ordinary committed/placed resources, mip SRVs,
+subresource updates, and copies. This selects G1/G6 for focused telemetry but
+does not establish whether the game, VKD3D-Proton, or RADV mishandles them.
+
 ## Direct public report
 
 [VKD3D-Proton issue #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134)

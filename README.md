@@ -26,8 +26,8 @@ or behavior-changing source patch has been added. The verified environment is:
 `d3d12.dll` and `dxgi.dll`; the prefix copies hash-identically to the selected
 Proton build's 64-bit VKD3D-Proton D3D12 DLLs and DXVK DXGI DLL. A DXVK
 `d3d11.dll` is installed in the prefix but is not statically imported by the
-D3D12 backend. All seven collected controlled runtime logs load DXGI, D3D12,
-D3D12Core, and `dxBackend12.dll`, with no D3D11 module load.
+D3D12 backend. The completed controlled runtime logs with module evidence load
+DXGI, D3D12, D3D12Core, and `dxBackend12.dll`, with no D3D11 module load.
 
 The currently required startup mitigation is:
 
@@ -73,8 +73,11 @@ its absent trace marker and post-run DLL hashes prove the method ineffective.
 The verified `IL2-Korea-Diagnostic-3dfc6f07` custom Proton tool is now created,
 and D01b has completed successfully. The trace marker and post-run hashes prove
 that the diagnostic DLLs ran. Zero reserved-resource or tile-mapping calls were
-made, excluding D3D12 sparse/tiled resources from the failing path. Investigation
-now moves to ordinary textures, mip views, and upload copies. See
+made, excluding D3D12 sparse/tiled resources from the failing path. Read-only
+inspection of the compiled game/backend binaries independently points to the
+game's ordinary committed/placed textures, async `UpdateSubresource`, mip SRVs,
+and copy operations. D02 telemetry for those paths is built at local commit
+`54797ad3`; its runtime capture is next. See
 [`docs/development-build.md`](docs/development-build.md).
 
 The user also confirms that the game renders correctly on native Windows. This
@@ -156,6 +159,8 @@ Compare collected runs with:
   proof that stock Proton overwrote the trace DLLs
 - [`docs/evidence-d01b-sparse-trace.md`](docs/evidence-d01b-sparse-trace.md):
   valid trace excluding the D3D12 reserved/tiled-resource path
+- [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
+  import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated
   game-build baseline result
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status

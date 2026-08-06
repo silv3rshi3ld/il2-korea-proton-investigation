@@ -175,3 +175,43 @@ the build string carried the modified-tree `+` suffix, and the four post-run
 prefix hashes matched the diagnostic artifacts. No reserved-resource or
 tile-mapping API was called during the corrupted menu and mission. See
 [`evidence-d01b-sparse-trace.md`](evidence-d01b-sparse-trace.md).
+
+## D02 ordinary-texture trace build
+
+- Source base: `3dfc6f07d0953b1e8b41705275c2c59cc7374fc5`
+- Prior sparse diagnostic commit: `d0b4421f129b72e6127e6b9abd4028e8df946ea7`
+- D02 diagnostic commit: `54797ad35d0dcd921f2e65a98121f2c6d98754a4`
+- Gate: `VKD3D_IL2_TEXTURE_TRACE=1`
+- Build identifier: `0x54797ad35d0dcd9`
+
+The gate records bounded texture creation/destruction, normalized SRV mip and
+layer ranges, texture-region copies, and whole-resource texture copies using
+stable VKD3D resource cookies. Event limits are 20,000 creates, 40,000 SRVs,
+40,000 copies, and 20,000 destroys. A one-time suppression marker makes
+truncation explicit. The patch changes no resource states, Vulkan layouts,
+allocation choices, descriptor contents, queues, or synchronization.
+
+| File | Architecture | SHA-256 |
+|---|---|---|
+| `x64/d3d12.dll` | PE32+ x86-64 | `37a302c0768f5755f47dca7c26724cdfc1ccd291825b3b397ccd64f5260d8942` |
+| `x64/d3d12core.dll` | PE32+ x86-64 | `f09342b31fd5092778ebf20c5d66af37b4973968f0eef4220b909d5f0858e52a` |
+| `x86/d3d12.dll` | PE32 i386 | `7b867e13c54908dac7adf044c01a8a9985c59d538af4377871c52c6091962807` |
+| `x86/d3d12core.dll` | PE32 i386 | `8283693760de86dd7bca8e20a0de94bb6d23cbc56e59ab51ad6361e4c6133083` |
+
+The D01 custom tool remains an untouched rollback/control. D02 must use a
+separately named custom tool created from Proton Experimental, so selecting
+Proton Experimental or the D01 tool is sufficient rollback.
+
+After Steam is fully stopped, create it with:
+
+```bash
+./scripts/create-custom-proton.sh \
+  --source-tool "/home/silv3rshi3ld/.local/share/Steam/steamapps/common/Proton - Experimental" \
+  --build-dir "$PWD/build/vkd3d-proton-il2-resource-trace-3dfc6f07" \
+  --destination "/home/silv3rshi3ld/.local/share/Steam/compatibilitytools.d/IL2-Korea-D02-Texture-Trace-54797ad3" \
+  --tool-name IL2-Korea-D02-Texture-Trace-54797ad3 \
+  --yes
+```
+
+The first creation attempt safely refused because Steam was still running; no
+custom-tool file was created or overwritten.
