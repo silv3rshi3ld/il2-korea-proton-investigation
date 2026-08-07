@@ -290,9 +290,10 @@ development-build stage.
 8. Re-analysis of D02 finds 432 invalid internal one-texel BC3 border regions
    in the active baked-terrain cache. D05a's binary and enable marker are valid,
    but its zero adjustments invalidate the visual comparison.
-9. D05b is compiled but unrun. It accepts source-box and footprint-only forms,
+9. D05b is compiled, installed in an isolated custom Proton tool, and prepared
+   for run 1 but remains unrun. It accepts source-box and footprint-only forms,
    logs every candidate, and records explicit source-capacity rejection masks.
-   This is the retained next causal test when work resumes.
+   This is the active next causal test.
 10. If D05b fixes only the seams, restrict descriptor QA and copy-to-sample
    correlation to the 2048x2048 cache pool. A later Windows `tex.log` and D3D12
    debug-layer comparison will refine ownership but does not block D05b.

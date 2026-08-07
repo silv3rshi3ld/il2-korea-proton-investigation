@@ -90,8 +90,9 @@ strongest current cause for the magenta terrain seams and a possible contributor
 to whole-page loss. It does not yet explain the menu blocks. D05a loaded but
 matched zero copies because its source-side filter was too strict, so its
 visually unchanged run is invalid as a causal test. D05b now accepts both
-source-box and footprint-only forms and adds candidate/rejection telemetry; it
-is built but intentionally not installed or run while testing is paused. See
+source-box and footprint-only forms and adds candidate/rejection telemetry. Its
+isolated custom Proton tool and first runtime run are prepared, but it has not
+yet been executed. See
 [`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md)
 [`docs/evidence-d05-result.md`](docs/evidence-d05-result.md), and
 [`docs/evidence-d05b-preparation.md`](docs/evidence-d05b-preparation.md).

@@ -1,9 +1,9 @@
-# D05b footprint-aware BC3 diagnostic: paused preparation
+# D05b footprint-aware BC3 diagnostic: runtime test prepared
 
 ## State
 
-D05b is compiled and retained, but is **not installed and has not been run**.
-The investigation is paused before another runtime test.
+D05b is compiled, installed in an isolated custom Proton tool, and prepared for
+run `D05b-bc3-r1`. It has **not yet been run**.
 
 - Base VKD3D-Proton: `84c87c8390d9df75ba41d911496296fe13f0e275`
 - D05a commit: `35bd875cf58a555a64fa366926c04cd6b0664611`
@@ -42,5 +42,42 @@ The official development build completed for both architectures.
 
 String inspection confirms the enable, candidate, rejection, adjustment, and
 log-cap markers in the x64 core DLL. A synthetic footprint-only record passes
-the revised analyzer. No custom Proton tool was created for D05b, so selecting
-Proton Experimental remains the normal rollback.
+the revised analyzer.
+
+## Installed custom Proton tool
+
+Steam and the game were stopped before creating:
+
+```text
+/home/USER/.local/share/Steam/compatibilitytools.d/IL2-Korea-D05b-BC3-f6416c79
+```
+
+It was copied from Proton Experimental `experimental-11.0-20260724c`, then only
+its packaged x64/x86 `d3d12.dll` and `d3d12core.dll` files were replaced. All
+four installed hashes match the build-identity table above. The source Proton
+tool and game prefix were not modified.
+
+## Prepared run
+
+Run ID: `D05b-bc3-r1`
+
+Select `IL2-Korea-D05b-BC3-f6416c79` in Steam and use exactly:
+
+```bash
+PROTON_LOG=1 PROTON_LOG_DIR=/tmp/il2-D05b-bc3-r1 OMP_NUM_THREADS=16 KMP_AFFINITY=disabled VKD3D_IL2_BC3_BORDER_COPY=1 %command%
+```
+
+Observe the menu aircraft, then reproduce the terrain failure in the same
+Singo-dong mission around 1,300-1,500 m. Keep settings and camera comparable to
+D05a and capture the altitude in the screenshot. A second capture near 5,000 m
+is useful but not required for the first discriminator.
+
+After the game exits and Steam is fully stopped, collect with:
+
+```bash
+./scripts/collect-proton-log.sh collect D05b-bc3-r1
+```
+
+The result is behaviorally valid only if the log contains the D05b enable
+marker and every candidate has either an adjustment or explicit rejection.
+Selecting Proton Experimental remains the immediate rollback.
