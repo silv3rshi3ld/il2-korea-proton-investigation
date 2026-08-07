@@ -6,8 +6,9 @@ the D3D12 rendering corruption. No application override has been added.
 
 ## Public handoff
 
-- [ValveSoftware/Proton #9906](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5209002066)
-- [VKD3D-Proton #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5209002942)
+- [ValveSoftware/Proton #9906](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5216217531)
+- [VKD3D-Proton #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5216216401)
+- [VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202)
 - [Sanitized logs and focused evidence bundle](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/handoff-2026-08-06)
 
 The release bundle is intentionally small. It contains filtered/redacted logs,
@@ -117,12 +118,15 @@ primary terrain cause. See
 [`docs/evidence-d06-result.md`](docs/evidence-d06-result.md), and
 [`docs/evidence-d07-result.md`](docs/evidence-d07-result.md).
 
-The validated general candidate at VKD3D-Proton commit `cf11ba76` converts placed-buffer
-geometry through physical blocks when the footprint and destination formats
-have equal block sizes. It contains no IL-2 executable/AppID check and no
-diagnostic gate. D08 verified the packaged DLLs in game and repaired terrain
-without changing the menu-aircraft blocks or shimmering. See
-[`docs/evidence-d08-result.md`](docs/evidence-d08-result.md).
+The D08-tested general candidate at VKD3D-Proton commit `cf11ba76` converts
+placed-buffer geometry through physical blocks. Before formal review, upstream
+candidate `64ec55e7` narrowed the conversion to equal-sized physical elements
+whose source and destination block dimensions differ. Same-block-geometry
+copies now stay exactly on the original path. IL-2's 16-byte 1x1-to-4x4 mapping
+still selects the D08-tested conversion. The candidate contains no IL-2
+executable/AppID check or diagnostic gate. See
+[`docs/evidence-d08-result.md`](docs/evidence-d08-result.md) and
+[`docs/evidence-pr-scope-refinement.md`](docs/evidence-pr-scope-refinement.md).
 
 D03 is complete and visually unchanged. In its same-run pre-cap class, all 585
 candidates have placed-resource records, none overlaps any traced placed buffer
@@ -294,6 +298,8 @@ Compare collected runs with:
   repair, exact copy counts, screenshots, and remaining validation
 - [`docs/evidence-d08-preparation.md`](docs/evidence-d08-preparation.md): clean
   general-fix build, regression tests, exact DLL hashes, and final protocol
+- [`docs/evidence-pr-scope-refinement.md`](docs/evidence-pr-scope-refinement.md):
+  narrowed PR predicate, current commit, repeated tests, and evidence boundary
 - [`docs/community-update-draft-2026-08-06.md`](docs/community-update-draft-2026-08-06.md):
   the concise updates posted to Proton and VKD3D-Proton, with direct links
 - [`docs/evidence-e03-no-descriptor-buffer.md`](docs/evidence-e03-no-descriptor-buffer.md):

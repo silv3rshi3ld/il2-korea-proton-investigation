@@ -88,7 +88,9 @@ sampled it, and a later copy after telemetry suppression cannot be excluded.
 ## Next discriminator
 
 D08 validates the general block-compatible buffer-to-image conversion at
-commit `cf11ba76` without the D07 gate. The terrain track no longer needs more
+predecessor commit `cf11ba76` without the D07 gate. Current PR commit
+`64ec55e7` narrows activation while preserving the selected IL-2 conversion.
+The terrain track no longer needs more
 configuration-flag testing. The next graphics discriminator should be focused
 instrumentation of resources, descriptors, passes, and synchronization used by
 the menu aircraft/shadow effect while it visibly shimmers.

@@ -57,13 +57,16 @@ increment on top of D05c. It uses a new opt-in gate and adds only the observed
 diagnostic, not the proposed permanent fix. Its valid runtime result adjusted
 522/522 copies and repaired the terrain.
 
-`0009-vkd3d-Convert-buffer-image-copies-between-block-formats.patch` is a clean
-commit based on upstream `84c87c83`. It corrects
+`0009-vkd3d-Convert-buffer-image-copies-between-block-formats.patch` is clean
+commit `64ec55e7` based on upstream `84c87c83`. It corrects
 `vk_buffer_image_copy_from_d3d12()` by converting source-footprint geometry
-through physical blocks into destination image texels whenever the two formats
-have equal physical block sizes. The included test fails four assertions on
-the old helper and passes all 22 with the fix. Neighboring compressed-copy
-tests pass unchanged.
+through physical blocks into destination image texels only when the two
+formats have equal-sized physical elements and different block dimensions.
+Same-block-geometry copies remain on the original path. The included test
+fails four assertions on the old helper and passes all 22 with the fix. The
+complete native copy-test subset passes 6,429,713 checks with zero failures.
+The patch SHA-256 is
+`ca20fb05e712f2ae8216e65843990720a67d49c81b506245a17bb82fc0b58d2a`.
 
 ## Why there is no application override
 
@@ -80,7 +83,7 @@ tests pass unchanged.
 Adding `.NO_UPLOAD_HVV`, `.NO_STAGGERED_SUBMIT`, or another executable override
 for `IL2Series.exe` would not address the demonstrated copy-unit defect. The
 general helper fix is narrower in mechanism and applies only when physical
-block sizes match.
+element sizes match while block dimensions differ.
 
 ## Why the candidate belongs in VKD3D-Proton
 

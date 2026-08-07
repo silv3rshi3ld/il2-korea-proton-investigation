@@ -243,6 +243,14 @@
     passes all 22 assertions with `cf11ba76`. Existing
     `test_copy_texture_bc_rgba` (147 assertions) and
     `test_copy_block_compressed_texture` (50 assertions) also pass.
+55. Before formal PR review, candidate `64ec55e7` narrows activation to
+    equal-sized physical elements whose block width or height differs. Copies
+    with matching block geometry and copies with unequal physical sizes now
+    stay exactly on the old path. IL-2's 16-byte 1x1-to-4x4 mapping still
+    selects unchanged conversion arithmetic.
+56. The narrowed candidate builds natively and with MinGW x64. Its focused
+    test passes 22/22 assertions and the full native copy subset passes
+    6,429,713 checks with zero failures.
 
 ## Observations not yet promoted to findings
 
@@ -289,7 +297,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Track | Assessment | Confidence |
 |---|---|---|
 | Startup | Affinity discovery in the shipped OpenMP path is bypassed by the current environment variables; the responsible Wine API/topology/runtime behavior is unproven. | Low |
-| Graphics | The game uses D3D12 through VKD3D-Proton and DXVK's DXGI. Two D07 runs and clean general-build D08 prove that VKD3D-Proton under-populates the application's 800 m baked-terrain pages by retaining source-footprint units in a BC3 Vulkan copy. | High; causal for terrain and fixed by `cf11ba76` |
+| Graphics | The game uses D3D12 through VKD3D-Proton and DXVK's DXGI. Two D07 runs and clean general-build D08 prove that VKD3D-Proton under-populates the application's 800 m baked-terrain pages by retaining source-footprint units in a BC3 Vulkan copy. | High; causal for terrain and addressed by narrowed PR candidate `64ec55e7` |
 | Queue selection | Two `single_queue` runs leave the defects unchanged, making ordinary asynchronous compute/transfer queue selection unlikely to be the primary trigger. | Medium |
 | Upload allocation | `no_upload_hvv` changes the allocation path, but its apparent improvement is inseparable from lower capture altitude. | Low/inconclusive |
 | Streaming/residency/LOD | D02 confirms active ordinary compressed-texture streaming and narrows it to complete uploads plus an unresolved no-upload SRV class; it does not identify which resources produce the visible pages. | Medium for relevance, low for mechanism |
@@ -300,11 +308,12 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Descriptor-buffer backend | One verified disable run on the D03-derived build is visually unchanged and uses the mutable-descriptor fallback; stock-Proton confirmation remains. | Medium that descriptor buffers are not the primary cause |
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
-| BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with `cf11ba76`. | Root cause and general remedy validated |
+| BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
 
-No application override is justified. D08 validates the general `cf11ba76`
-helper fix without the D07 gate or game-specific filters. The terrain track is
-complete; the menu aircraft blocks/shimmering remain a separate open track.
+No application override is justified. D08 validates general predecessor `cf11ba76`;
+current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
+same-block-geometry copies on the old path. The terrain track is complete; the
+menu aircraft blocks/shimmering remain a separate open track.
 
 ## Source-level investigation gate
 
@@ -349,5 +358,8 @@ development-build stage.
     522 observed page-family copies with zero rejects.
 14. D08 validates the upstream-oriented `cf11ba76` change in game without the
     diagnostic gate. Terrain is fixed; menu blocks/shimmering are unchanged.
-15. Investigate the menu corruption with a new focused trace and investigate
+15. PR candidate `64ec55e7` narrows the activation predicate without changing
+    the conversion selected for IL-2; same-block-geometry copies retain the
+    original path.
+16. Investigate the menu corruption with a new focused trace and investigate
     the NUMA caller separately with focused API tracing.

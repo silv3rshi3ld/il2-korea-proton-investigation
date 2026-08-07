@@ -1,7 +1,9 @@
 # Upstream submission plan
 
-Nothing in this plan has been posted or pushed. Publication remains the user's
-decision.
+The user approved publication on 2026-08-07. The investigation repository is
+public, VKD3D-Proton PR
+[#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) is open,
+and updates were posted to VKD3D-Proton #3134 and Proton #9906.
 
 ## Correct repository
 
@@ -43,11 +45,12 @@ unambiguously valid D3D12.
 
 ## Impact boundary and regression risk
 
-The current candidate changes only placed-buffer-to-image copies for which the
-source and destination physical elements have the same byte size. The IL-2
-case is 16 bytes on each side: one uncompressed `R32G32B32A32_UINT` texel maps
-to one 4x4 BC3 block. Ordinary same-format uploads and copies whose physical
-block sizes differ retain their existing results or existing fallback path.
+Current candidate `64ec55e7` changes only placed-buffer-to-image copies for
+which the source and destination physical elements have the same byte size
+**and** their block width or height differs. The IL-2 case is 16 bytes on each
+side: one uncompressed `R32G32B32A32_UINT` texel maps to one 4x4 BC3 block.
+Same-block-geometry uploads and copies whose physical element sizes differ
+stay exactly on the original path.
 
 Other applications using the same uncommon equal-byte, different-block-
 geometry reinterpretation can therefore be affected. The expected effect is
@@ -57,7 +60,7 @@ but a claim of zero cross-game risk would be unjustified.
 Evidence currently limiting that risk:
 
 - focused regression: four deterministic failures with the old helper and
-  22/22 assertions passing with `cf11ba76`;
+  22/22 assertions passing with current candidate `64ec55e7`;
 - all native tests selected by `VKD3D_TEST_FILTER=copy`: 6,429,713 executed,
   zero failures, 14 successful todo, one skipped, eight todo, zero bugs;
 - existing neighboring compressed-copy tests: 147/147 and 50/50 passing;
@@ -65,11 +68,12 @@ Evidence currently limiting that risk:
 - two gated D07 runs and one clean D08 run repair the terrain;
 - D08 reports no device loss, GPU reset/hang, OOM, or new fatal error.
 
-The retained local full copy-test transcript is
-`captures/validation/cf11ba76-copy-tests.log` with SHA-256
-`0a9410ada9861d59c02445354340d514ec430c3d2ca2ebb3b58462685d36c970`.
-It is intentionally ignored by Git; the concise result above is sufficient for
-the initial pull request.
+The retained local current-candidate transcripts are
+`captures/validation/64ec55e7-focused-copy-test.log` and
+`captures/validation/64ec55e7-copy-tests.log`, with SHA-256 values recorded in
+[`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md). They are
+intentionally ignored by Git; the concise results above are sufficient for the
+pull request.
 
 Known limitations:
 
@@ -82,17 +86,17 @@ Known limitations:
 ## If maintainers request narrower scope
 
 Do not begin with an executable override while the general translation fix has
-both a regression test and matching upstream precedent. If reviewers consider
-the native-Windows behavior too application-specific, narrow in this order:
+both a regression test and matching upstream precedent. The first narrowing—
+requiring different block geometry with equal physical element size—was
+implemented in `64ec55e7`. If reviewers still consider the native-Windows
+behavior too application-specific, narrow in this order:
 
-1. restrict the conversion to differing block geometry with equal physical
-   element size;
-2. if still required, restrict it to the demonstrated
+1. restrict it to the demonstrated
    `R32G32B32A32_UINT -> BC3_UNORM` upload pair;
-3. use an exact `IL2Series.exe` application quirk only as the final fallback.
+2. use an exact `IL2Series.exe` application quirk only as the final fallback.
 
-Each narrower revision must be rebuilt and retested. No speculative fallback
-has been implemented in the current candidate.
+Each narrower revision must be rebuilt and retested. No format-pair or
+application-specific fallback has been implemented in the current candidate.
 
 ## Minimal initial pull-request evidence
 

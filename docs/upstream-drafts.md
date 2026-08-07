@@ -4,11 +4,11 @@
 > [`community-update-draft-2026-08-06.md`](community-update-draft-2026-08-06.md),
 > which includes the invalid D05a zero-match result and paused D05b state.
 
-The 2026-08-07 drafts immediately below reflect the successful D07 result and
-validated general `cf11ba76` candidate. Older drafts remain as historical context and
-must not be posted. Attach only selected, reviewed screenshots and filtered
-logs; do not upload the game, prefix, credentials, or unfiltered large
-artifacts.
+The 2026-08-07 drafts immediately below reflect the successful D07 result,
+D08-tested predecessor `cf11ba76`, and narrowed PR candidate `64ec55e7`.
+VKD3D-Proton PR #3202 and concise issue updates have now been posted. Older
+drafts remain as historical context and must not be reposted. Do not upload the
+game, prefix, credentials, or unfiltered large artifacts.
 
 ## 2026-08-07 result update for VKD3D-Proton #3134
 
@@ -38,10 +38,10 @@ warnings, so neither is required for this terrain failure.
 
 I reduced the diagnostic to a general VKD3D-Proton commit based on 84c87c83.
 It converts placed-footprint extent and buffer layout into destination image
-texels whenever source and destination physical block sizes match. There is no
-game/AppID check. A focused regression test reports four failures on the old
-helper and passes all 22 assertions with the fix; the existing BC copy tests
-also pass.
+texels only when equal-sized physical elements use different block dimensions.
+Same-block-geometry copies retain the original path. There is no game/AppID
+check. A focused regression test reports four failures on the old helper and
+passes all 22 assertions with the fix; the complete copy subset also passes.
 
 The clean general build has now been tested without the diagnostic environment
 variable. The log identifies build cf11ba76 and contains no diagnostic marker.
@@ -90,14 +90,16 @@ formats had different block dimensions.
 
 Convert the source extent through physical block counts and express the buffer
 layout in destination image texels when both formats have the same physical
-block size. Preserve the existing path for unequal block sizes.
+element size but different block dimensions. Preserve the existing path for
+matching block geometry and unequal physical sizes.
 
 This fixes R32G32B32A32_UINT footprints copied to BC3 images. A 64x64 source
 contains 64x64 16-byte elements and therefore covers a 256x256 BC3 image, not a
 64x64 BC3 region.
 
 The new regression test fails four assertions before the change and passes 22
-after it. Existing texture BC/RGBA and block-compressed copy tests pass. The
+with current commit `64ec55e7`. Existing texture BC/RGBA and block-compressed
+copy tests pass. The
 complete native `VKD3D_TEST_FILTER=copy` subset executes 6,429,713 checks with
 zero failures. An IL-2 Korea (247970) runtime diagnostic adjusted 522 matching
 terrain-page copies and repaired the high-altitude terrain; a clean general

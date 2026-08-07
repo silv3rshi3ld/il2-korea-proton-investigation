@@ -421,3 +421,17 @@ mitigation and Proton logging. Runtime build identity is `cf11ba76`, no
 2,427 m, and 742 m. Menu blocks/shimmering remain separate. See
 [`evidence-d08-result.md`](evidence-d08-result.md). Rollback remains selecting
 Proton Experimental or the retained D07 tool.
+
+## PR scope refinement
+
+Current upstream candidate `64ec55e7` adds a second activation requirement:
+the equal-sized physical elements must also use different block dimensions.
+Same-block-geometry copies therefore execute the original helper code exactly.
+The IL-2 `R32G32B32A32_UINT` 1x1 to BC3 4x4 case still executes the same
+conversion tested by D08.
+
+The amended commit builds natively and with MinGW x64. Its focused regression
+passes 22/22 assertions, and `VKD3D_TEST_FILTER=copy` passes 6,429,713 checks
+with zero failures. The D08 DLL hashes above remain historical identities for
+the `cf11ba76` runtime build and are not relabeled as `64ec55e7` artifacts. See
+[`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md).

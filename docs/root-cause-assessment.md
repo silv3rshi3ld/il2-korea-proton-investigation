@@ -23,8 +23,11 @@ reinterpret pair among its compatible format groups. Native Windows and
 VKD3D-Proton's existing image-to-image path nevertheless support the same
 physical-block interpretation. The safest ownership statement is therefore a
 VKD3D-Proton native-compatibility gap, not a demonstrated RADV defect. The
-general `cf11ba76` candidate passes its regression tests and D08 validates it
-in game without any IL-2-specific filter or diagnostic gate.
+general `cf11ba76` predecessor passes its regression tests and D08 validates it
+in game without any IL-2-specific filter or diagnostic gate. Current PR
+candidate `64ec55e7` further restricts activation to equal-sized physical
+elements with different block dimensions, leaving same-geometry copies on the
+original path while selecting unchanged conversion arithmetic for IL-2.
 
 The startup/OpenMP problem remains an independent Wine/NUMA investigation.
 
@@ -32,7 +35,7 @@ The startup/OpenMP problem remains an independent Wine/NUMA investigation.
 
 | Rank | Mechanism | Evidence | Confidence |
 |---:|---|---|---|
-| 1 | Missing block-unit conversion on buffer-to-BC3 terrain-page copies | D07 adjusted 522/522 exact-class copies in run 1 and 304/304 in run 2, with zero rejects, and repaired high-altitude terrain both times; clean general-build D08 repeats the repair; the focused synthetic test fails four assertions on the old path and passes 22/22 with the general fix | High; causal for terrain and fixed by `cf11ba76` |
+| 1 | Missing block-unit conversion on buffer-to-BC3 terrain-page copies | D07 adjusted 522/522 exact-class copies in run 1 and 304/304 in run 2, with zero rejects, and repaired high-altitude terrain both times; clean general-build D08 repeats the repair; the focused synthetic test fails four assertions on the old path and passes 22/22 with the narrowed general fix | High; causal for terrain and addressed by current PR candidate `64ec55e7` |
 | 2 | Separate menu effect, shadow, or temporal-resource defect | D07-r2 and clean D08 preserve the terrain repair while aircraft blocks and shimmering remain | Confirmed separate; cause open |
 | 3 | Game texture-provider fallback contributes secondary missing inputs | The successful D07 run still logs missing summer/common inputs, proving they are not required for the rectangular terrain failure | Low as a remaining contributor |
 | 4 | RADV mishandles otherwise valid Vulkan | The same driver renders correctly when VKD3D emits converted copy geometry; no driver change was required | Very low for the terrain defect |
@@ -90,8 +93,9 @@ matched Windows `tex.log`, they cannot be promoted to the Linux root cause.
 ## Decision and next discriminator
 
 Do not add an application override or run more unrelated terrain flags. D08
-validates the minimal general `vk_buffer_image_copy_from_d3d12()` correction at
-commit `cf11ba76` without the IL-2 resource/shape filter or
-`VKD3D_IL2_BC3_PAGE_COPY`. The terrain patch is ready for user review and an
-upstream handoff. The next graphics work should instrument the menu aircraft
-and motion-only flicker as a separate defect.
+validates the general `vk_buffer_image_copy_from_d3d12()` conversion at
+predecessor `cf11ba76` without the IL-2 resource/shape filter or
+`VKD3D_IL2_BC3_PAGE_COPY`. Current PR commit `64ec55e7` preserves that IL-2
+branch while returning all same-block-geometry copies to the original path;
+its focused and full copy tests pass. The next graphics work should instrument
+the menu aircraft and motion-only flicker as a separate defect.

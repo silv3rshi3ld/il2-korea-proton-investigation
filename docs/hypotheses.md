@@ -32,7 +32,7 @@ not establish what Wine reports through Win32 processor groups and NUMA APIs.
 | G10 | Shader translation produces incorrect code for a menu/terrain shader. | Artifact is invariant under memory, queue, and descriptor controls; shader debug/hash points to a stable stage. | Shader replacement/bisection and minimal shader test. |
 | G11 | The game texture-provider path fails to resolve, decode, or create required Korea terrain inputs under Wine and substitutes its default white texture. | D07 fixes terrain while the same summer/common fallbacks remain in `tex.log`. | Excluded as the primary rectangular terrain cause; possible secondary missing content only. |
 | G12 | The thin baked-terrain border reinterpret geometry alone is the visible cause. | D05c adjusted 202/202 exact thin candidates with zero rejects and visuals remained unchanged. | Excluded as a border-only explanation. |
-| G13 | The same missing 1:4 block-unit conversion affects complete `64x64` terrain pages. | D07 finds 178 square `R32G32B32A32_UINT` footprints, converts them to `256x256` BC3 regions, and repairs terrain near 5,500 m; clean general-build D08 repeats the repair. | Confirmed causal for terrain and fixed by `cf11ba76`. |
+| G13 | The same missing 1:4 block-unit conversion affects complete `64x64` terrain pages. | D07 finds 178 square `R32G32B32A32_UINT` footprints, converts them to `256x256` BC3 regions, and repairs terrain near 5,500 m; clean general-build D08 repeats the repair. | Confirmed causal for terrain; D08-tested predecessor `cf11ba76` is narrowed without changing the IL-2 branch in current PR commit `64ec55e7`. |
 | G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
 
 The cross-configuration screenshot set shows substantially worse page loss
@@ -57,7 +57,9 @@ originally promoted G12 because it connected the engine's named
 the exact border-only mapping without visual change. D06 exposed the
 interior-page geometry, and D07 confirmed G13 by adjusting every encountered
 interior and border copy and repairing the high-altitude terrain. D08 validates
-the general `cf11ba76` implementation without the diagnostic gate.
+the general `cf11ba76` implementation without the diagnostic gate. Current PR
+commit `64ec55e7` preserves that conversion only for equal-byte formats whose
+block dimensions differ.
 Package inspection independently confirms the engine's 800 m baked-page
 geometry; see `evidence-map-package-inspection.md`.
 

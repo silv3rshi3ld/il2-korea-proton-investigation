@@ -1,47 +1,50 @@
-From cf11ba76a1cdbee2daa4d5403913e596fb29938f Mon Sep 17 00:00:00 2001
+From 64ec55e7ab3d34012a74e5cbe8f096d4a199e272 Mon Sep 17 00:00:00 2001
 From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
 Date: Fri, 7 Aug 2026 12:05:16 +0200
 Subject: [PATCH] vkd3d: Convert buffer-image copies between block formats
 
-D3D12 placed footprints express buffer geometry in footprint-format texels, while Vulkan buffer-image copies express it in image-format texels. Convert the extent and buffer layout through physical blocks when the source and destination block sizes match.
+D3D12 placed footprints express buffer geometry in footprint-format texels, while Vulkan buffer-image copies express it in image-format texels. Convert the extent and buffer layout through physical blocks when equal-sized physical elements use different block dimensions. Keep the existing path when block geometry already matches or physical sizes differ.
 
 This fixes R32G32B32A32_UINT upload footprints copied to BC3 images, where the old path populated only one sixteenth of the destination area.
 
 Signed-off-by: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
 ---
- libs/vkd3d/command.c | 45 +++++++++++++++++-----
+ libs/vkd3d/command.c | 48 +++++++++++++++++++-----
  tests/d3d12_copy.c   | 88 ++++++++++++++++++++++++++++++++++++++++++++
  tests/d3d12_tests.h  |  1 +
- 3 files changed, 125 insertions(+), 9 deletions(-)
+ 3 files changed, 128 insertions(+), 9 deletions(-)
 
 diff --git a/libs/vkd3d/command.c b/libs/vkd3d/command.c
-index 5062c480..57566776 100644
+index 5062c480..3ff27a30 100644
 --- a/libs/vkd3d/command.c
 +++ b/libs/vkd3d/command.c
-@@ -9634,6 +9634,15 @@ static void vk_buffer_image_copy_from_d3d12(VkBufferImageCopy2 *copy,
+@@ -9634,6 +9634,18 @@ static void vk_buffer_image_copy_from_d3d12(VkBufferImageCopy2 *copy,
          const struct vkd3d_format *dst_format, const D3D12_BOX *src_box, unsigned int dst_x,
          unsigned int dst_y, unsigned int dst_z)
  {
 +    VkExtent3D src_extent;
-+    bool compatible_block_size;
++    bool convert_block_geometry;
 +
 +    /* D3D12 describes the buffer layout in source-format texels, while Vulkan
 +     * describes it in destination image texels. Convert through physical
-+     * blocks when the formats have compatible block sizes. */
-+    compatible_block_size = src_format->byte_count * src_format->block_byte_count ==
++     * blocks when equal-sized elements use different block dimensions. */
++    convert_block_geometry =
++            (src_format->block_width != dst_format->block_width ||
++            src_format->block_height != dst_format->block_height) &&
++            src_format->byte_count * src_format->block_byte_count ==
 +            dst_format->byte_count * dst_format->block_byte_count;
 +
      copy->bufferOffset = footprint->Offset;
      if (src_box)
      {
-@@ -9641,9 +9650,19 @@ static void vk_buffer_image_copy_from_d3d12(VkBufferImageCopy2 *copy,
+@@ -9641,9 +9653,19 @@ static void vk_buffer_image_copy_from_d3d12(VkBufferImageCopy2 *copy,
          copy->bufferOffset += vkd3d_format_get_data_offset(src_format, footprint->Footprint.RowPitch,
                  row_count * footprint->Footprint.RowPitch, src_box->left, src_box->top, src_box->front);
      }
 -    copy->bufferRowLength = footprint->Footprint.RowPitch /
 -            (src_format->byte_count * src_format->block_byte_count) * src_format->block_width;
 -    copy->bufferImageHeight = align(footprint->Footprint.Height, src_format->block_height);
-+    if (compatible_block_size)
++    if (convert_block_geometry)
 +    {
 +        copy->bufferRowLength = footprint->Footprint.RowPitch /
 +                (dst_format->byte_count * dst_format->block_byte_count) * dst_format->block_width;
@@ -57,7 +60,7 @@ index 5062c480..57566776 100644
      copy->imageSubresource = vk_image_subresource_layers_from_d3d12(
              dst_format, sub_resource_idx, image_desc->MipLevels,
              d3d12_resource_desc_get_layer_count(image_desc));
-@@ -9658,16 +9677,24 @@ static void vk_buffer_image_copy_from_d3d12(VkBufferImageCopy2 *copy,
+@@ -9658,16 +9680,24 @@ static void vk_buffer_image_copy_from_d3d12(VkBufferImageCopy2 *copy,
  
      if (src_box)
      {
@@ -78,7 +81,7 @@ index 5062c480..57566776 100644
 +        src_extent.depth = footprint->Footprint.Depth;
      }
 +
-+    if (compatible_block_size)
++    if (convert_block_geometry)
 +        src_extent = vkd3d_compute_texel_count_from_blocks(
 +                vkd3d_compute_block_count(src_extent, src_format), dst_format);
 +

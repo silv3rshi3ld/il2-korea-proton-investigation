@@ -60,6 +60,16 @@ Passing tests reduce, but do not eliminate, cross-application risk. The exact
 impact boundary and narrower fallback order are documented in
 [`upstream-submission-plan.md`](upstream-submission-plan.md).
 
+## Later PR scope refinement
+
+D08 remains the exact runtime record for predecessor `cf11ba76`. Before formal
+review, current PR commit `64ec55e7` restricted the conversion to equal-sized
+physical elements with different block dimensions. Same-geometry copies now
+use the original path. IL-2's 16-byte 1x1 RGBA32 element to 16-byte 4x4 BC3
+block still selects the same conversion, whose calculations are unchanged.
+The focused and full copy tests were rerun against the amended commit. See
+[`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md).
+
 ## Screenshots
 
 The local evidence copies remain ignored by Git until the user selects what to
