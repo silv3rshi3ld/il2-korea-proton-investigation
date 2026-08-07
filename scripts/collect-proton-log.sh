@@ -23,6 +23,7 @@ usage() {
         "  bc3-page-normalization" \
         "  baked-cache-trace" \
         "  menu-pass-trace" \
+        "  light-trace" \
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
@@ -62,6 +63,9 @@ variant_environment() {
             ;;
         menu-pass-trace)
             printf '%s' 'VKD3D_IL2_MENU_TRACE=1 '
+            ;;
+        light-trace)
+            printf '%s' 'VKD3D_IL2_LIGHT_TRACE=1 '
             ;;
         no-upload-hvv)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv '
@@ -243,7 +247,7 @@ collect_run() {
 
     awk '
         BEGIN { IGNORECASE = 1 }
-        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|IL2CACHE|IL2MENU|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|fragment.shading|shading.rate|VRS|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
+        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|IL2CACHE|IL2MENU|IL2LIGHT|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|fragment.shading|shading.rate|VRS|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
     ' "$source_log" >"$run_dir/filtered.log"
 
     awk '
@@ -307,6 +311,18 @@ collect_run() {
         printf 'il2menu_copy_count=%s\n' "$(count_matches 'IL2MENU usage .*op=copy_(texture|resource)' "$source_log")"
         printf 'il2menu_execute_count=%s\n' "$(count_matches 'IL2MENU usage .*op=execute' "$source_log")"
         printf 'il2menu_trace_suppressed_count=%s\n' "$(count_matches 'IL2MENU .*suppressed after limit' "$source_log")"
+        printf 'il2light_resource_trace_enabled_count=%s\n' "$(count_matches 'IL2LIGHT resource-name trace enabled' "$source_log")"
+        printf 'il2light_usage_trace_enabled_count=%s\n' "$(count_matches 'IL2LIGHT usage trace enabled' "$source_log")"
+        printf 'il2light_resource_name_count=%s\n' "$(count_matches 'IL2LIGHT resource_name ' "$source_log")"
+        printf 'il2light_usage_event_count=%s\n' "$(count_matches 'IL2LIGHT usage sequence=' "$source_log")"
+        printf 'il2light_barrier_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=(barrier|enhanced_barrier|uav_barrier|alias_barrier)' "$source_log")"
+        printf 'il2light_rtv_bind_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=rtv_bind' "$source_log")"
+        printf 'il2light_clear_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=(rtv_clear|uav_clear_uint|uav_clear_float)' "$source_log")"
+        printf 'il2light_draw_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=draw(_indexed)? ' "$source_log")"
+        printf 'il2light_dispatch_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=dispatch ' "$source_log")"
+        printf 'il2light_copy_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=copy_(texture|resource)' "$source_log")"
+        printf 'il2light_execute_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=execute' "$source_log")"
+        printf 'il2light_trace_suppressed_count=%s\n' "$(count_matches 'IL2LIGHT .*suppressed after limit' "$source_log")"
     } >"$run_dir/summary.txt"
 
     if grep -q -- 'IL2TEX enabled:' "$source_log"; then

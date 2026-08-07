@@ -39,7 +39,8 @@ outside this focused API implementation.
 | G13 | The same missing 1:4 block-unit conversion affects complete `64x64` terrain pages. | D07 finds 178 square `R32G32B32A32_UINT` footprints, converts them to `256x256` BC3 regions, and repairs terrain near 5,500 m; clean general-build D08 repeats the repair. | Confirmed causal for terrain; D08-tested predecessor `cf11ba76` is narrowed without changing the IL-2 branch in current PR commit `64ec55e7`. |
 | G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
 | G15 | The menu shimmer is produced by the game's tiled variable-rate-shading path or VKD3D/RADV translation of it. | E05 removes `VK_KHR_fragment_shading_rate`, makes VKD3D advertise no D3D12 VRS support, and leaves the same moving squares visible. | Weakened: VRS is not required for the reproduced artifact; do not pursue without contradictory runtime evidence. |
-| G16 | A screen-space or temporal reflection resource contains stale or incorrectly synchronized tiles. | D11 confirms runtime allocation of `m_prtTargetReflections`, native-resolution current/previous SSR color and weight targets, and `rtTempSSR`; no PIX labels are supplied. Allocation does not prove use. | D12 follows only those named targets through barriers, render-target binds, clears, copies, draws/shader hashes, and submission without changing rendering. |
+| G16 | A screen-space or temporal reflection resource contains stale or incorrectly synchronized tiles. | D12 records about 2,003 stable render/resolve cycles with explicit flag-zero transitions and stable shaders; the artifact remains. | Weakened as a simple transition failure on the named SSR targets; a shader/descriptor defect remains possible, but D12's cap does not cover the later cockpit/fire frames. |
+| G17 | The game's tiled dynamic-light reference list is stale, incorrectly cleared/synchronized, or mistranslated. | D12 names `rtLightRefs*` as `80x34x2 R32_UINT` RTV/UAV resources at 2560x1080, exactly an approximately 32x32-pixel screen grid. The artifact also appears in the cockpit and around a burning aircraft. Static renderer names include `g_tLightRefsRW`, `g_tLightsListRW`, and light-list collection/draw passes. | Strongest current lead, not proven. D13 follows only the light-reference, self-light, and light-volume resource cycle without changing behavior. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -69,13 +70,13 @@ block dimensions differ.
 Package inspection independently confirms the engine's 800 m baked-page
 geometry; see `evidence-map-package-inspection.md`.
 
-The remaining menu symptom starts a separate graphics batch. Its moving square
-geometry and concentration on reflective aircraft surfaces make G15 and G16
-better first discriminators than another terrain or allocation experiment.
-Static binary evidence proves that the D3D12 backend implements VRS controls
-and that the renderer maintains temporal reflection targets; it does not prove
-which path is active in the menu. E05 therefore tests capability selection
-before any workaround or source patch is considered.
+The remaining square artifact is a separate graphics batch. E05 weakens VRS,
+and D12 weakens a simple transition failure on the actively rendered SSR
+targets. The same run expands the symptom from the menu to the cockpit and a
+burning-aircraft scene. D12's `80x34x2` `rtLightRefs*` resources and the game's
+compiled light-list names now select G17 for the next focused trace. They do
+not prove that the light-reference values or synchronization are wrong, so D13
+remains telemetry-only rather than a workaround.
 
 ## Direct public report
 

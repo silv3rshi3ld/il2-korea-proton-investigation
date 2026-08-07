@@ -319,6 +319,26 @@
     `rtTempSSR` while constructing the affected menu. It makes no PIX marker or
     begin-event calls. Runtime allocation is now confirmed, but binding/use and
     causality remain unproven.
+69. D12 records 100,000 focused usage events over about 2,003 repeated
+    reflection cycles. The current/previous SSR targets are bound, cleared,
+    rendered with stable shader hashes, resolved, and transitioned through
+    coherent render-target/shader-resource/resolve states. Every logged
+    transition on this named family has flags `0`; no tracked UAV, alias, or
+    copy event occurs. This weakens a simple missing or split transition on the
+    named SSR targets without clearing reflection shaders or descriptors.
+70. D12's usage cap was reached around 21:12:49 local time and its broad name
+    cap around 21:18:12. The cockpit and exterior/fire screenshots were written
+    at 21:35:31 and 21:35:54. They validly show the same artifact outside the
+    menu, but their rendering operations are not inside D12's bounded usage
+    window.
+71. D12 names multiple `rtLightRefs*` generations as `80x34x2`, one-mip,
+    `DXGI_FORMAT_R32_UINT` resources with render-target and UAV flags. At
+    2560x1080, this maps the screen into approximately 32x32-pixel tiles.
+    `enviro.dll` and `renderers.dll` independently name `rtLightRefs`,
+    `g_tLightRefsRW`, `g_tLightsListRW`, light-list collection/draw, self-light,
+    and light-volume paths. Together with the cockpit/fire reproduction, this
+    promotes tiled dynamic lighting to the strongest current lead. It remains
+    correlation until D13 identifies the actual clear/write/read sequence.
 
 ## Observations not yet promoted to findings
 
@@ -376,7 +396,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
-| Menu aircraft shimmer | Persists after the terrain-copy and Wine-NUMA fixes, after E05 removes advertised VRS support, and on trace-only D11. D11 confirms runtime allocation of native-resolution current/previous SSR resources, but not their use. | Cause open; VRS weakened, reflection allocation confirmed, usage tracing next |
+| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D12 proves stable active SSR cycles but does not expose a named-target transition failure. The same run shows the grid in the cockpit and around a burning aircraft. `rtLightRefs*` maps the frame into approximately 32x32-pixel light tiles. | Cause open; VRS weakened, simple SSR transition failure weakened, tiled dynamic-light list is the strongest current lead pending D13 |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving

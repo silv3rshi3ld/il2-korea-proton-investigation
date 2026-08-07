@@ -34,20 +34,24 @@ confirming that it is not caused by this NUMA/OpenMP defect. Validation on
 other physical CPU/NUMA layouts and completion of upstream review are still
 pending.
 
-The menu shimmer now has a focused first discriminator. The game D3D12 backend
-exports variable-rate-shading controls, and its renderer names current and
-previous screen-reflection resources. Neither static clue proves runtime use.
-E05 disables only advertised fragment-shading-rate support on D10. The same
-moving squares remain, so VRS is not required for the artifact. The
-investigation now moves to correlating the menu's temporal/reflection resources
-with the visible blocks. D11 is a completed trace-only VKD3D build that records
-application-supplied resource names and PIX pass labels without changing the
-rendering path. D11 is visually unchanged and confirms that the menu allocates
-native-resolution current/previous SSR color and weight resources plus
-`rtTempSSR`; the game supplies no PIX pass labels. Allocation is not proof of
-use or cause. A local D12 trace now follows only those named resources through
-bindings, barriers, draws, shader hashes, and submission. No application
-override is proposed.
+The menu/cockpit square artifact now has a narrower lead. E05 proves that VRS
+is not required. D11 identifies the game's named reflection resources, and
+D12 proves they are actively rendered in about 2,003 stable cycles with
+explicit, non-split transitions and stable shader hashes. The artifact remains,
+so a simple missing transition on those named SSR targets is weakened. The
+same run visually confirms the squares in the cockpit and outside around a
+burning aircraft, although D12 reached its bounded event cap before those later
+frames.
+
+D12 also exposes `rtLightRefs*`: `80x34x2 R32_UINT` RTV/UAV resources at the
+2560x1080 runtime resolution. That is the exact geometry of an approximately
+32x32-pixel screen-tile grid. Read-only game strings connect it to
+`g_tLightRefsRW`, light-list collection, self-light, and light-volume passes.
+This correlation makes tiled dynamic lighting the strongest current lead, not
+a conclusion. Trace-only D13 commit `395d9747` is built locally to follow only
+that resource family through clears, barriers, writer/reader shader hashes,
+and submission. It is not installed or run, and no application override is
+proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
