@@ -89,13 +89,16 @@ unchanged to Vulkan, whose BC3 transfers are 4x4-block granular. This is the
 strongest current cause for the magenta terrain seams and a possible contributor
 to whole-page loss. It does not yet explain the menu blocks. D05a loaded but
 matched zero copies because its source-side filter was too strict, so its
-visually unchanged run is invalid as a causal test. D05b now accepts both
-source-box and footprint-only forms and adds candidate/rejection telemetry. Its
-isolated custom Proton tool and first runtime run are prepared, but it has not
-yet been executed. See
+visually unchanged run is invalid as a causal test. D05b recorded 432
+footprint-only candidates and revealed that every source is
+`R32G32B32A32_UINT`, with zero adjustments. D3D12 defines this as a 128-bit
+uncompressed-to-BC3 reinterpret copy: both destination dimensions must be four
+times the source dimensions. VKD3D-Proton already handles that conversion for
+image-to-image copies, but the buffer-to-image helper does not. D05c is the
+next exact-class causal build; it is not an application override. See
 [`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md)
 [`docs/evidence-d05-result.md`](docs/evidence-d05-result.md), and
-[`docs/evidence-d05b-preparation.md`](docs/evidence-d05b-preparation.md).
+[`docs/evidence-d05b-result.md`](docs/evidence-d05b-result.md).
 
 D03 is complete and visually unchanged. In its same-run pre-cap class, all 585
 candidates have placed-resource records, none overlaps any traced placed buffer

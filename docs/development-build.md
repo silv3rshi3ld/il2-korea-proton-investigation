@@ -299,11 +299,41 @@ match; D02 had only recorded the already-converted extent. See
 
 - Diagnostic commit: `f6416c79dafabcb76e2e095935dfcd0c428b9208`
 - Build directory: `build/vkd3d-proton-il2-d05b-bc3-f6416c79/`
-- State: compiled for x86-64 and x86; not installed or run
+- State: completed; 432 candidates, zero adjustments, 432 explicit rejections
 
 D05b accepts either an explicit source box or the footprint-only representation
 used by `CopyTextureRegion`. Before adjustment it logs every target-class
 candidate, source representation, formats, physical row capacity, and a safety-
 rejection bitmask. This prevents another visually ambiguous zero-match run.
-Testing is paused with the build retained; see
-[`evidence-d05b-preparation.md`](evidence-d05b-preparation.md).
+The run showed that every source footprint is `R32G32B32A32_UINT`, so the
+BC3-source safety model was incorrect. See
+[`evidence-d05b-result.md`](evidence-d05b-result.md).
+
+## D05c exact reinterpret-copy revision
+
+D05c commit: `5391ec7f427795fe0fc151047422629d849e35be`
+
+D05c retains the opt-in gate and exact 2048x2048 one-mip BC3 destination plus
+the four observed source shapes. It maps each 128-bit
+`R32G32B32A32_UINT` source texel to one 4x4 BC3 block, including Vulkan
+`imageExtent`, `bufferRowLength`, and `bufferImageHeight`. This mirrors the
+block-unit conversion already used by VKD3D-Proton's image-to-image copy path.
+It remains a causal diagnostic until its runtime behavior is measured.
+
+The official development build completed for x86-64 and x86 in:
+
+```text
+build/vkd3d-proton-il2-d05c-bc3-5391ec7f/
+```
+
+| File | Architecture | SHA-256 |
+|---|---|---|
+| `x64/d3d12.dll` | PE32+ x86-64 | `9c05de19c472684f5a1910fd7f123fc0d1b4fad31ece2dd2b6ce3d41dff147d2` |
+| `x64/d3d12core.dll` | PE32+ x86-64 | `bebc057635a65bf9071afb38a5df96a0e5e88e0e71f274338c67488b773f4cc4` |
+| `x86/d3d12.dll` | PE32 i386 | `0a4166157ab5576ba1711d4a9a047bcb879b32508013b69febd5c5a19b798288` |
+| `x86/d3d12core.dll` | PE32 i386 | `6b2033e2939d349af998c36af006b819ffadab10619836112c41b0d718eb5943` |
+
+String inspection confirms the D05c enable, adjustment, rejection, and log-cap
+markers. A synthetic test containing all four observed shapes validates the
+new extents and buffer layouts. Installation is pending because Steam was
+still running when the first safe custom-tool creation was attempted.

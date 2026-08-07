@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the bounded D05/D05b BC3 border-copy diagnostic log."""
+"""Validate the bounded D05c RGBA32_UINT-to-BC3 reinterpret-copy diagnostic."""
 
 from __future__ import annotations
 
@@ -43,10 +43,10 @@ REJECTION_RE = re.compile(
 )
 
 EXPECTED_TRANSFORMS = {
-    (1, 64, 1): (4, 64, 1),
-    (1, 128, 1): (4, 128, 1),
-    (64, 1, 1): (64, 4, 1),
-    (128, 1, 1): (128, 4, 1),
+    (1, 64, 1): (4, 256, 1),
+    (1, 128, 1): (4, 512, 1),
+    (64, 1, 1): (256, 4, 1),
+    (128, 1, 1): (512, 4, 1),
 }
 
 
@@ -129,33 +129,39 @@ def main() -> int:
             errors.append(
                 f"sequence {record['sequence']} emitted {emitted}, expected {EXPECTED_TRANSFORMS[original]}"
             )
+        if record["src_format"] != 0x3:
+            errors.append(f"sequence {record['sequence']} has unexpected source format {record['src_format']:#x}")
         if record["dst_format"] != 0x4D:
             errors.append(f"sequence {record['sequence']} has unexpected destination format {record['dst_format']:#x}")
         if record["ix"] < 0 or record["iy"] < 0 or record["iz"] != 0:
             errors.append(f"sequence {record['sequence']} has an invalid destination offset")
         if record["ix"] % 4 or record["iy"] % 4:
             errors.append(f"sequence {record['sequence']} has a non-block-aligned destination offset")
-        if record["sl"] % 4 or record["st"] % 4 or record["sf"] != 0:
-            errors.append(f"sequence {record['sequence']} has a non-block-aligned source offset")
-        if (record["sw"] < record["ow"] or record["sh"] < record["oh"] or
-                record["sd"] != record["od"]):
-            errors.append(f"sequence {record['sequence']} has an insufficient virtual source extent")
+        if record["src_box_present"] or record["sl"] or record["st"] or record["sf"]:
+            errors.append(f"sequence {record['sequence']} is not the observed footprint-only source form")
+        if ((record["sw"], record["sh"], record["sd"]) != original or
+                (record["fw"], record["fh"], record["fd"]) != original):
+            errors.append(f"sequence {record['sequence']} source footprint does not equal the original extent")
         if record["ix"] + record["ew"] > 2048 or record["iy"] + record["eh"] > 2048:
             errors.append(f"sequence {record['sequence']} exceeds the destination mip")
-        if record["buffer_row_length"] < record["ew"]:
-            errors.append(f"sequence {record['sequence']} lacks enough physical blocks per buffer row")
-        if record["buffer_image_height"] < record["eh"]:
-            errors.append(f"sequence {record['sequence']} lacks enough physical block rows")
-
-        # BC3 needs 16 bytes for each physical 4x4 block. A footprint whose
-        # virtual thin dimension is one texel still owns that complete block.
-        physical_blocks_per_row = (record["fw"] + 3) // 4
-        if record["fd"] != 1 or record["row_pitch"] < physical_blocks_per_row * 16:
-            errors.append(f"sequence {record['sequence']} source footprint lacks a complete BC3 row")
+        expected_row_length = record["row_pitch"] // 16 * 4
+        expected_image_height = record["fh"] * 4
+        if record["row_pitch"] % 16 or record["row_pitch"] < record["fw"] * 16:
+            errors.append(f"sequence {record['sequence']} source footprint lacks complete 128-bit elements")
+        if record["buffer_row_length"] != expected_row_length:
+            errors.append(
+                f"sequence {record['sequence']} has bufferRowLength {record['buffer_row_length']}, "
+                f"expected {expected_row_length} BC3 texels"
+            )
+        if record["buffer_image_height"] != expected_image_height:
+            errors.append(
+                f"sequence {record['sequence']} has bufferImageHeight {record['buffer_image_height']}, "
+                f"expected {expected_image_height} BC3 texels"
+            )
 
     if adjustments and len(adjustments) != 432:
         warnings.append(
-            f"D05b logged {len(adjustments)} adjustments; D02 logged 432, but scene duration and cache demand can change the count"
+            f"D05c logged {len(adjustments)} adjustments; D02/D05b logged 432, but scene duration and cache demand can change the count"
         )
 
     status = "valid" if not errors else "invalid"
@@ -208,9 +214,9 @@ def main() -> int:
         "",
         "## Interpretation",
         "",
-        "A valid result proves that D05b recognized only the observed Korea terrain-cache border class, "
-        "that every source footprint contained the complete physical BC3 blocks consumed by the expanded "
-        "copy, and that the emitted Vulkan extents were block-complete and remained inside the 2048x2048 mip. "
+        "A valid result proves that D05c recognized only the observed Korea terrain-cache border class, "
+        "mapped every 128-bit R32G32B32A32_UINT source element to one 4x4 BC3 destination block, "
+        "and expressed the Vulkan extent and buffer layout in destination-format texels while remaining inside the 2048x2048 mip. "
         "Visual classification is still required to decide whether this compatibility behavior affects seams, "
         "missing pages, both, or neither.",
         "",

@@ -1,0 +1,108 @@
+From 5391ec7f427795fe0fc151047422629d849e35be Mon Sep 17 00:00:00 2001
+From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+Date: Fri, 7 Aug 2026 09:11:40 +0200
+Subject: [PATCH] vkd3d: Test RGBA32-to-BC3 buffer copy geometry for IL-2
+
+---
+ libs/vkd3d/command.c | 46 ++++++++++++++++++++++++++++++--------------
+ 1 file changed, 32 insertions(+), 14 deletions(-)
+
+diff --git a/libs/vkd3d/command.c b/libs/vkd3d/command.c
+index 9569df15..5ec6b6ba 100644
+--- a/libs/vkd3d/command.c
++++ b/libs/vkd3d/command.c
+@@ -9638,7 +9638,7 @@ static bool vkd3d_il2_bc3_border_copy_diagnostic_enabled(void)
+ 
+     enabled = vkd3d_get_env_var("VKD3D_IL2_BC3_BORDER_COPY", env, sizeof(env)) && !strcmp(env, "1");
+     if (enabled && !vkd3d_atomic_uint32_exchange_explicit(&marker_emitted, 1, vkd3d_memory_order_relaxed))
+-        INFO("IL2BCCOPY enabled mode=normalize-observed-bc3-borders log_limit=%u.\n",
++        INFO("IL2BCCOPY enabled mode=reinterpret-rgba32-uint-to-bc3 log_limit=%u.\n",
+                 VKD3D_IL2_BC3_BORDER_COPY_LOG_LIMIT);
+ 
+     return enabled;
+@@ -9652,6 +9652,7 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+     static uint32_t candidate_count;
+     static uint32_t adjustment_count;
+     uint32_t original_width, original_height, emitted_width, emitted_height;
++    uint32_t emitted_buffer_row_length, emitted_buffer_image_height;
+     uint32_t source_left, source_top, source_front, source_width, source_height, source_depth;
+     uint32_t candidate_sequence, sequence, reject_mask = 0;
+     bool horizontal, vertical;
+@@ -9680,12 +9681,6 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+     if (!vertical && !horizontal)
+         return false;
+ 
+-    emitted_width = vertical ? dst_format->block_width : original_width;
+-    emitted_height = horizontal ? dst_format->block_height : original_height;
+-    if ((uint32_t)copy->imageOffset.x + emitted_width > image_desc->Width ||
+-            (uint32_t)copy->imageOffset.y + emitted_height > image_desc->Height)
+-        return false;
+-
+     if (src_box)
+     {
+         source_left = src_box->left;
+@@ -9722,24 +9717,45 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+                 copy->bufferOffset);
+     }
+ 
+-    if (src_format->block_width != 4 || src_format->block_height != 4)
++    /* D3D12 reinterpret copies map each 128-bit RGBA32_UINT texel to one
++     * 128-bit BC3 block. Vulkan expresses the copy extent and buffer layout
++     * in destination texels, so both axes must be converted from source
++     * texels to 4x4 BC3 blocks. The ordinary buffer-image path currently
++     * carries the 1x1 source geometry through unchanged. */
++    if (src_format->dxgi_format != DXGI_FORMAT_R32G32B32A32_UINT ||
++            src_format->block_width != 1 || src_format->block_height != 1 ||
++            src_format->byte_count * src_format->block_byte_count != 16)
+         reject_mask |= 0x1;
+     if (src_format->byte_count * src_format->block_byte_count !=
+             dst_format->byte_count * dst_format->block_byte_count)
+         reject_mask |= 0x2;
+     if (footprint->Footprint.Depth != 1 || source_depth != 1)
+         reject_mask |= 0x4;
+-    if (source_left % 4 || source_top % 4 || source_front != 0)
++    if (src_box || source_left || source_top || source_front)
+         reject_mask |= 0x8;
+-    if (source_width < original_width || source_height < original_height)
++    if (source_width != original_width || source_height != original_height ||
++            footprint->Footprint.Width != original_width || footprint->Footprint.Height != original_height)
+         reject_mask |= 0x10;
+-    if (copy->bufferRowLength < emitted_width)
++    if (footprint->Footprint.RowPitch %
++            (dst_format->byte_count * dst_format->block_byte_count))
+         reject_mask |= 0x20;
+-    if (copy->bufferImageHeight < emitted_height)
+-        reject_mask |= 0x40;
+-    if (footprint->Footprint.RowPitch < src_format->byte_count * src_format->block_byte_count)
++    if (footprint->Footprint.RowPitch <
++            original_width * src_format->byte_count * src_format->block_byte_count)
+         reject_mask |= 0x80;
+ 
++    emitted_width = original_width / src_format->block_width * dst_format->block_width;
++    emitted_height = original_height / src_format->block_height * dst_format->block_height;
++    emitted_buffer_row_length = footprint->Footprint.RowPitch /
++            (dst_format->byte_count * dst_format->block_byte_count) * dst_format->block_width;
++    emitted_buffer_image_height = align(footprint->Footprint.Height,
++            src_format->block_height) / src_format->block_height * dst_format->block_height;
++
++    if ((uint32_t)copy->imageOffset.x + emitted_width > image_desc->Width ||
++            (uint32_t)copy->imageOffset.y + emitted_height > image_desc->Height)
++        reject_mask |= 0x40;
++    if (emitted_buffer_row_length < emitted_width || emitted_buffer_image_height < emitted_height)
++        reject_mask |= 0x100;
++
+     if (reject_mask)
+     {
+         if (candidate_sequence <= VKD3D_IL2_BC3_BORDER_COPY_LOG_LIMIT)
+@@ -9749,6 +9765,8 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+ 
+     copy->imageExtent.width = emitted_width;
+     copy->imageExtent.height = emitted_height;
++    copy->bufferRowLength = emitted_buffer_row_length;
++    copy->bufferImageHeight = emitted_buffer_image_height;
+     sequence = vkd3d_atomic_uint32_increment(&adjustment_count, vkd3d_memory_order_relaxed);
+     if (sequence <= VKD3D_IL2_BC3_BORDER_COPY_LOG_LIMIT)
+     {
+-- 
+2.55.0
+

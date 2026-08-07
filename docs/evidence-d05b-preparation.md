@@ -1,9 +1,12 @@
-# D05b footprint-aware BC3 diagnostic: runtime test prepared
+# D05b footprint-aware BC3 diagnostic: completed
 
 ## State
 
-D05b is compiled, installed in an isolated custom Proton tool, and prepared for
-run `D05b-bc3-r1`. It has **not yet been run**.
+D05b was compiled, installed in an isolated custom Proton tool, and run as
+`D05b-bc3-r1`. It found 432 candidates but rejected all of them because the
+source footprints are `R32G32B32A32_UINT`, not BC3-shaped. The unchanged image
+therefore did not test normalization. See
+[`evidence-d05b-result.md`](evidence-d05b-result.md).
 
 - Base VKD3D-Proton: `84c87c8390d9df75ba41d911496296fe13f0e275`
 - D05a commit: `35bd875cf58a555a64fa366926c04cd6b0664611`
