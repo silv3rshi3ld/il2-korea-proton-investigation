@@ -22,6 +22,7 @@ usage() {
         "  bc3-border-normalization" \
         "  bc3-page-normalization" \
         "  baked-cache-trace" \
+        "  menu-pass-trace" \
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
@@ -58,6 +59,9 @@ variant_environment() {
             ;;
         baked-cache-trace)
             printf '%s' 'VKD3D_IL2_BAKED_CACHE_TRACE=1 '
+            ;;
+        menu-pass-trace)
+            printf '%s' 'VKD3D_IL2_MENU_TRACE=1 '
             ;;
         no-upload-hvv)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv '
@@ -239,7 +243,7 @@ collect_run() {
 
     awk '
         BEGIN { IGNORECASE = 1 }
-        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|IL2CACHE|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|fragment.shading|shading.rate|VRS|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
+        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|IL2CACHE|IL2MENU|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|fragment.shading|shading.rate|VRS|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
     ' "$source_log" >"$run_dir/filtered.log"
 
     awk '
@@ -289,6 +293,12 @@ collect_run() {
         printf 'baked_cache_barrier_count=%s\n' "$(count_matches 'IL2CACHE (enhanced_)?barrier ' "$source_log")"
         printf 'baked_cache_destroy_count=%s\n' "$(count_matches 'IL2CACHE destroy ' "$source_log")"
         printf 'baked_cache_suppressed_count=%s\n' "$(count_matches 'IL2CACHE suppressed ' "$source_log")"
+        printf 'il2menu_resource_trace_enabled_count=%s\n' "$(count_matches 'IL2MENU resource-name trace enabled' "$source_log")"
+        printf 'il2menu_pix_trace_enabled_count=%s\n' "$(count_matches 'IL2MENU PIX-event trace enabled' "$source_log")"
+        printf 'il2menu_resource_name_count=%s\n' "$(count_matches 'IL2MENU resource_name ' "$source_log")"
+        printf 'il2menu_pix_event_count=%s\n' "$(count_matches 'IL2MENU pix_event ' "$source_log")"
+        printf 'il2menu_reflection_name_count=%s\n' "$(count_matches 'IL2MENU.*(SSR|reflection|reflect)' "$source_log")"
+        printf 'il2menu_trace_suppressed_count=%s\n' "$(count_matches 'IL2MENU .*suppressed after limit' "$source_log")"
     } >"$run_dir/summary.txt"
 
     if grep -q -- 'IL2TEX enabled:' "$source_log"; then

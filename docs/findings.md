@@ -307,6 +307,12 @@
     present, a temporal reflection resource is the leading alternative if E05
     is unchanged. This remains a hypothesis until runtime pass/resource use is
     correlated.
+67. E05 ran on updated game build `24615759` with exact runtime VKD3D build
+    `cf11ba76`, no OpenMP/topology override, and 228 explicit warnings confirming
+    that `VK_KHR_fragment_shading_rate` was disabled. The user confirmed that
+    the same main-menu shimmering squares remain. No device-loss, OOM, or GPU
+    reset signature was found. The artifact therefore does not require the VRS
+    path, and the temporal/reflection lead now ranks above G15.
 
 ## Observations not yet promoted to findings
 
@@ -364,7 +370,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
-| Menu aircraft shimmer | Persists after the terrain-copy and Wine-NUMA fixes. The square geometry suggests a tiled effect; static binaries expose VRS controls and temporal reflection targets, but runtime use is not yet proven. | Cause open; E05 VRS capability control prepared |
+| Menu aircraft shimmer | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. Static binaries expose temporal reflection targets and distinct reflection passes, but runtime use is not yet proven. | Cause open; VRS weakened, temporal/reflection correlation next |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
@@ -418,6 +424,6 @@ development-build stage.
     the conversion selected for IL-2; same-block-geometry copies retain the
     original path.
 16. The NUMA caller is resolved on the reporting host by exact Wine MR !11604.
-    Start the separate menu track with E05, disabling only advertised fragment
-    shading rate on D10. If unchanged, instrument the reflection/temporal path;
-    if changed, trace the exact VRS calls and rate image before proposing code.
+    E05 disables only advertised fragment shading rate on D10 and is visually
+    unchanged. Instrument the reflection/temporal path next; do not propose a
+    VRS or reflection workaround without pass/resource evidence.

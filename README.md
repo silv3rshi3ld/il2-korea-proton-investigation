@@ -37,10 +37,13 @@ pending.
 The menu shimmer now has a focused first discriminator. The game D3D12 backend
 exports variable-rate-shading controls, and its renderer names current and
 previous screen-reflection resources. Neither static clue proves runtime use.
-E05 therefore disables only advertised fragment-shading-rate support on D10;
-an unchanged result will move the investigation to the temporal reflection
-path, while a repeatable change will justify tracing the exact VRS calls and
-rate image. No application override is proposed.
+E05 disables only advertised fragment-shading-rate support on D10. The same
+moving squares remain, so VRS is not required for the artifact. The
+investigation now moves to correlating the menu's temporal/reflection resources
+with the visible blocks. D11 is a completed trace-only VKD3D build that records
+application-supplied resource names and PIX pass labels without changing the
+rendering path; installation and one controlled menu run remain. No
+application override is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
@@ -50,14 +53,14 @@ The verified environment is:
 - Steam library: `/home/USER/.local/share/Steam`
 - Game directory: `/home/USER/.local/share/Steam/steamapps/common/IL2Series`
 - Prefix: `/home/USER/.local/share/Steam/steamapps/compatdata/247970`
-- Game build ID: `24596901` (Steam auto-update on 2026-08-06; prior controlled
-  build was `24577563`)
-- Selected compatibility tool: Proton Experimental
-  `experimental-11.0-20260724c` (`11.0-100` prefix)
+- Game build ID: `24615759` (Steam auto-update on 2026-08-07; the immediately
+  preceding controlled build was `24596901`)
+- Selected compatibility tool: `IL2-Korea-D10-WineMR11604-Proton11`
+  (`experimental-11.0-20260724c-wine-mr11604-d10`, `11.0-100` prefix)
 - N05 upstream-series validation tool:
   `IL2-Korea-D10-WineMR11604-Proton11`, based on the same Proton 11 family and
   D08 terrain tool with the 64-bit Wine components affected by MR !11604
-- VKD3D-Proton commit: `3dfc6f07d0953b1e8b41705275c2c59cc7374fc5`
+- VKD3D-Proton commit: `cf11ba76a1cdbee` (D08 terrain fix carried by D10)
 - DXVK commit: `1a5919b7edd111887648d1e8bf0c32733e2e00d3`
 - Mesa/RADV: `26.1.6` (`Mesa 26.1.6-arch3.1`)
 
@@ -332,6 +335,8 @@ Compare collected runs with:
   first verified descriptor-buffer-disabled result and provenance caveat
 - [`docs/evidence-e05-no-vrs-preparation.md`](docs/evidence-e05-no-vrs-preparation.md):
   separate menu-shimmer VRS capability control and decision rules
+- [`docs/evidence-e05-no-vrs-result.md`](docs/evidence-e05-no-vrs-result.md):
+  valid unchanged result and transition to temporal/reflection tracing
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/rendering-path-assessment.md`](docs/rendering-path-assessment.md):
