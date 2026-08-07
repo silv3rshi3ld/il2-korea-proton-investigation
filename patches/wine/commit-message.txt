@@ -1,0 +1,12 @@
+kernelbase: Implement NUMA node topology query functions.
+
+Query Wine's existing RelationNumaNode data instead of returning stubbed
+results. Return each requested node's GroupMask from
+GetNumaNodeProcessorMaskEx(), and derive the highest node number from
+the same entries.
+
+Add topology-derived tests which make no assumptions about the executing
+machine's processor or node count.
+
+This fixes Intel OpenMP affinity initialization in Korea. IL-2 Series
+under Proton without an application override or environment workaround.
