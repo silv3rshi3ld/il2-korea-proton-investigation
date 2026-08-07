@@ -358,6 +358,27 @@
     The visual alignment supports a light/reflection interaction but does not
     distinguish a bad light-list value from a bad view, descriptor, shader
     translation, or reflection consumer.
+75. D14 captures all target DXIL/SPIR-V pairs and identifies six exact
+    light-list compute stages. D13's bounded dispatch window missed
+    `ComputeLightsFirstRef` (`7cefa1bc80bb4c70`) and
+    `ComputeLightsIndices` (`11e32439a86036ba`). The latter writes a separate
+    uint light-index buffer after the count stage.
+76. Pixel shaders `PixOutLight_msp` (`df0bd777fd1bb89d`) and
+    `PixOutLight_mss` (`a2d104d5c813322e`) statically read both a 3D uint
+    light-reference SRV and that separate index buffer. They derive a tile
+    coordinate from screen position and unpack count/start bits from the grid,
+    so incorrect data can affect one complete approximately 32x32 screen tile.
+    Reflection is therefore involved as an output pass, but tiled-light data is
+    the narrower causal lead.
+77. The relevant translated SPIR-V modules validate and preserve the DXIL
+    resource dimensions, `8x8` group sizes, bounds checks, integer packing, and
+    atomics. This weakens an obvious structural translator mismatch without
+    proving descriptor correctness, computed values, or runtime visibility.
+78. D13's named-image transition does not resolve whether the separate
+    light-index buffer receives an adequate dependency after
+    `ComputeLightsIndices`. D15 commit `9c6a4338` passively logs the final
+    dispatches and all immediately intervening barriers before any forced
+    barrier A/B is considered.
 
 ## Observations not yet promoted to findings
 
@@ -415,7 +436,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
-| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D12 proves stable active SSR cycles. D13 proves stable light-grid/self-light clears, transitions, and UAV dependencies and places the same reflection shaders immediately after those inputs become readable. | Cause open; VRS and simple missing-clear/barrier forms weakened. Light-grid shader translation/view/descriptor handling and its reflection consumer are the focused remaining leads. |
+| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D14 identifies a six-stage tiled-light producer and proves the correlated pixel shaders consume its 3D grid plus a separate index buffer. Structural DXIL/SPIR-V checks pass; D13 did not resolve the final buffer dependency. | Cause open; VRS, reflection-target transitions, and obvious structural translation errors are weakened. Final light-index-buffer visibility is the next discriminator, followed by descriptor/value checks. |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
@@ -470,8 +491,9 @@ development-build stage.
     original path.
 16. The NUMA caller is resolved on the reporting host by exact Wine MR !11604.
     E05 disables only advertised fragment shading rate on D10 and is visually
-    unchanged. D11-D13 narrow the remaining defect to the light-grid,
-    self-light, and reflection sequence without finding a simple missing
-    transition, clear, or UAV barrier. Inspect the exact stable shaders and
-    descriptor/view contract next; do not propose an application workaround
-    without a causal discriminator.
+    unchanged. D11-D14 narrow the remaining defect to the tiled-light grid and
+    separate light-index buffer consumed by the reflection/light passes.
+    Structural shader translation checks pass. Use D15 to resolve the final
+    buffer dependency, then inspect descriptors/values if synchronization is
+    sufficient; do not propose an application workaround without a causal
+    discriminator.

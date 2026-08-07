@@ -74,6 +74,16 @@ complete native copy-test subset passes 6,429,713 checks with zero failures.
 The patch SHA-256 is
 `ca20fb05e712f2ae8216e65843990720a67d49c81b506245a17bb82fc0b58d2a`.
 
+`0010-vkd3d-Add-focused-menu-resource-and-pass-telemetry.patch` through
+`0013-vkd3d-Trace-post-count-light-list-dependencies.patch` are a cumulative,
+gated diagnostic series on terrain-fix predecessor `cf11ba76`. D11 names menu
+resources and nearby passes; D12 follows reflection-target use; D13 follows the
+tiled-light grid and self-light target; D15 extends that trace through the two
+final light-list compute stages and records barriers for unnamed buffers as
+well as named images. They change no rendering unless their private telemetry
+environment variables are enabled and are not proposed as a compatibility
+fix. The series is retained only for reproducibility and possible later review.
+
 ## Why there is no application override
 
 - The repeatable E00 baseline and successful D07 causal run identify a format-

@@ -1,0 +1,149 @@
+From 9c6a4338a2eff9f109fabe9b936f8d3c63a1f405 Mon Sep 17 00:00:00 2001
+From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+Date: Fri, 7 Aug 2026 23:11:09 +0200
+Subject: [PATCH 13/13] vkd3d: Trace post-count light-list dependencies
+
+---
+ libs/vkd3d/command.c       | 91 +++++++++++++++++++++++++++++++++++++-
+ libs/vkd3d/vkd3d_private.h |  2 +
+ 2 files changed, 92 insertions(+), 1 deletion(-)
+
+diff --git a/libs/vkd3d/command.c b/libs/vkd3d/command.c
+index ff1fba8e..f01de7db 100644
+--- a/libs/vkd3d/command.c
++++ b/libs/vkd3d/command.c
+@@ -31,8 +31,12 @@
+ #define VKD3D_IL2_MENU_PIX_EVENT_LIMIT 50000u
+ #define VKD3D_IL2_MENU_USAGE_EVENT_LIMIT 100000u
+ #define VKD3D_IL2_LIGHT_USAGE_EVENT_LIMIT 200000u
+-#define VKD3D_IL2_LIGHT_UAV_DISPATCH_BUDGET 4u
++#define VKD3D_IL2_LIGHT_UAV_DISPATCH_BUDGET 8u
+ #define VKD3D_IL2_LIGHT_READ_OP_BUDGET 2u
++#define VKD3D_IL2_LIGHT_POST_COUNT_DISPATCH_BUDGET 4u
++#define VKD3D_IL2_LIGHT_POST_COUNT_BARRIER_BUDGET 16u
++
++#define VKD3D_IL2_LIGHT_COMPUTE_LIGHTS_COUNT_HASH 0x651194bd0a21772eull
+
+ static pthread_once_t vkd3d_il2_menu_command_trace_once = PTHREAD_ONCE_INIT;
+ static bool vkd3d_il2_menu_command_trace;
+@@ -308,6 +312,72 @@ static void vkd3d_il2_light_trace_barrier(struct d3d12_command_list *list,
+     struct d3d12_resource *before_resource, *after_resource, *resource;
+     uint32_t sequence;
+
++    if (list->il2_light_trace_post_count_barrier_budget)
++    {
++        before_resource = NULL;
++        after_resource = NULL;
++        resource = NULL;
++
++        switch (barrier->Type)
++        {
++            case D3D12_RESOURCE_BARRIER_TYPE_TRANSITION:
++                resource = impl_from_ID3D12Resource(barrier->Transition.pResource);
++                break;
++            case D3D12_RESOURCE_BARRIER_TYPE_UAV:
++                resource = impl_from_ID3D12Resource(barrier->UAV.pResource);
++                break;
++            case D3D12_RESOURCE_BARRIER_TYPE_ALIASING:
++                before_resource = impl_from_ID3D12Resource(barrier->Aliasing.pResourceBefore);
++                after_resource = impl_from_ID3D12Resource(barrier->Aliasing.pResourceAfter);
++                break;
++        }
++
++        if (vkd3d_il2_light_usage_trace_take(list, &sequence))
++        {
++            if (barrier->Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
++            {
++                INFO("IL2LIGHT usage sequence=%u op=post_count_barrier type=transition list=%p "
++                        "cookie=%u tracked_name=%s dimension=%u width=%"PRIu64" height=%u depth=%u "
++                        "format=%u resource_flags=%#x flags=%#x subresource=%u before=%#x after=%#x.\n",
++                        sequence, list, resource ? resource->res.cookie.index : 0,
++                        vkd3d_il2_light_resource_is_tracked(resource) ?
++                                resource->il2_light_trace_name : "-",
++                        resource ? resource->desc.Dimension : 0,
++                        resource ? resource->desc.Width : 0,
++                        resource ? resource->desc.Height : 0,
++                        resource ? resource->desc.DepthOrArraySize : 0,
++                        resource ? resource->desc.Format : 0,
++                        resource ? resource->desc.Flags : 0,
++                        barrier->Flags, barrier->Transition.Subresource,
++                        barrier->Transition.StateBefore, barrier->Transition.StateAfter);
++            }
++            else if (barrier->Type == D3D12_RESOURCE_BARRIER_TYPE_UAV)
++            {
++                INFO("IL2LIGHT usage sequence=%u op=post_count_barrier type=uav list=%p "
++                        "cookie=%u tracked_name=%s dimension=%u width=%"PRIu64" height=%u depth=%u "
++                        "format=%u resource_flags=%#x flags=%#x.\n",
++                        sequence, list, resource ? resource->res.cookie.index : 0,
++                        vkd3d_il2_light_resource_is_tracked(resource) ?
++                                resource->il2_light_trace_name : "-",
++                        resource ? resource->desc.Dimension : 0,
++                        resource ? resource->desc.Width : 0,
++                        resource ? resource->desc.Height : 0,
++                        resource ? resource->desc.DepthOrArraySize : 0,
++                        resource ? resource->desc.Format : 0,
++                        resource ? resource->desc.Flags : 0, barrier->Flags);
++            }
++            else
++            {
++                INFO("IL2LIGHT usage sequence=%u op=post_count_barrier type=alias list=%p "
++                        "before_cookie=%u after_cookie=%u flags=%#x.\n", sequence, list,
++                        before_resource ? before_resource->res.cookie.index : 0,
++                        after_resource ? after_resource->res.cookie.index : 0, barrier->Flags);
++            }
++        }
++
++        list->il2_light_trace_post_count_barrier_budget--;
++    }
++
+     switch (barrier->Type)
+     {
+         case D3D12_RESOURCE_BARRIER_TYPE_TRANSITION:
+@@ -493,6 +563,23 @@ static void vkd3d_il2_light_trace_dispatch(struct d3d12_command_list *list,
+                 x, y, z, cs_hash);
+         list->il2_light_trace_read_op_budget--;
+     }
++
++    if (list->il2_light_trace_post_count_dispatch_budget &&
++            vkd3d_il2_light_usage_trace_take(list, &sequence))
++    {
++        INFO("IL2LIGHT usage sequence=%u op=dispatch role=post_count list=%p "
++                "groups=%u,%u,%u cs=%016"PRIx64".\n",
++                sequence, list, x, y, z, cs_hash);
++        list->il2_light_trace_post_count_dispatch_budget--;
++    }
++
++    if (cs_hash == VKD3D_IL2_LIGHT_COMPUTE_LIGHTS_COUNT_HASH)
++    {
++        list->il2_light_trace_post_count_dispatch_budget =
++                VKD3D_IL2_LIGHT_POST_COUNT_DISPATCH_BUDGET;
++        list->il2_light_trace_post_count_barrier_budget =
++                VKD3D_IL2_LIGHT_POST_COUNT_BARRIER_BUDGET;
++    }
+ }
+
+ static void vkd3d_il2_light_trace_copy(struct d3d12_command_list *list, const char *op,
+@@ -7745,6 +7832,8 @@ static void d3d12_command_list_reset_api_state(struct d3d12_command_list *list,
+     list->il2_light_trace_read_cookie = 0;
+     list->il2_light_trace_read_name[0] = '\0';
+     list->il2_light_trace_read_op_budget = 0;
++    list->il2_light_trace_post_count_dispatch_budget = 0;
++    list->il2_light_trace_post_count_barrier_budget = 0;
+     memset(list->rtvs, 0, sizeof(list->rtvs));
+     memset(&list->dsv, 0, sizeof(list->dsv));
+     d3d12_command_list_reset_rtv_resolves(list);
+diff --git a/libs/vkd3d/vkd3d_private.h b/libs/vkd3d/vkd3d_private.h
+index b1f2ddfa..4c6bcd86 100644
+--- a/libs/vkd3d/vkd3d_private.h
++++ b/libs/vkd3d/vkd3d_private.h
+@@ -3384,6 +3384,8 @@ struct d3d12_command_list
+     uint32_t il2_light_trace_read_cookie;
+     char il2_light_trace_read_name[64];
+     uint32_t il2_light_trace_read_op_budget;
++    uint32_t il2_light_trace_post_count_dispatch_budget;
++    uint32_t il2_light_trace_post_count_barrier_budget;
+
+     struct vkd3d_index_buffer index_buffer;
+     struct vkd3d_dgc_batch dgc_batch;
+--
+2.55.0

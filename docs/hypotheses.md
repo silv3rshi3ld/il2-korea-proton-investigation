@@ -39,8 +39,8 @@ outside this focused API implementation.
 | G13 | The same missing 1:4 block-unit conversion affects complete `64x64` terrain pages. | D07 finds 178 square `R32G32B32A32_UINT` footprints, converts them to `256x256` BC3 regions, and repairs terrain near 5,500 m; clean general-build D08 repeats the repair. | Confirmed causal for terrain; D08-tested predecessor `cf11ba76` is narrowed without changing the IL-2 branch in current PR commit `64ec55e7`. |
 | G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
 | G15 | The menu shimmer is produced by the game's tiled variable-rate-shading path or VKD3D/RADV translation of it. | E05 removes `VK_KHR_fragment_shading_rate`, makes VKD3D advertise no D3D12 VRS support, and leaves the same moving squares visible. | Weakened: VRS is not required for the reproduced artifact; do not pursue without contradictory runtime evidence. |
-| G16 | A screen-space or temporal reflection resource contains stale or is sampled/interpreted incorrectly. | D12 records about 2,003 stable render/resolve cycles with explicit flag-zero transitions and stable shaders. D13 places the same two reflection-pass pixel shaders immediately after `rtSelfLight` becomes readable; exact descriptor binding remains unresolved. The artifact remains. | Simple named-target transition failure weakened; shader/descriptor interpretation remains plausible. |
-| G17 | The game's tiled dynamic-light reference list or self-light input is stale, incorrectly synchronized, or mistranslated. | D13 records more than 1,500 stable final-generation cycles. `rtSelfLight` is zero-cleared every frame; `rtLightRefs` has explicit transitions and per-stage UAV barriers. Four stable compute producer candidates run while the 80x34x2 `R32_UINT` grid is in UAV state before the reflection-pass candidates. | Simple missing-clear/barrier form weakened. Incorrect compute translation, 3D `R32_UINT` view/addressing, descriptor selection, or consumer interpretation remains the strongest family of leads, not a conclusion. |
+| G16 | A screen-space or temporal reflection resource contains stale or is sampled/interpreted incorrectly. | D12 records about 2,003 stable render/resolve cycles with explicit flag-zero transitions and stable shaders. D14 proves the correlated pixel shaders are tiled-light consumers as well as reflection-target writers. The artifact remains. | Simple named-target transition failure weakened; reflection alone is too broad. Follow the tiled-light inputs to these passes. |
+| G17 | The game's tiled dynamic-light reference list or self-light input is stale, incorrectly synchronized, or mistranslated. | D14 identifies the exact six-stage producer and proves that both pixel shaders read the 3D uint grid plus a separate uint light-index buffer. DXIL/SPIR-V shape, bounds, packing, and atomics agree and validate. D13 did not name the final two dispatches or track the separate buffer after its writer. | Strongest current lead. D15 must resolve the final buffer dependency; test a shader-specific barrier only if it is actually absent. Otherwise move to descriptors or values. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -74,11 +74,13 @@ The remaining square artifact is a separate graphics batch. E05 weakens VRS,
 and D12 weakens a simple transition failure on the actively rendered SSR
 targets. The same run expands the symptom from the menu to the cockpit and a
 burning-aircraft scene. D13 then records stable, explicit clear/transition/UAV
-cycles for `rtSelfLight` and `rtLightRefs` and places the D12 reflection-pass
-shaders immediately after those inputs become readable. That weakens the
-simple synchronization form while preserving shader translation,
-descriptor/view selection, and producer/consumer interpretation as focused
-leads. No behavior-changing workaround follows from this telemetry.
+cycles for `rtSelfLight` and `rtLightRefs`. D14 proves that the nearby pixel
+shaders read the tiled-light grid and its separate index buffer, and discovers
+two final producer stages outside D13's logging window. Their translated code
+is structurally faithful, leaving runtime visibility of the separate buffer,
+descriptor/view selection, and computed values as the focused leads. D15
+resolves the synchronization boundary passively before any workaround is
+considered.
 
 ## Direct public report
 

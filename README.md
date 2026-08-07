@@ -44,15 +44,16 @@ burning aircraft, although D12 reached its bounded event cap before those later
 frames.
 
 D13 follows the `80x34x2 R32_UINT` `rtLightRefs*` grid and full-resolution
-`rtSelfLight` target for more than 1,500 stable final-generation cycles. It
-finds a per-frame zero clear for self-light and explicit state/UAV dependencies
-between the four light-list compute stages. Immediately after these resources
-become readable, the nearby draws use the same two reflection-pass pixel
-shaders identified by D12. That is a strong frame-order correlation, not exact
-descriptor-binding proof. The simple missing-clear/barrier theory is weakened;
-compute translation, 3D integer-resource addressing/view selection, and the
-reflection consumer remain open. The next passive step is exact DXIL/SPIR-V
-inspection. No application override is proposed.
+`rtSelfLight` target for more than 1,500 stable final-generation cycles. D14
+then captures and inspects the exact DXIL and translated SPIR-V. It identifies
+six tiled-light compute stages, including two final light-list stages outside
+D13's original four-dispatch window. The correlated pixel shaders statically
+read both the 3D light-reference grid and a separate uint light-index buffer;
+bad data can therefore affect a complete approximately 32x32-pixel screen
+tile. The translation preserves the relevant resource shapes, bounds, integer
+packing, and atomics and passes SPIR-V validation. D15 is prepared to resolve
+the still-unobserved dependency on the separate index buffer before any
+behavior-changing barrier test. No application override is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
@@ -351,6 +352,12 @@ Compare collected runs with:
   remaining shader/descriptor boundary
 - [`docs/evidence-d14-shader-dump-preparation.md`](docs/evidence-d14-shader-dump-preparation.md):
   passive DXIL/SPIR-V capture plan for the exact light/reflection shader hashes
+- [`docs/evidence-d14-shader-dump-result.md`](docs/evidence-d14-shader-dump-result.md):
+  exact six-stage tiled-light sequence, pixel-shader consumers, and preserved
+  DXIL/SPIR-V semantics
+- [`docs/evidence-d15-light-list-sync-preparation.md`](docs/evidence-d15-light-list-sync-preparation.md):
+  local passive build for the two final light-list stages and all intervening
+  buffer/resource barriers
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/rendering-path-assessment.md`](docs/rendering-path-assessment.md):
