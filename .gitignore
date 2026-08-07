@@ -2,6 +2,24 @@
 captures/*
 !captures/.gitkeep
 !captures/README.md
+!captures/curated/
+captures/curated/*
+!captures/curated/e00-baseline/
+captures/curated/e00-baseline/*
+!captures/curated/e00-baseline/E00-r1-menu-aircraft-block-artifacts.png
+!captures/curated/e00-baseline/E00-r1-terrain-cockpit-missing-pages.png
+!captures/curated/e00-baseline/E00-r2-terrain-external-missing-pages-magenta-seams.png
+!captures/curated/d07-page-copy/
+captures/curated/d07-page-copy/*
+!captures/curated/d07-page-copy/D07-r1-terrain-repaired-forward-view-5491m.png
+!captures/curated/d07-page-copy/D07-r1-terrain-repaired-right-view-5501m.png
+!captures/curated/d07-page-copy/D07-r2-menu-aircraft-blocks-shimmering-persists.png
+!captures/curated/d08-general-fix/
+captures/curated/d08-general-fix/*
+!captures/curated/d08-general-fix/D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png
+!captures/curated/d08-general-fix/D08-r1-terrain-repaired-cockpit-4813m.png
+!captures/curated/d08-general-fix/D08-r1-terrain-repaired-dive-2427m.png
+!captures/curated/d08-general-fix/D08-r1-terrain-repaired-low-altitude-742m.png
 
 # Local source/build trees are intentionally kept out of the evidence repository.
 build/

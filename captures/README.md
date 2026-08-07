@@ -1,6 +1,33 @@
-# Local captures
+# Captures
 
-This directory contains ignored local evidence:
+This directory contains a curated public screenshot set and additional ignored
+local evidence. The published images document the broken baseline, the repaired
+terrain path, and the separate menu-aircraft corruption that remains unresolved.
+
+## Published evidence
+
+### Broken baseline
+
+- [`E00-r1-menu-aircraft-block-artifacts.png`](curated/e00-baseline/E00-r1-menu-aircraft-block-artifacts.png): menu-aircraft blocks and shimmering;
+- [`E00-r1-terrain-cockpit-missing-pages.png`](curated/e00-baseline/E00-r1-terrain-cockpit-missing-pages.png): missing terrain pages from the cockpit;
+- [`E00-r2-terrain-external-missing-pages-magenta-seams.png`](curated/e00-baseline/E00-r2-terrain-external-missing-pages-magenta-seams.png): missing pages and magenta seams from the external camera.
+
+### Gated causal fix (D07)
+
+- [`D07-r1-terrain-repaired-forward-view-5491m.png`](curated/d07-page-copy/D07-r1-terrain-repaired-forward-view-5491m.png): repaired terrain at 5,491 m;
+- [`D07-r1-terrain-repaired-right-view-5501m.png`](curated/d07-page-copy/D07-r1-terrain-repaired-right-view-5501m.png): repaired right-side terrain at 5,501 m;
+- [`D07-r2-menu-aircraft-blocks-shimmering-persists.png`](curated/d07-page-copy/D07-r2-menu-aircraft-blocks-shimmering-persists.png): terrain fix does not resolve the menu-aircraft issue.
+
+### General fix (D08)
+
+- [`D08-r1-terrain-repaired-cockpit-4813m.png`](curated/d08-general-fix/D08-r1-terrain-repaired-cockpit-4813m.png): repaired terrain at 4,813 m;
+- [`D08-r1-terrain-repaired-dive-2427m.png`](curated/d08-general-fix/D08-r1-terrain-repaired-dive-2427m.png): repaired terrain during a dive at 2,427 m;
+- [`D08-r1-terrain-repaired-low-altitude-742m.png`](curated/d08-general-fix/D08-r1-terrain-repaired-low-altitude-742m.png): repaired terrain at 742 m;
+- [`D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png`](curated/d08-general-fix/D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png): the independent menu-aircraft defect persists.
+
+## Additional local evidence
+
+The working copy also contains the following intentionally ignored evidence:
 
 - `curated/e00-baseline/`: six descriptively named baseline screenshots;
 - `curated/e01-no-upload-hvv/`: three host-visible-upload test screenshots;
@@ -35,9 +62,10 @@ This directory contains ignored local evidence:
   are recorded in `docs/upstream-submission-plan.md` and
   `docs/evidence-pr-scope-refinement.md`.
 
-Images and generated logs are deliberately not committed. Their filenames and
-SHA-256 checksums are recorded in the corresponding `docs/evidence-*.md` files.
-Review and redact any selected artifact before attaching it upstream.
+Only the curated images listed above are committed. Other images and generated
+logs remain ignored; their filenames and SHA-256 checksums are recorded in the
+corresponding `docs/evidence-*.md` files. Review and redact any additional
+artifact before publishing it upstream.
 
 `proton.log.gz` is the retained exact log for each completed run. Redundant raw
 logs and large generated `filtered.log` copies may be moved out after the gzip
