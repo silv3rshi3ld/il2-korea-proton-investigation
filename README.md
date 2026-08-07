@@ -34,6 +34,14 @@ confirming that it is not caused by this NUMA/OpenMP defect. Validation on
 other physical CPU/NUMA layouts and completion of upstream review are still
 pending.
 
+The menu shimmer now has a focused first discriminator. The game D3D12 backend
+exports variable-rate-shading controls, and its renderer names current and
+previous screen-reflection resources. Neither static clue proves runtime use.
+E05 therefore disables only advertised fragment-shading-rate support on D10;
+an unchanged result will move the investigation to the temporal reflection
+path, while a repeatable change will justify tracing the exact VRS calls and
+rate image. No application override is proposed.
+
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
 The verified environment is:
@@ -322,6 +330,8 @@ Compare collected runs with:
   the concise updates posted to Proton and VKD3D-Proton, with direct links
 - [`docs/evidence-e03-no-descriptor-buffer.md`](docs/evidence-e03-no-descriptor-buffer.md):
   first verified descriptor-buffer-disabled result and provenance caveat
+- [`docs/evidence-e05-no-vrs-preparation.md`](docs/evidence-e05-no-vrs-preparation.md):
+  separate menu-shimmer VRS capability control and decision rules
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/rendering-path-assessment.md`](docs/rendering-path-assessment.md):

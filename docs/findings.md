@@ -294,6 +294,19 @@
     also leaving it unchanged. The shimmering is therefore independent of the
     NUMA/OpenMP startup defect and the resolved terrain-copy defect. Its own
     cause remains open.
+65. Read-only inspection of `dxBackend12.dll` shows exported D3D12 VRS controls,
+    including `enableVRS`, `setVRSRate`, `setVRSCombiners`, and
+    `getVRSFeatures`. VKD3D-Proton maps that path through
+    `VK_KHR_fragment_shading_rate` and stops advertising D3D12 VRS when that
+    extension is disabled. This makes E05 a valid capability A/B test, but the
+    symbols alone do not prove that the menu enables VRS.
+66. The game renderer also names current and previous screen-space reflection
+    targets (`rtSSR`, `rtSSRPrev`, and `g_tPrevReflections`) and distinct screen,
+    overlay, cockpit, and accumulated-reflection passes. Because the visible
+    blocks move over reflective metal while the base aircraft texture remains
+    present, a temporal reflection resource is the leading alternative if E05
+    is unchanged. This remains a hypothesis until runtime pass/resource use is
+    correlated.
 
 ## Observations not yet promoted to findings
 
@@ -351,6 +364,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
+| Menu aircraft shimmer | Persists after the terrain-copy and Wine-NUMA fixes. The square geometry suggests a tiled effect; static binaries expose VRS controls and temporal reflection targets, but runtime use is not yet proven. | Cause open; E05 VRS capability control prepared |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
@@ -403,5 +417,7 @@ development-build stage.
 15. PR candidate `64ec55e7` narrows the activation predicate without changing
     the conversion selected for IL-2; same-block-geometry copies retain the
     original path.
-16. Investigate the menu corruption with a new focused trace and investigate
-    the NUMA caller separately with focused API tracing.
+16. The NUMA caller is resolved on the reporting host by exact Wine MR !11604.
+    Start the separate menu track with E05, disabling only advertised fragment
+    shading rate on D10. If unchanged, instrument the reflection/temporal path;
+    if changed, trace the exact VRS calls and rate image before proposing code.

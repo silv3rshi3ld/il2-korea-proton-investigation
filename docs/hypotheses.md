@@ -38,6 +38,8 @@ outside this focused API implementation.
 | G12 | The thin baked-terrain border reinterpret geometry alone is the visible cause. | D05c adjusted 202/202 exact thin candidates with zero rejects and visuals remained unchanged. | Excluded as a border-only explanation. |
 | G13 | The same missing 1:4 block-unit conversion affects complete `64x64` terrain pages. | D07 finds 178 square `R32G32B32A32_UINT` footprints, converts them to `256x256` BC3 regions, and repairs terrain near 5,500 m; clean general-build D08 repeats the repair. | Confirmed causal for terrain; D08-tested predecessor `cf11ba76` is narrowed without changing the IL-2 branch in current PR commit `64ec55e7`. |
 | G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
+| G15 | The menu shimmer is produced by the game's tiled variable-rate-shading path or VKD3D/RADV translation of it. | E05 removes `VK_KHR_fragment_shading_rate`, which makes VKD3D advertise no D3D12 VRS support; compare the same rotating menu aircraft and verify the disable marker. | If repeatably changed, trace `RSSetShadingRate` and `RSSetShadingRateImage`, then isolate the exact rate image, draw, and driver behavior. |
+| G16 | A screen-space or temporal reflection resource contains stale or incorrectly synchronized tiles. | The game binaries name current/previous SSR targets and multiple aircraft/cockpit reflection passes; compare reflection-disabled settings only after E05, then trace the selected pass and resource history. | Bind/draw correlation, targeted barrier telemetry, or a frame capture of the affected reflection pass. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -66,6 +68,14 @@ commit `64ec55e7` preserves that conversion only for equal-byte formats whose
 block dimensions differ.
 Package inspection independently confirms the engine's 800 m baked-page
 geometry; see `evidence-map-package-inspection.md`.
+
+The remaining menu symptom starts a separate graphics batch. Its moving square
+geometry and concentration on reflective aircraft surfaces make G15 and G16
+better first discriminators than another terrain or allocation experiment.
+Static binary evidence proves that the D3D12 backend implements VRS controls
+and that the renderer maintains temporal reflection targets; it does not prove
+which path is active in the menu. E05 therefore tests capability selection
+before any workaround or source patch is considered.
 
 ## Direct public report
 

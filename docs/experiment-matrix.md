@@ -1,7 +1,8 @@
 # Experiment matrix
 
-All graphics experiments retain `OMP_NUM_THREADS=16` and
-`KMP_AFFINITY=disabled`. Each row requires two runs with the same scene and
+Historical graphics experiments E00-E04 retain `OMP_NUM_THREADS=16` and
+`KMP_AFFINITY=disabled`. E05 starts a new batch on the D10 Wine-NUMA build
+without either override. Each row requires two runs with the same scene and
 settings. Until both runs exist, the classification remains **inconclusive**.
 
 Allowed final values: **fixed**, **improved**, **unchanged**, **regressed**,
@@ -16,6 +17,7 @@ Allowed final values: **fixed**, **improved**, **unchanged**, **regressed**,
 | E02 | `VKD3D_CONFIG=single_queue` | [completed](evidence-e02-single-queue.md) | [completed](evidence-e02-single-queue.md) | yes | unchanged | unchanged | unchanged | unchanged | no material change reported; stills only | unchanged | Async compute/transfer queues disabled; both runs unchanged; no device loss/OOM |
 | E03 | `VKD3D_DISABLE_EXTENSIONS=VK_EXT_descriptor_buffer` | [completed on D03-derived tool](evidence-e03-no-descriptor-buffer.md) | stock-Proton confirmation prepared | yes | unchanged | unchanged | unchanged; altitude dependency remains | unchanged | stills only; not controlled | inconclusive | Extension disable verified, but Steam remained on telemetry-derived `cfca234e`; gates were off. Confirm once on Proton Experimental |
 | E04 | `VKD3D_CONFIG=no_upload_hvv,single_queue` | not run | not run | — | — | — | — | — | — | inconclusive | Runtime testing ended after E02; combination was not evaluated |
+| E05 | `VKD3D_DISABLE_EXTENSIONS=VK_KHR_fragment_shading_rate` on D10, with no OpenMP override | [prepared](evidence-e05-no-vrs-preparation.md) | not run | — | — | — | not required for the first menu-only discriminator | not required | record menu frame time if visibly different | inconclusive | Tests whether removing advertised D3D12 VRS selects a clean fallback; this is a diagnostic control, not a proposed workaround |
 
 ## Development controls
 

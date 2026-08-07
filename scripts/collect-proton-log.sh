@@ -10,7 +10,7 @@ usage() {
     printf '%s\n' \
         "Usage:" \
         "  $0 list-variants" \
-        "  $0 prepare RUN_ID VARIANT" \
+        "  $0 prepare RUN_ID VARIANT [--no-openmp-override]" \
         "  $0 collect RUN_ID [--source PATH] [--notes TEXT] [--no-system-info]" \
         "" \
         "Variants:" \
@@ -25,6 +25,7 @@ usage() {
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
+        "  no-fragment-shading-rate" \
         "  no-upload-hvv-single-queue"
 }
 
@@ -67,6 +68,9 @@ variant_environment() {
         no-descriptor-buffer)
             printf '%s' 'VKD3D_DISABLE_EXTENSIONS=VK_EXT_descriptor_buffer '
             ;;
+        no-fragment-shading-rate)
+            printf '%s' 'VKD3D_DISABLE_EXTENSIONS=VK_KHR_fragment_shading_rate '
+            ;;
         no-upload-hvv-single-queue)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv,single_queue '
             ;;
@@ -85,8 +89,23 @@ game_processes() {
 prepare_run() {
     local run_id=$1
     local variant=$2
+    shift 2
     local run_dir="$runs_dir/$run_id"
     local extra launch_options quoted_dir short_log_dir
+    local include_openmp_override=1
+
+    while (($#)); do
+        case "$1" in
+            --no-openmp-override)
+                include_openmp_override=0
+                shift
+                ;;
+            *)
+                printf 'Unknown prepare argument: %s\n' "$1" >&2
+                exit 2
+                ;;
+        esac
+    done
 
     validate_run_id "$run_id"
     extra=$(variant_environment "$variant")
@@ -104,7 +123,11 @@ prepare_run() {
     mkdir -p -- "$run_dir"
     ln -s -- "$run_dir" "$short_log_dir"
     printf -v quoted_dir '%q' "$short_log_dir"
-    launch_options="PROTON_LOG=1 PROTON_LOG_DIR=$quoted_dir OMP_NUM_THREADS=16 KMP_AFFINITY=disabled ${extra}%command%"
+    if ((include_openmp_override)); then
+        launch_options="PROTON_LOG=1 PROTON_LOG_DIR=$quoted_dir OMP_NUM_THREADS=16 KMP_AFFINITY=disabled ${extra}%command%"
+    else
+        launch_options="PROTON_LOG=1 PROTON_LOG_DIR=$quoted_dir ${extra}%command%"
+    fi
 
     printf '%s\n' "$variant" >"$run_dir/variant.txt"
     printf '%s\n' "$launch_options" >"$run_dir/launch-options.txt"
@@ -112,6 +135,7 @@ prepare_run() {
         printf 'run_id=%s\n' "$run_id"
         printf 'variant=%s\n' "$variant"
         printf 'app_id=%s\n' "$app_id"
+        printf 'openmp_override=%s\n' "$([[ $include_openmp_override -eq 1 ]] && printf enabled || printf disabled)"
         printf 'prepared_utc=%s\n' "$(date -u --iso-8601=seconds)"
         printf 'status=prepared\n'
     } >"$run_dir/metadata.txt"
@@ -215,7 +239,7 @@ collect_run() {
 
     awk '
         BEGIN { IGNORECASE = 1 }
-        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|IL2CACHE|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
+        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|IL2CACHE|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|fragment.shading|shading.rate|VRS|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
     ' "$source_log" >"$run_dir/filtered.log"
 
     awk '
@@ -234,6 +258,8 @@ collect_run() {
         printf 'dxgi_module_lines=%s\n' "$(count_matches 'dxgi\.dll' "$run_dir/modules.log")"
         printf 'd3d11_module_lines=%s\n' "$(count_matches 'd3d11\.dll' "$run_dir/modules.log")"
         printf 'descriptor_buffer_lines=%s\n' "$(count_matches 'descriptor.buffer|VK_EXT_descriptor_buffer' "$source_log")"
+        printf 'fragment_shading_rate_lines=%s\n' "$(count_matches 'fragment.shading|shading.rate|VK_KHR_fragment_shading_rate' "$source_log")"
+        printf 'fragment_shading_rate_disabled_count=%s\n' "$(count_matches 'Extension .*VK_KHR_fragment_shading_rate.* is disabled' "$source_log")"
         printf 'queue_lines=%s\n' "$(count_matches 'queue family|queue.*(compute|transfer|graphics)|single.queue' "$source_log")"
         printf 'il2trace_enabled_count=%s\n' "$(count_matches 'IL2TRACE enabled:' "$source_log")"
         printf 'reserved_create_count=%s\n' "$(count_matches 'IL2TRACE reserved_create' "$source_log")"
@@ -328,11 +354,14 @@ case "$command_name" in
         usage
         ;;
     prepare)
-        if (($# != 3)); then
+        if (($# < 3 || $# > 4)); then
             usage >&2
             exit 2
         fi
-        prepare_run "$2" "$3"
+        run_id=$2
+        variant=$3
+        shift 3
+        prepare_run "$run_id" "$variant" "$@"
         ;;
     collect)
         if (($# < 2)); then
