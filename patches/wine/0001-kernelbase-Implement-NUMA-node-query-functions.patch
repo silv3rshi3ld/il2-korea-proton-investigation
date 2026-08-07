@@ -1,0 +1,181 @@
+diff --git a/dlls/kernel32/tests/process.c b/dlls/kernel32/tests/process.c
+index 942af51e..b46c3126 100644
+--- a/dlls/kernel32/tests/process.c
++++ b/dlls/kernel32/tests/process.c
+@@ -77,6 +77,8 @@ static BOOL   (WINAPI *pTerminateJobObject)(HANDLE job, UINT exit_code);
+ static BOOL   (WINAPI *pQueryInformationJobObject)(HANDLE job, JOBOBJECTINFOCLASS class, LPVOID info, DWORD len, LPDWORD ret_len);
+ static BOOL   (WINAPI *pSetInformationJobObject)(HANDLE job, JOBOBJECTINFOCLASS class, LPVOID info, DWORD len);
+ static HANDLE (WINAPI *pCreateIoCompletionPort)(HANDLE file, HANDLE existing_port, ULONG_PTR key, DWORD threads);
++static BOOL   (WINAPI *pGetNumaHighestNodeNumber)(ULONG *);
++static BOOL   (WINAPI *pGetNumaNodeProcessorMaskEx)(USHORT, GROUP_AFFINITY *);
+ static BOOL   (WINAPI *pGetNumaProcessorNode)(UCHAR, PUCHAR);
+ static NTSTATUS (WINAPI *pNtQueryInformationProcess)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG);
+ static NTSTATUS (WINAPI *pNtQuerySystemInformationEx)(SYSTEM_INFORMATION_CLASS, void*, ULONG, void*, ULONG, ULONG*);
+@@ -267,6 +269,8 @@ static BOOL init(void)
+     pQueryInformationJobObject = (void *)GetProcAddress(hkernel32, "QueryInformationJobObject");
+     pSetInformationJobObject = (void *)GetProcAddress(hkernel32, "SetInformationJobObject");
+     pCreateIoCompletionPort = (void *)GetProcAddress(hkernel32, "CreateIoCompletionPort");
++    pGetNumaHighestNodeNumber = (void *)GetProcAddress(hkernel32, "GetNumaHighestNodeNumber");
++    pGetNumaNodeProcessorMaskEx = (void *)GetProcAddress(hkernel32, "GetNumaNodeProcessorMaskEx");
+     pGetNumaProcessorNode = (void *)GetProcAddress(hkernel32, "GetNumaProcessorNode");
+     pWTSGetActiveConsoleSessionId = (void *)GetProcAddress(hkernel32, "WTSGetActiveConsoleSessionId");
+     pCreateToolhelp32Snapshot = (void *)GetProcAddress(hkernel32, "CreateToolhelp32Snapshot");
+@@ -4440,6 +4444,65 @@ static void test_GetLogicalProcessorInformationEx(void)
+     free(info);
+ }
+ 
++static void test_numa_information(void)
++{
++    SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info, *entry;
++    GROUP_AFFINITY affinity;
++    ULONG highest, expected_highest = 0;
++    DWORD offset, len = 0;
++    BOOL ret;
++
++    if (!pGetNumaHighestNodeNumber || !pGetNumaNodeProcessorMaskEx ||
++        !pGetLogicalProcessorInformationEx)
++    {
++        win_skip("NUMA topology functions are not supported\n");
++        return;
++    }
++
++    ret = pGetLogicalProcessorInformationEx(RelationNumaNode, NULL, &len);
++    ok(!ret && GetLastError() == ERROR_INSUFFICIENT_BUFFER,
++       "got %d, error %ld\n", ret, GetLastError());
++    ok(len > 0, "got length %lu\n", len);
++    if (!len) return;
++
++    info = calloc(len, 1);
++    ret = pGetLogicalProcessorInformationEx(RelationNumaNode, info, &len);
++    ok(ret, "got %d, error %ld\n", ret, GetLastError());
++    if (!ret)
++    {
++        free(info);
++        return;
++    }
++
++    for (offset = 0; offset < len; offset += entry->Size)
++    {
++        entry = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)((char *)info + offset);
++        ok(entry->Relationship == RelationNumaNode, "got relationship %u\n", entry->Relationship);
++        if (entry->NumaNode.NodeNumber > expected_highest)
++            expected_highest = entry->NumaNode.NodeNumber;
++
++        memset(&affinity, 0xcc, sizeof(affinity));
++        ret = pGetNumaNodeProcessorMaskEx(entry->NumaNode.NodeNumber, &affinity);
++        ok(ret, "node %lu: got %d, error %ld\n", entry->NumaNode.NodeNumber, ret, GetLastError());
++        if (ret)
++        {
++            ok(affinity.Mask == entry->NumaNode.GroupMask.Mask,
++               "node %lu: got mask %#Ix, expected %#Ix\n", entry->NumaNode.NodeNumber,
++               affinity.Mask, entry->NumaNode.GroupMask.Mask);
++            ok(affinity.Group == entry->NumaNode.GroupMask.Group,
++               "node %lu: got group %u, expected %u\n", entry->NumaNode.NodeNumber,
++               affinity.Group, entry->NumaNode.GroupMask.Group);
++        }
++    }
++
++    highest = ~0u;
++    ret = pGetNumaHighestNodeNumber(&highest);
++    ok(ret, "got %d, error %ld\n", ret, GetLastError());
++    ok(highest == expected_highest, "got highest node %lu, expected %lu\n",
++       highest, expected_highest);
++    free(info);
++}
++
+ static void test_GetSystemCpuSetInformation(void)
+ {
+     SYSTEM_CPU_SET_INFORMATION *info, *info_nt;
+@@ -5844,6 +5907,7 @@ START_TEST(process)
+     test_GetNumaProcessorNode();
+     test_session_info();
+     test_GetLogicalProcessorInformationEx();
++    test_numa_information();
+     test_GetSystemCpuSetInformation();
+     test_largepages();
+     test_ProcThreadAttributeList();
+diff --git a/dlls/kernelbase/memory.c b/dlls/kernelbase/memory.c
+index 85e596f9..f8ee0846 100644
+--- a/dlls/kernelbase/memory.c
++++ b/dlls/kernelbase/memory.c
+@@ -1574,13 +1574,54 @@ BOOL WINAPI SetProcessDefaultCpuSets(HANDLE process, const ULONG *cpu_set_ids, U
+ }
+ 
+ 
++static SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *get_numa_information( ULONG *len )
++{
++    SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info;
++    LOGICAL_PROCESSOR_RELATIONSHIP relationship = RelationNumaNode;
++    NTSTATUS status;
++
++    *len = 0;
++    status = NtQuerySystemInformationEx( SystemLogicalProcessorInformationEx, &relationship,
++                                         sizeof(relationship), NULL, 0, len );
++    if (status != STATUS_INFO_LENGTH_MISMATCH)
++    {
++        set_ntstatus( status );
++        return NULL;
++    }
++    if (!(info = HeapAlloc( GetProcessHeap(), 0, *len )))
++    {
++        SetLastError( ERROR_OUTOFMEMORY );
++        return NULL;
++    }
++    status = NtQuerySystemInformationEx( SystemLogicalProcessorInformationEx, &relationship,
++                                         sizeof(relationship), info, *len, len );
++    if (!set_ntstatus( status ))
++    {
++        HeapFree( GetProcessHeap(), 0, info );
++        return NULL;
++    }
++    return info;
++}
++
++
+ /**********************************************************************
+  *             GetNumaHighestNodeNumber   (kernelbase.@)
+  */
+ BOOL WINAPI DECLSPEC_HOTPATCH GetNumaHighestNodeNumber( ULONG *node )
+ {
+-    FIXME( "semi-stub: %p\n", node );
++    SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info, *entry;
++    ULONG offset, len;
++
++    if (!(info = get_numa_information( &len ))) return FALSE;
++
+     *node = 0;
++    for (offset = 0; offset < len; offset += entry->Size)
++    {
++        entry = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)((char *)info + offset);
++        if (entry->NumaNode.NodeNumber > *node) *node = entry->NumaNode.NodeNumber;
++    }
++
++    HeapFree( GetProcessHeap(), 0, info );
+     return TRUE;
+ }
+ 
+@@ -1590,8 +1631,22 @@ BOOL WINAPI DECLSPEC_HOTPATCH GetNumaHighestNodeNumber( ULONG *node )
+  */
+ BOOL WINAPI DECLSPEC_HOTPATCH GetNumaNodeProcessorMaskEx( USHORT node, GROUP_AFFINITY *mask )
+ {
+-    FIXME( "stub: %hu %p\n", node, mask );
+-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
++    SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info, *entry;
++    ULONG offset, len;
++
++    if (!(info = get_numa_information( &len ))) return FALSE;
++
++    for (offset = 0; offset < len; offset += entry->Size)
++    {
++        entry = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)((char *)info + offset);
++        if (entry->NumaNode.NodeNumber != node) continue;
++        *mask = entry->NumaNode.GroupMask;
++        HeapFree( GetProcessHeap(), 0, info );
++        return TRUE;
++    }
++
++    HeapFree( GetProcessHeap(), 0, info );
++    SetLastError( ERROR_INVALID_PARAMETER );
+     return FALSE;
+ }
+ 

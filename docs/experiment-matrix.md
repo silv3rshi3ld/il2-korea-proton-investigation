@@ -49,10 +49,12 @@ runs because a startup failure cannot evaluate rendering.
 
 | ID | Launch environment | Prior observation | Repeatability | Classification | Evidence needed |
 |---|---|---|---|---|---|
-| N00 | No OpenMP override | Loading failure near 60%; `GetNumaNodeProcessorMaskEx` implicated | User-reported; not repeated in this round | inconclusive | Clean log plus caller/arguments/return |
-| N01 | `KMP_AFFINITY=disabled` only | Not yet isolated | Not run | inconclusive | Establish whether affinity bypass alone starts |
-| N02 | `OMP_NUM_THREADS=16` only | Not yet isolated | Not run | inconclusive | Establish whether thread count alone starts |
-| N03 | Both current variables | Starts successfully | Confirmed throughout six graphics runs | improved | Isolate the two variables before attributing the result |
+| N00 | No OpenMP override | Exact game OpenMP DLL aborts with Error #179 after MaskEx returns error 120 | Reproduced in isolated probe | causal API reproducer | Confirm with complete game on stock Proton only if another failure log is needed |
+| N01 | `KMP_AFFINITY=disabled` only | Exact game OpenMP DLL initializes and reports the discovered 16 processors | Reproduced in isolated probe | bypasses defect | Retain only as a temporary launch mitigation |
+| N02 | `OMP_NUM_THREADS=16` only | Same Error #179 and MaskEx error 120 as N00 | Reproduced in isolated probe | no startup remedy | Do not encode a thread count in Wine or Proton |
+| N03 | Both current variables | Starts successfully | Confirmed in game and isolated probe | improved through N01 | Superseded for causal attribution by N01/N02 isolation |
+| N04 | Topology-derived Wine NUMA candidate, no OpenMP override | Exact game OpenMP DLL initializes and the full game starts | Component probe and full Steam launch reproduced on the reporting host | fixed on reporting host | Repeat if needed, run Wine CI, and test other CPU/NUMA layouts |
+| N05 | Exact upstream Wine MR !11604 backported to Proton 11, no launch options | Exact game OpenMP DLL initializes; full game maps the patched modules and proceeds through GUI initialization | Component probe and full Steam launch reproduced on the reporting host | fixed on reporting host | Complete upstream review and test physical multi-node/sparse-node layouts |
 
 Do not repeatedly trigger N00 if it risks corrupting state. Back up the prefix
 first, and stop after enough evidence exists to identify the calling module.

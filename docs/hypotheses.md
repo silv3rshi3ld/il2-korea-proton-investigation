@@ -8,13 +8,17 @@ IL-2 application override on its own.
 
 | ID | Hypothesis | Discriminating evidence | Current confidence |
 |---|---|---|---|
-| N1 | Wine's `GetNumaNodeProcessorMaskEx` implementation or return semantics are incomplete for the caller. | Identify caller module and arguments/return via focused Wine trace or debugger; compare with current Wine source and Windows. | Low |
-| N2 | Wine exposes a topology that Intel OpenMP's affinity discovery rejects even though Linux has one NUMA node and CPUs 0-15. | Capture all NUMA API queries made by the runtime; compare masks, group numbers, node count, and last error. | Low-medium |
-| N3 | The game's shipped OpenMP runtime makes a Windows-specific affinity assumption. | Identify the runtime DLL/version; run the same binary on Windows and compare topology queries. | Low |
-| N4 | `KMP_AFFINITY=disabled` merely bypasses the defective affinity path; `OMP_NUM_THREADS=16` is incidental or independently required. | Test the two variables separately only after a safe baseline is archived. | Medium that the current pair is mitigation only |
+| N1 | Wine's `GetNumaNodeProcessorMaskEx` implementation is incomplete for the caller. | Exact Proton 11 Wine source and a no-override probe show the API returns `ERROR_CALL_NOT_IMPLEMENTED`; the exact game OpenMP DLL then aborts at that API. | Confirmed |
+| N2 | Wine exposes a topology that Intel OpenMP's affinity discovery rejects. | `RelationNumaNode` already exposes a coherent node/group/mask; returning the same data through the missing API lets the exact runtime initialize. | Rejected for the observed one-node topology |
+| N3 | The game's shipped OpenMP runtime makes an unsupported Windows affinity query. | The exact `libiomp5md.dll` imports both NUMA functions and reports Intel OpenMP Error #179 when MaskEx is unimplemented. | Confirmed as trigger; the query itself is a documented Windows API use |
+| N4 | `KMP_AFFINITY=disabled` bypasses the defective affinity path and `OMP_NUM_THREADS=16` is incidental. | Isolated matrix: affinity-disabled alone succeeds; thread-count-only still fails. | Confirmed for OpenMP initialization |
+| N5 | Existing upstream Wine MR !11604 is sufficient when backported to Proton 11. | Exact six-commit D10 build passes the component probe and full Steam startup with launch options empty; the live game maps the patched modules and has no OpenMP/topology override. | Confirmed on the reporting host; cross-topology review remains |
 
-The host itself has a simple one-node, 16-logical-CPU Linux topology. That does
-not establish what Wine reports through Win32 processor groups and NUMA APIs.
+The host itself has a simple one-node, 16-logical-CPU Linux topology. The
+candidate does not encode that layout: it queries Wine's existing
+`RelationNumaNode` data for the current host on every call. Wine's separate,
+pre-existing incomplete processor-group support above 64 logical processors is
+outside this focused API implementation.
 
 ## Graphics track
 

@@ -25,7 +25,14 @@ general commit `cf11ba76` without the diagnostic gate and produced continuous,
 detailed terrain from 4,813 m down to 742 m. Its focused regression test fails
 on the old helper and passes with the fix. No application override has been
 added. The separate menu-aircraft/shimmering and startup/NUMA symptoms remain
-open.
+separate. The startup cause is now isolated to missing Wine NUMA API behavior.
+The exact six-commit series from upstream Wine MR !11604 passes both the exact
+OpenMP component test and a full-game Proton 11 startup test on the reporting
+host. The D10 tool starts the game with Steam launch options empty and no
+OpenMP/topology override in the live process. The shimmering remains visible,
+confirming that it is not caused by this NUMA/OpenMP defect. Validation on
+other physical CPU/NUMA layouts and completion of upstream review are still
+pending.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
@@ -39,6 +46,9 @@ The verified environment is:
   build was `24577563`)
 - Selected compatibility tool: Proton Experimental
   `experimental-11.0-20260724c` (`11.0-100` prefix)
+- N05 upstream-series validation tool:
+  `IL2-Korea-D10-WineMR11604-Proton11`, based on the same Proton 11 family and
+  D08 terrain tool with the 64-bit Wine components affected by MR !11604
 - VKD3D-Proton commit: `3dfc6f07d0953b1e8b41705275c2c59cc7374fc5`
 - DXVK commit: `1a5919b7edd111887648d1e8bf0c32733e2e00d3`
 - Mesa/RADV: `26.1.6` (`Mesa 26.1.6-arch3.1`)
@@ -50,13 +60,21 @@ Proton build's 64-bit VKD3D-Proton D3D12 DLLs and DXVK DXGI DLL. A DXVK
 D3D12 backend. The completed controlled runtime logs with module evidence load
 DXGI, D3D12, D3D12Core, and `dxBackend12.dll`, with no D3D11 module load.
 
-The currently required startup mitigation is:
+The historical startup mitigation was:
 
 ```text
 OMP_NUM_THREADS=16 KMP_AFFINITY=disabled %command%
 ```
 
-This is recorded as a mitigation, not a root-cause fix.
+It is no longer required with the exact MR !11604 D10 build on the reporting
+host. An
+isolated matrix with the game's exact `libiomp5md.dll` establishes that
+`KMP_AFFINITY=disabled` was the necessary workaround component:
+`OMP_NUM_THREADS=16` alone still fails, while affinity disabled succeeds
+without a fixed thread count. The proposed Wine fix contains neither value.
+See
+[`docs/startup-numa-assessment.md`](docs/startup-numa-assessment.md) and
+[`docs/evidence-n05-wine-mr-11604.md`](docs/evidence-n05-wine-mr-11604.md).
 
 Controlled baseline E00 is complete across two runs and reproduces both
 reported graphics signatures: block artifacts on the rendered menu aircraft

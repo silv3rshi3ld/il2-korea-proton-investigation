@@ -251,11 +251,52 @@
 56. The narrowed candidate builds natively and with MinGW x64. Its focused
     test passes 22/22 assertions and the full native copy subset passes
     6,429,713 checks with zero failures.
+57. The game's `libiomp5md.dll` imports
+    `GetNumaHighestNodeNumber` and `GetNumaNodeProcessorMaskEx`. Proton 11's
+    Wine returns success with node zero from the former semi-stub but returns
+    `ERROR_CALL_NOT_IMPLEMENTED` from the latter stub. With no OpenMP override,
+    the exact DLL consequently aborts with Intel OpenMP Error #179 naming
+    `GetNumaNodeProcessorMaskEx`.
+58. In an isolated four-way environment matrix, `KMP_AFFINITY=disabled`
+    succeeds without `OMP_NUM_THREADS`, while `OMP_NUM_THREADS=16` without the
+    affinity bypass still fails. The thread-count setting is therefore not the
+    cause of successful OpenMP initialization on this host.
+59. Wine already exposes node zero, group zero, and the runtime-discovered
+    mask `0xffff` through `GetLogicalProcessorInformationEx(RelationNumaNode)`.
+    A focused kernelbase candidate obtains the requested node from that same
+    canonical topology instead of encoding a CPU count, mask, vendor, game, or
+    AppID.
+60. Substituting only the candidate `kernelbase.dll` into a disposable copy of
+    the exact installed Proton 11 family makes the exact game OpenMP DLL
+    initialize with no `KMP_AFFINITY` or `OMP_NUM_THREADS` setting. The probe
+    reports 16 processors because that is this host's discovered topology, not
+    because 16 appears in the implementation.
+61. A complete D09 compatibility tool containing both architecture variants of
+    the candidate was selected for AppID 247970. With Steam launch options
+    empty, Steam invoked D09, `IL2Series.exe` remained active through startup,
+    the game initialized its GUI, and the user confirmed that the full game
+    started. This resolves the launch-parameter requirement on the reporting
+    host; it does not yet validate other CPU or NUMA layouts.
+62. Wine MR !11604 independently implements the wider NUMA API set in ntdll,
+    kernelbase, and kernel32. Its exact six-commit head
+    `e8319c0e6bfe7f94512218b48e3158e0c286b481` applies cleanly to Proton 11's
+    pinned Wine commit. In a fresh prefix, the resulting D10 package initializes
+    the exact game OpenMP DLL without any OpenMP or topology override.
+63. With AppID 247970 mapped to D10 and Steam launch options empty, the full
+    game maps all four patched 64-bit Wine modules plus `libiomp5md.dll`, passes
+    the former abort point, and writes fresh GUI/game state. The live process
+    has no `KMP_*`, `OMP_*`, or `WINE_CPU_TOPOLOGY` setting. This confirms the
+    existing upstream series fixes startup on the reporting host; physical
+    multi-node and sparse-node layouts remain unvalidated.
+64. The user visually confirmed that the shimmering squares remain in the D10
+    run. D10 changes the Wine CPU/NUMA path and fixes startup without changing
+    that artifact; D07/D08 changed the VKD3D copy path and fixed terrain while
+    also leaving it unchanged. The shimmering is therefore independent of the
+    NUMA/OpenMP startup defect and the resolved terrain-copy defect. Its own
+    cause remains open.
 
 ## Observations not yet promoted to findings
 
-- `KMP_AFFINITY=disabled` plus `OMP_NUM_THREADS=16` allows startup. The exact
-  responsible variable and caller are not isolated.
 - Split `END_ONLY` barrier warnings span most of E00-r1 and issue #3134, but
   their temporal/resource relationship to corruption is unknown.
 - The game creates `BlocksCache` CPU threads on mission entry. The ordinary log
@@ -270,8 +311,9 @@
   greater loss. D02 also proves that rectangular pages remain missing at 1,385
   m, so the threshold changes severity rather than fixing the defect. The
   mechanism remains unproven.
-- The menu aircraft and motion-only flicker have not been classified in the
-  supplied D07 screenshots. They remain separate until explicitly rechecked.
+- The user visually reconfirmed the shimmering squares during the successful
+  D10 NUMA run. They remain after both the terrain-copy and startup fixes and
+  therefore remain a separate open graphics track.
 
 ## External-report and prior-art assessment
 
@@ -296,7 +338,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 
 | Track | Assessment | Confidence |
 |---|---|---|
-| Startup | Affinity discovery in the shipped OpenMP path is bypassed by the current environment variables; the responsible Wine API/topology/runtime behavior is unproven. | Low |
+| Startup | Wine's missing NUMA API behavior makes the shipped Intel OpenMP affinity initialization abort. A local focused candidate and exact upstream MR !11604 both restore the topology contract and start the game with no launch workaround. | High on the reporting host; cross-topology validation pending |
 | Graphics | The game uses D3D12 through VKD3D-Proton and DXVK's DXGI. Two D07 runs and clean general-build D08 prove that VKD3D-Proton under-populates the application's 800 m baked-terrain pages by retaining source-footprint units in a BC3 Vulkan copy. | High; causal for terrain and addressed by narrowed PR candidate `64ec55e7` |
 | Queue selection | Two `single_queue` runs leave the defects unchanged, making ordinary asynchronous compute/transfer queue selection unlikely to be the primary trigger. | Medium |
 | Upload allocation | `no_upload_hvv` changes the allocation path, but its apparent improvement is inseparable from lower capture altitude. | Low/inconclusive |

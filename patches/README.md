@@ -1,5 +1,11 @@
 # Patch status
 
+The separate Wine startup work is documented in
+[`wine/README.md`](wine/README.md). The local one-patch draft is superseded for
+testing/submission by upstream Wine MR !11604, whose exact series has now been
+validated through Proton. This NUMA work is unrelated to the VKD3D-Proton
+graphics series below.
+
 D07 demonstrates the terrain root cause: its complete page-family conversion
 adjusted 522/522 copies with zero rejects and repaired terrain near 5,500 m.
 `0009-vkd3d-Convert-buffer-image-copies-between-block-formats.patch` is the
