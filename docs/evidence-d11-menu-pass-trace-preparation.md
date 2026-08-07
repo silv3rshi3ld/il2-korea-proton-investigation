@@ -60,18 +60,27 @@ remain untouched.
 
 Steam must be fully stopped before the helper creates the tool. The first
 creation attempt correctly refused to proceed because Steam was active; no
-partial D11 directory was installed.
+partial D11 directory was installed. After Steam exited, the tool was created
+at `2026-08-07T18:53:58Z`. Its recorded source version is
+`experimental-11.0-20260724c-wine-mr11604-d10`, and all four installed DLL
+hashes exactly match the build identities above.
 
 ## Runtime protocol
 
-After D11 is created, restart Steam and select
+Restart Steam and select
 `IL2-Korea-D11-MenuPassTrace-d3cba21d` for AppID 247970. Prepare the run with:
 
 ```bash
 ./scripts/collect-proton-log.sh prepare D11-menu-pass-trace-r1 menu-pass-trace --no-openmp-override
 ```
 
-Use exactly the printed Steam launch options. Reach the same main-menu
+The prepared run produced these exact launch options:
+
+```text
+PROTON_LOG=1 PROTON_LOG_DIR=/tmp/il2-D11-menu-pass-trace-r1 VKD3D_IL2_MENU_TRACE=1 %command%
+```
+
+Use exactly those Steam launch options. Reach the same main-menu
 aircraft, leave the view visible for at least 30 seconds, confirm whether the
 moving squares remain, and exit without loading a mission. Then collect with:
 
