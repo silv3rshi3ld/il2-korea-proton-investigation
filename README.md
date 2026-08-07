@@ -17,12 +17,16 @@ shader cache, or unfiltered large trace.
 
 ## Current status
 
-The launch-option matrix E00-E02 is complete as of 2026-08-06. The
-investigation has now moved to source-level diagnosis. No application override
-or permanent fix has been added. D07 is an opt-in, exact-class diagnostic
-behavior change and is inert unless its investigation-only environment
-variable is set. The
-verified environment is:
+The terrain root cause and general remedy are now validated. D07 corrected all
+522 observed block-compatible terrain-page copies and repaired the terrain
+near 5,500 m; a second D07 run repeated the result. D08 then loaded clean
+general commit `cf11ba76` without the diagnostic gate and produced continuous,
+detailed terrain from 4,813 m down to 742 m. Its focused regression test fails
+on the old helper and passes with the fix. No application override has been
+added. The separate menu-aircraft/shimmering and startup/NUMA symptoms remain
+open.
+
+The verified environment is:
 
 - Launch executable: `bin/game/IL2Series.exe`
 - Steam library: `/home/USER/.local/share/Steam`
@@ -55,8 +59,8 @@ Controlled baseline E00 is complete across two runs and reproduces both
 reported graphics signatures: block artifacts on the rendered menu aircraft
 and severe rectangular-page terrain loss with magenta edges in flight. Runtime logging
 confirms the D3D12 path and active host-visible upload, descriptor-buffer, and
-multi-queue paths. A full-page BC3 reinterpret-copy mismatch is now the leading
-causal candidate, with one gated runtime test pending. See
+multi-queue paths. The later D07 result proves that a full-page BC3
+reinterpret-copy mismatch causes the terrain failure. See
 [`docs/evidence-e00-baseline.md`](docs/evidence-e00-baseline.md).
 
 E01 (`no_upload_hvv`) was collected across two runs, but its apparent vegetation
@@ -76,7 +80,7 @@ The user reports that below roughly 1,500 m some low-fidelity assets
 begin to load; around 5,000 m the failure is much more severe. Current logs do
 not expose the relevant altitude, mip, tile-mapping, or residency state.
 
-The whole defect is not yet isolated. During a valid corrupted run, 2,355 multi-mip compressed textures received
+The menu defect is not yet isolated. During a valid corrupted run, 2,355 multi-mip compressed textures received
 geometrically complete buffer uploads, no partial mip chain was found, every
 logged SRV used a zero minimum-LOD clamp, and no logged operation followed
 resource destruction. Corrected cap-aware analysis leaves 405 pre-cap placed
@@ -89,25 +93,34 @@ BC3 baked-terrain caches and issues 432 internal border uploads measuring
 matched zero copies because its source-side filter was too strict, so its
 visually unchanged run is invalid as a causal test. D05b recorded 432
 footprint-only candidates and revealed that every source is
-`R32G32B32A32_UINT`, with zero adjustments. D3D12 defines this as a 128-bit
-uncompressed-to-BC3 reinterpret copy: both destination dimensions must be four
-times the source dimensions. VKD3D-Proton already handles that conversion for
-image-to-image copies, but the buffer-to-image helper does not.
+`R32G32B32A32_UINT`, with zero adjustments. Each 128-bit source element maps to
+one 128-bit BC3 block, so both destination dimensions must be four times the
+source dimensions. VKD3D-Proton already handles that physical-block conversion
+for image-to-image copies, but the buffer-to-image helper did not.
 
 D05c then executed the exact proposed conversion for 202/202 encountered thin
 border candidates, with zero rejects across eight destination resources. The
 image remained unchanged, excluding a border-only repair. D06 subsequently
 recorded 292 square `64x64` interiors placed every 256 destination texels, plus
-708 borders aligned to the same page edges. Current union coverage is only
+708 borders aligned to the same page edges. Current union coverage was only
 3.46-6.32% on the active caches; the indicated 4x block mapping gives
-54.69-100%. D07 is now installed as
-`IL2-Korea-D07-PageCopy-833cafa0` to verify the square footprint format and
-apply the exact conversion to complete pages under a new opt-in gate. See
+54.69-100%. D07 then adjusted 522/522 complete-page and border copies with zero
+rejects. Two screenshots near 5,500 m show continuous terrain without the
+former black page gaps or magenta seams. The successful run retains the
+missing-file fallbacks and 40,408 split-barrier warnings, excluding both as the
+primary terrain cause. See
 [`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md),
 [`docs/evidence-d05-result.md`](docs/evidence-d05-result.md), and
 [`docs/evidence-d05c-result.md`](docs/evidence-d05c-result.md),
-[`docs/evidence-d06-result.md`](docs/evidence-d06-result.md), and the prepared
-test in [`docs/evidence-d07-preparation.md`](docs/evidence-d07-preparation.md).
+[`docs/evidence-d06-result.md`](docs/evidence-d06-result.md), and
+[`docs/evidence-d07-result.md`](docs/evidence-d07-result.md).
+
+The validated general candidate at VKD3D-Proton commit `cf11ba76` converts placed-buffer
+geometry through physical blocks when the footprint and destination formats
+have equal block sizes. It contains no IL-2 executable/AppID check and no
+diagnostic gate. D08 verified the packaged DLLs in game and repaired terrain
+without changing the menu-aircraft blocks or shimmering. See
+[`docs/evidence-d08-result.md`](docs/evidence-d08-result.md).
 
 D03 is complete and visually unchanged. In its same-run pre-cap class, all 585
 candidates have placed-resource records, none overlaps any traced placed buffer
@@ -271,6 +284,14 @@ Compare collected runs with:
   invalid zero-match run rather than a failed normalization result
 - [`docs/evidence-d05b-preparation.md`](docs/evidence-d05b-preparation.md):
   revised footprint-aware build retained for a later test
+- [`docs/evidence-d05c-result.md`](docs/evidence-d05c-result.md): executed
+  border-only conversion and its negative visual result
+- [`docs/evidence-d06-result.md`](docs/evidence-d06-result.md): complete-page
+  geometry and projected cache coverage
+- [`docs/evidence-d07-result.md`](docs/evidence-d07-result.md): causal terrain
+  repair, exact copy counts, screenshots, and remaining validation
+- [`docs/evidence-d08-preparation.md`](docs/evidence-d08-preparation.md): clean
+  general-fix build, regression tests, exact DLL hashes, and final protocol
 - [`docs/community-update-draft-2026-08-06.md`](docs/community-update-draft-2026-08-06.md):
   the concise updates posted to Proton and VKD3D-Proton, with direct links
 - [`docs/evidence-e03-no-descriptor-buffer.md`](docs/evidence-e03-no-descriptor-buffer.md):
@@ -287,7 +308,8 @@ Compare collected runs with:
   game-build baseline result
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status
 - [`docs/upstream-drafts.md`](docs/upstream-drafts.md): review-only issue drafts
-- [`patches/README.md`](patches/README.md): why no patch is justified
+- [`patches/README.md`](patches/README.md): diagnostic history and the general
+  upstream candidate
 
 ## Rollback
 

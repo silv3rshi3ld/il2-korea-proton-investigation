@@ -4,12 +4,106 @@
 > [`community-update-draft-2026-08-06.md`](community-update-draft-2026-08-06.md),
 > which includes the invalid D05a zero-match result and paused D05b state.
 
-The focused draft immediately below reflects the newest D02 compressed-copy
-analysis. The older broad drafts remain as historical context and need revision
-before use. Attach only selected, reviewed screenshots and filtered logs; do
-not upload the game, prefix, credentials, or unfiltered large artifacts.
+The 2026-08-07 drafts immediately below reflect the successful D07 result and
+validated general `cf11ba76` candidate. Older drafts remain as historical context and
+must not be posted. Attach only selected, reviewed screenshots and filtered
+logs; do not upload the game, prefix, credentials, or unfiltered large
+artifacts.
 
-## Current focused update for VKD3D-Proton issue #3134
+## 2026-08-07 result update for VKD3D-Proton #3134
+
+Review only; do not post automatically.
+
+```text
+I found a causal fix for the terrain corruption on my RX 7800 XT / RADV 26.1.6
+system.
+
+The game fills ordinary 2048x2048 BC3 baked-terrain caches from placed
+R32G32B32A32_UINT upload footprints. Both physical elements are 16 bytes, so a
+64x64 source footprint represents a 256x256 BC3 page. The current
+vk_buffer_image_copy_from_d3d12() path keeps the 64x64 source dimensions and
+source row geometry when constructing VkBufferImageCopy2. That populates only
+the upper-left fraction of each terrain page.
+
+A tightly gated diagnostic converted the geometry through physical blocks. In
+one controlled run it adjusted 522/522 matching copies with zero rejects:
+- 178 x 64x64 -> 256x256 interiors
+- 182 x 64x1 -> 256x4 borders
+- 162 x 1x64 -> 4x256 borders
+
+At 5,491 m and 5,501 m the terrain is now continuous; the former isolated
+rectangles, black gaps, and magenta page edges are gone. The same successful
+run still has the game's missing-file fallback lines and 40,408 split END_ONLY
+warnings, so neither is required for this terrain failure.
+
+I reduced the diagnostic to a general VKD3D-Proton commit based on 84c87c83.
+It converts placed-footprint extent and buffer layout into destination image
+texels whenever source and destination physical block sizes match. There is no
+game/AppID check. A focused regression test reports four failures on the old
+helper and passes all 22 assertions with the fix; the existing BC copy tests
+also pass.
+
+The clean general build has now been tested without the diagnostic environment
+variable. The log identifies build cf11ba76 and contains no diagnostic marker.
+Terrain remains continuous and detailed at 4,813 m, 2,427 m, and 742 m. The
+menu-aircraft blocks and shimmering remain unchanged and are being tracked as
+a separate defect.
+
+Proposed small attachment set: one before/after screenshot pair, the bounded
+522-copy summary, environment/build hashes, and the clean patch.
+```
+
+## 2026-08-07 result update for Proton #9906
+
+Review only; do not post automatically.
+
+```text
+Rendering update: the terrain cause has been isolated to VKD3D-Proton's
+buffer-to-image copy geometry, not the loading percentage, missing-file log
+entries, split-barrier warnings, descriptor buffers, or queue selection.
+
+IL-2 supplies 64x64 R32G32B32A32_UINT placed footprints for 256x256 BC3
+terrain pages. VKD3D-Proton kept the source-format dimensions instead of
+converting them to destination BC3 texels, so only part of each page was
+populated. A gated diagnostic corrected 522/522 observed page/border copies
+with zero rejects. Terrain that was severely broken near 5,500 m then rendered
+continuously with no rectangular holes or magenta seams.
+
+A general VKD3D-Proton fix and focused regression test are now validated. The
+old helper fails four assertions; the fixed helper passes all 22. A clean
+general-build game run without the diagnostic gate repairs terrain from 4,813
+m down to 742 m. The menu blocks/shimmering and OpenMP/NUMA startup mitigation
+remain separate unresolved issues:
+  OMP_NUM_THREADS=16 KMP_AFFINITY=disabled %command%
+```
+
+## VKD3D-Proton pull-request draft
+
+```text
+Title: vkd3d: Convert buffer-image copies between block formats
+
+D3D12 placed footprints describe buffer geometry in footprint-format texels.
+VkBufferImageCopy2 instead expresses bufferRowLength, bufferImageHeight, and
+imageExtent in image-format texels. The existing buffer-to-image helper used
+the placed-footprint geometry unchanged when the footprint and destination
+formats had different block dimensions.
+
+Convert the source extent through physical block counts and express the buffer
+layout in destination image texels when both formats have the same physical
+block size. Preserve the existing path for unequal block sizes.
+
+This fixes R32G32B32A32_UINT footprints copied to BC3 images. A 64x64 source
+contains 64x64 16-byte elements and therefore covers a 256x256 BC3 image, not a
+64x64 BC3 region.
+
+The new regression test fails four assertions before the change and passes 22
+after it. Existing texture BC/RGBA and block-compressed copy tests pass. An
+IL-2 Korea (247970) runtime diagnostic adjusted 522 matching terrain-page
+copies and repaired the high-altitude terrain; final general-build validation
+is recorded separately.
+```
+
+## Historical pre-D07 focused update — superseded
 
 Use this as a review draft only. Do not post automatically.
 
@@ -71,7 +165,7 @@ Proposed attachments:
 - full environment and DLL hashes
 ```
 
-## ValveSoftware/Proton issue #9906 update
+## Historical Proton #9906 update — superseded
 
 ```text
 Controlled test update for Korea. IL-2 Series (247970)
@@ -165,7 +259,7 @@ Attachments proposed after review
 - filtered log comparison and checksums
 ```
 
-## VKD3D-Proton issue #3134 update
+## Historical VKD3D-Proton #3134 update — superseded
 
 Use this as a comment on the existing issue rather than opening a duplicate.
 
@@ -242,7 +336,8 @@ alternative-driver result, and good/bad commit range where available.
 
 ## Pull-request gate
 
-There is no PR draft because there is no candidate change. A future PR must
-name the isolated mechanism, explain D3D12 versus Vulkan semantics, include a
-focused regression test where practical, quantify performance impact, and
-limit any `IL2Series.exe` override specifically to Steam AppID 247970.
+A PR draft and validated general candidate now exist above. Do not submit them
+automatically; the user will decide when and where to publish. The final
+handoff should include the focused regression, one compact before/after pair,
+the bounded copy summary, build hashes, and a note that menu artifacts and the
+NUMA startup issue are separate. No `IL2Series.exe` override is proposed.

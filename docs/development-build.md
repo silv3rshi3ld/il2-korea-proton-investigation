@@ -376,3 +376,48 @@ the opt-in `VKD3D_IL2_BC3_PAGE_COPY=1` gate. The installed isolated tool is
 `IL2-Korea-D07-PageCopy-833cafa0`. See
 [`evidence-d07-preparation.md`](evidence-d07-preparation.md) for hashes and the
 runtime protocol. Proton Experimental and the game prefix remain unmodified.
+
+D07-r1 is valid and causal. It adjusted all 522 encountered candidates with
+zero rejects: 178 interiors, 182 horizontal borders, and 162 vertical borders.
+Two screenshots near 5,500 m show continuous terrain without the former page
+gaps or magenta seams. See [`evidence-d07-result.md`](evidence-d07-result.md).
+
+## D08 general block-unit conversion
+
+- Upstream base: `84c87c8390d9df75ba41d911496296fe13f0e275`
+- Candidate commit: `cf11ba76`
+- Branch: `fix-buffer-image-block-units`
+- Build directory: `build/vkd3d-proton-il2-general-block-copy-cf11ba76/`
+- Diagnostic environment variable: none
+
+The candidate changes `vk_buffer_image_copy_from_d3d12()` generally. When the
+placed-footprint format and destination image format have equal physical block
+sizes, it converts source extent, row length, and image height through physical
+block counts into destination image texels. It contains no executable name,
+AppID, Korea resource dimensions, or observed-shape filter.
+
+The new `test_copy_buffer_texture_bc_rgba` uploads a 64x64
+`R32G32B32A32_UINT` footprint into a 256x256 BC3 texture and checks locations
+inside and beyond the incorrectly emitted old region. Against the unmodified
+helper it reports four deterministic failures. Against `cf11ba76`, all 22
+assertions pass. Neighbor tests also pass:
+
+- `test_copy_texture_bc_rgba`: 147 assertions;
+- `test_copy_block_compressed_texture`: 50 assertions.
+
+The native and MinGW x64 test executables compile successfully. The official
+release-package method also completes for x86-64 and x86:
+
+| File | SHA-256 |
+|---|---|
+| x64 `d3d12.dll` | `616873065fe60edb671a09d98201951ccb32a91fd591c0c2f5e2ad55983ff22a` |
+| x64 `d3d12core.dll` | `0ec85f20a6edd0052d672baad3e7662e02c68ca8901e2379dcd448443c6f1d86` |
+| x86 `d3d12.dll` | `7765f67186f286048bdb02ae1feb37c1fc47545458221618649abfbeef8e384b` |
+| x86 `d3d12core.dll` | `87a0679156c49261dfd2fe0c1eda90ed77d4b12428c1c59d1c69f43ec4c92e60` |
+
+D08 ran through the separately named custom Proton tool with only the startup
+mitigation and Proton logging. Runtime build identity is `cf11ba76`, no
+`IL2BCCOPY` marker appears, and terrain is continuous and detailed at 4,813 m,
+2,427 m, and 742 m. Menu blocks/shimmering remain separate. See
+[`evidence-d08-result.md`](evidence-d08-result.md). Rollback remains selecting
+Proton Experimental or the retained D07 tool.

@@ -11,7 +11,8 @@ map archives / BlocksCache threads
         -> UpdateSubresource / CopyTextureRegion
         -> ordinary upload buffer
         -> placed BC3 texture blocks with mip chains and 2048x2048 baked caches
-        -> 64/128-texel page uploads plus one-texel border stitching
+        -> 64x64 RGBA32_UINT physical-block pages plus thin borders
+        -> buffer-to-image reinterpret copy into 256x256 BC3 pages
         -> SRV in a shader-visible descriptor heap
         -> terrain shader chooses a block and mip/LOD from camera distance
         -> the existing terrain mesh samples that surface page
@@ -37,12 +38,15 @@ eligible and additional pages and trees appear. The low-altitude scene is still
 wrong, so altitude changes resource selection and severity rather than fixing
 the mechanism.
 
-The menu aircraft also shows rectangular corruption, but the intact aircraft
-texture is visible below a screen-space block pattern. The terrain now has a
-specific BC3-cache operation which has not been tied to the menu. The safer
-model is therefore two defects until a shared resource dependency is proven:
-one in baked-terrain cache population/borders and another in a menu effect,
-shadow, or temporal resource.
+In D07, converting the complete interior/border copy family produces
+continuous terrain at approximately 5,500 m. The former altitude dependency
+therefore reflected how much of the under-populated baked cache was visible,
+not a separate mip-residency failure.
+
+The menu aircraft shows rectangular corruption in both D07-r2 and clean D08
+while the terrain remains repaired. The user also confirms that menu
+shimmering persists. The menu effect is therefore a separate open symptom,
+not another manifestation fixed by the baked-terrain copy conversion.
 
 ## Proven exclusions and weakened explanations
 
@@ -61,32 +65,21 @@ The split `END_ONLY` warnings remain observations. Their count follows run
 duration, and no warning has been tied to a failing texture, barrier state, or
 draw. They are not yet a root-cause explanation.
 
-## Leading explanations
+## Demonstrated terrain mechanism
 
-1. **Full-page buffer-to-BC3 block-unit conversion.** D06 records `64x64`
-   interiors at 256-texel destination spacing, with borders aligned at page
-   ends. The emitted regions cover only 3.46-6.32% of each active cache; a 4x
-   conversion covers 54.69-100%. D07 tests this exact family and logs the
-   placed-footprint source format.
-2. **Other page population or copy-to-sample visibility failure.** If D07 is
-   unchanged, the page producer may leave a cache page empty or issue work
-   without the dependency needed before sampling.
-3. **Descriptor contents, index, or lifetime on the baked-terrain cache.** A
-   shader may read an uninitialized, stale, destroyed, out-of-range, or wrong-
-   type descriptor. Disabling descriptor buffers would not necessarily fix
-   invalid D3D12 descriptor use because the fallback backend preserves the
-   application's descriptor semantics.
-4. **Translated descriptor/LOD shader calculation.** The game or translated
-   shader may choose the wrong page or mip index, especially in distant-LOD
-   paths. The zero SRV minimum clamp does not test explicit shader LOD or
-   descriptor-index arithmetic.
-5. **Texture-provider lookup or creation fallback.** The six tested autumn
-   inputs really are absent from installed packages and the backend substitutes
-   white. Nearly the same absent set is referenced by all seasons, so this may
-   be a secondary or optional path rather than a Linux-only failure.
-6. **RADV handling of otherwise valid Vulkan.** This remains possible but
-   requires a driver comparison, validation finding, or minimal Vulkan
-   reproduction before Mesa attribution.
+D07 proves the first prior hypothesis. All 522 matching copies use
+`R32G32B32A32_UINT` placed footprints and BC3 destinations with equal 16-byte
+physical elements. VKD3D-Proton expressed their Vulkan geometry in source
+texels. Converting through physical blocks changed:
+
+- `64x64` interiors to `256x256` BC3 texels;
+- `64x1` borders to `256x4` BC3 texels; and
+- `1x64` borders to `4x256` BC3 texels.
+
+The same mission then renders continuous high-altitude terrain. The driver,
+queues, descriptor-buffer path, missing-file fallbacks, and split-barrier
+warnings were otherwise unchanged. The defect is therefore in copy geometry,
+not sparse residency, page selection, or RADV for this terrain path.
 
 The D02 no-incoming-copy SRV class is relevant but not yet identified as the
 visible terrain. An SRV creation event does not prove that a draw bound or
@@ -94,16 +87,14 @@ sampled it, and a later copy after telemetry suppression cannot be excluded.
 
 ## Next discriminator
 
-The next test is D07, not another generic launch flag. D05c's border-only
-behavior executed on 202/202 candidates and the image remained unchanged. D06
-then exposed the same missing scale on the square page interiors. D07 retains
-the exact cache and physical-layout checks while expanding all six observed
-interior/border shapes under an opt-in gate.
+D08 validates the general block-compatible buffer-to-image conversion at
+commit `cf11ba76` without the D07 gate. The terrain track no longer needs more
+configuration-flag testing. The next graphics discriminator should be focused
+instrumentation of resources, descriptors, passes, and synchronization used by
+the menu aircraft/shadow effect while it visibly shimmers.
 
-A native Windows `tex.log` and D3D12 debug-layer capture remain useful for
-final ownership, but lack of current Windows access does not block D07.
-
-No current evidence justifies a permanent game-specific application override.
+No game-specific application override is justified because the failing
+behavior is in the general buffer-image conversion helper.
 
 See [`prior-art-msfs.md`](prior-art-msfs.md) for the exact upstream cases and
 why the MSFS host-import fallback is not selected for IL-2. See

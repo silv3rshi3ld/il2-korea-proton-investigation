@@ -21,6 +21,12 @@ This directory contains ignored local evidence:
 - `curated/d05-bc3-normalization/`: D05a's unchanged 1,416 m screenshot. The
   visual artifact is retained, but the causal run is invalid because the gate
   adjusted zero copies; its hash is in `docs/evidence-d05-result.md`;
+- `curated/d07-page-copy/`: repaired-terrain and menu screenshots from two
+  valid gated causal runs; hashes are recorded in
+  `docs/evidence-d07-result.md`;
+- `curated/d08-general-fix/`: one unchanged menu-aircraft capture and three
+  repaired-terrain captures from the clean general `cf11ba76` build; hashes
+  are recorded in `docs/evidence-d08-result.md`;
 - `runs/`: exact compressed Proton logs, compact module/summary files,
   metadata, and observations;
 - `comparisons/`: generated log comparisons.

@@ -2,22 +2,29 @@
 
 ## Current conclusion
 
-The defect is localized to the game's application-managed baked-terrain page
-path, with a specific copy-unit mismatch now the leading candidate. The
-installed Korea map defines 800 m texture quads and five LODs. Runtime evidence
-shows ordinary placed 2048x2048 BC3 cache textures rather than D3D12 sparse
-resources. This explains why the corruption appears as regular rectangles and
-worsens with altitude.
+The terrain defect is caused by a block-unit conversion missing from
+VKD3D-Proton's buffer-to-image `CopyTextureRegion` path. The game supplies
+placed `DXGI_FORMAT_R32G32B32A32_UINT` footprints and copies them into ordinary
+placed `DXGI_FORMAT_BC3_UNORM` baked-terrain caches. Both physical elements are
+16 bytes, so each source texel represents one 4x4 BC3 block. D3D12's buffer
+layout is described in source-format texels, while Vulkan requires the buffer
+layout and image extent in destination image texels.
 
-D05c is decisive negative evidence only for a border-only correction: it
-corrected 202/202 thin copies with zero rejects while the image remained
-unchanged. D06 then revealed that the `64x64` interiors are also emitted at
-source size despite being placed on a 256-texel destination grid. The same 1:4
-physical-block conversion would raise observed cache coverage from 3.46-6.32%
-to 54.69-100%. This closely explains both isolated terrain rectangles and
-magenta seams. D07 will confirm the square footprints' DXGI format and test the
-complete page family; until that run, this remains a high-confidence candidate
-rather than a demonstrated fix.
+The old `vk_buffer_image_copy_from_d3d12()` path carried the source dimensions
+through unchanged. D07 converted all 522 observed page interiors and borders:
+178 `64x64` interiors became `256x256`, 182 horizontal borders became
+`256x4`, and 162 vertical borders became `4x256`, with zero rejects. Terrain at
+approximately 5,500 m changed from mostly absent rectangular pages with
+magenta seams to continuous detailed terrain. This is a causal result, not a
+visual analogy.
+
+The public D3D12 documentation does not clearly list this BC3/RGBA32_UINT
+reinterpret pair among its compatible format groups. Native Windows and
+VKD3D-Proton's existing image-to-image path nevertheless support the same
+physical-block interpretation. The safest ownership statement is therefore a
+VKD3D-Proton native-compatibility gap, not a demonstrated RADV defect. The
+general `cf11ba76` candidate passes its regression tests and D08 validates it
+in game without any IL-2-specific filter or diagnostic gate.
 
 The startup/OpenMP problem remains an independent Wine/NUMA investigation.
 
@@ -25,13 +32,10 @@ The startup/OpenMP problem remains an independent Wine/NUMA investigation.
 
 | Rank | Mechanism | Evidence | Confidence |
 |---:|---|---|---|
-| 1 | Missing block-unit conversion on buffer-to-BC3 terrain-page copies | D06 interiors are 64x64 but placed every 256 texels; border offsets align at page ends; projected 4x mapping fills the observed caches; D05c did not include interiors | High as a candidate; D07 causality pending |
-| 2 | Baked-cache page is otherwise not populated or not made visible before sampling | Terrain-page geometry is established; cache copies start at mission transition; single-queue testing does not repair an omitted in-queue dependency | Medium-low after D06 |
-| 3 | Wrong cache page or descriptor is selected at draw time | Strong altitude/LOD dependency; terrain mesh remains; descriptor-buffer disable is unchanged but invalid descriptor contents/indexing would affect both backends | Medium-low |
-| 4 | Explicit shader LOD/page-index translation error | High-altitude distant-page selection is much worse; broad SRV minimum-LOD clamps and incomplete mip chains are excluded, but shader-side LOD/index arithmetic is not traced | Low-medium |
-| 5 | Game texture-provider fallback contributes missing inputs | Six autumn paths fail both their requested and common-fallback lookup and default to white; those references are absent from installed packages | Low-medium as a contributor; low as the Linux-only cause |
-| 6 | RADV mishandles otherwise valid Vulkan | Reproduced on two AMD generations, but no valid-command driver failure or minimal Vulkan reproduction is isolated | Low-medium |
-| 7 | General already-fixed VKD3D/dxil-spirv defect | Unmodified current upstream remains unchanged | Low |
+| 1 | Missing block-unit conversion on buffer-to-BC3 terrain-page copies | D07 adjusted 522/522 exact-class copies in run 1 and 304/304 in run 2, with zero rejects, and repaired high-altitude terrain both times; clean general-build D08 repeats the repair; the focused synthetic test fails four assertions on the old path and passes 22/22 with the general fix | High; causal for terrain and fixed by `cf11ba76` |
+| 2 | Separate menu effect, shadow, or temporal-resource defect | D07-r2 and clean D08 preserve the terrain repair while aircraft blocks and shimmering remain | Confirmed separate; cause open |
+| 3 | Game texture-provider fallback contributes secondary missing inputs | The successful D07 run still logs missing summer/common inputs, proving they are not required for the rectangular terrain failure | Low as a remaining contributor |
+| 4 | RADV mishandles otherwise valid Vulkan | The same driver renders correctly when VKD3D emits converted copy geometry; no driver change was required | Very low for the terrain defect |
 
 ## Terrain model established by files and traces
 
@@ -63,8 +67,11 @@ eligible, so more content appears without fixing the underlying cache path.
   clamp zero for the covered resources.
 - Current-upstream shader translator: D04 is unchanged.
 - The thin reinterpret borders as a complete explanation: D05c changes every
-  encountered border candidate and visuals remain unchanged. It does not
-  exclude the interior-page conversion found by D06.
+  encountered border candidate and visuals remain unchanged. D07 proves that
+  full interiors plus borders are required.
+- Split `END_ONLY` barriers: 40,408 warnings remain in the successful D07 run.
+- The logged missing Korea terrain inputs as the primary cause: the same
+  fallbacks remain in the successful D07 run.
 - A wholesale missing map archive: every Maps1-6 file tree was extracted and
   multi-gigabyte content was present.
 - Wine WIC scaler mode 3 as an abort: Wine logs the unsupported interpolation
@@ -82,10 +89,9 @@ matched Windows `tex.log`, they cannot be promoted to the Linux root cause.
 
 ## Decision and next discriminator
 
-Do not add an application override or run more unrelated flags. D07 is the next
-single-variable discriminator. It retains the exact cache, source-format,
-shape, byte-size, pitch, alignment, and bounds checks while converting both
-observed page interiors and borders. A repeatable repair would establish the
-copy-unit mismatch as causal and justify reducing it to a general VKD3D-Proton
-fix and regression test. An unchanged result would return the investigation to
-producer visibility and descriptor/page selection.
+Do not add an application override or run more unrelated terrain flags. D08
+validates the minimal general `vk_buffer_image_copy_from_d3d12()` correction at
+commit `cf11ba76` without the IL-2 resource/shape filter or
+`VKD3D_IL2_BC3_PAGE_COPY`. The terrain patch is ready for user review and an
+upstream handoff. The next graphics work should instrument the menu aircraft
+and motion-only flicker as a separate defect.

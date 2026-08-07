@@ -182,16 +182,19 @@
     dimensions incompatible with BC3's 4x4 physical blocks: 118 `128x1`, 112
     `1x128`, 110 `64x1`, and 92 `1x64`. All offsets are block-aligned, but the
     one-texel extent neither forms a block nor reaches the mip edge.
-41. Current VKD3D-Proton passes the D3D12 source-box extent directly through
-    `vk_buffer_image_copy_from_d3d12()` to `vkCmdCopyBufferToImage2()`. It does
-    not normalize these internal BC3 regions. The code is unchanged in tested
-    upstream commit `84c87c83`, explaining why D04 could not fix this path.
-42. Vulkan requires compressed buffer-image regions to respect transfer
-    granularity scaled by the compressed block size. VKD3D-Proton's own native
-    cross-test classifies non-block-sized compressed-copy coordinates as
-    invalid D3D12 usage. The best current attribution is therefore invalid game
-    copy parameters tolerated by native Windows plus a VKD3D compatibility gap,
-    not a demonstrated RADV defect.
+41. Current VKD3D-Proton passes the D3D12 placed-footprint dimensions directly
+    through `vk_buffer_image_copy_from_d3d12()` to
+    `vkCmdCopyBufferToImage2()`. It does not convert buffer layout or extent
+    units when the footprint and image formats use different block geometry.
+    The code is unchanged in tested upstream commit `84c87c83`, explaining why
+    D04 could not fix this path.
+42. Vulkan expresses compressed buffer-image regions and buffer strides in
+    destination image texels. The D3D12 placed footprint instead describes the
+    buffer in its own format's texels. For equal 16-byte physical elements,
+    VKD3D-Proton must convert through block counts, as its image-to-image path
+    already does. Public D3D12 documentation does not clearly enumerate the
+    BC3/RGBA32_UINT pair, so this is best described as a native-compatibility
+    gap rather than an assertion that the game's use is specification-required.
 43. D05c is a valid behavioral run. It adjusted 202/202 exact thin
     `R32G32B32A32_UINT`-to-BC3 candidates, rejected none, and touched eight
     destination resources. The user observed the same missing terrain pages
@@ -223,6 +226,23 @@
     1:4 interpretation is not yet proven for them. D07 combines exact format
     telemetry with a tightly gated full-page behavioral conversion, avoiding a
     separate additional trace run.
+50. D07 is valid. It records 522 target candidates, 522 adjustments, zero
+    rejects, zero cap markers, and four destination resources. Every source is
+    a footprint-only `R32G32B32A32_UINT` region and every destination is BC3.
+51. D07 converts 178 `64x64` interiors to `256x256`, 182 `64x1` borders to
+    `256x4`, and 162 `1x64` borders to `4x256`. The screenshots at 5,491 m and
+    5,501 m show continuous detailed terrain without the former rectangular
+    holes or magenta page edges.
+52. The successful D07 run still contains 40,408 split `END_ONLY` warnings and
+    the game's `tex.log` still contains Korea summer/common-fallback failures.
+    Neither is required for the rectangular terrain defect.
+53. A general VKD3D-Proton fix at commit `cf11ba76` converts buffer-image
+    geometry through physical blocks whenever the source and destination block
+    sizes match. It has no executable check, AppID check, or IL-2 override.
+54. The focused regression test fails four assertions on the old helper and
+    passes all 22 assertions with `cf11ba76`. Existing
+    `test_copy_texture_bc_rgba` (147 assertions) and
+    `test_copy_block_compressed_texture` (50 assertions) also pass.
 
 ## Observations not yet promoted to findings
 
@@ -242,17 +262,8 @@
   greater loss. D02 also proves that rectangular pages remain missing at 1,385
   m, so the threshold changes severity rather than fixing the defect. The
   mechanism remains unproven.
-- Rendering symptoms are consistent with several failure classes, including
-  missing synchronization, upload visibility, descriptor misuse, sparse
-  residency, mip/LOD selection, aliasing, compression, shader translation, and
-  a driver bug. Visual appearance cannot select among them.
-- The combined visual, binary, and trace evidence supports a working model in
-  which the terrain mesh remains present while an engine-level distance/LOD
-  system selects ordinary placed BC3 surface pages. Most distant pages appear
-  empty, stale, wrong, or not visible to the shader; lower altitude selects
-  additional local pages. Descriptor contents/lifetime, copy-to-sample
-  synchronization, shader index/LOD translation, and RADV remain distinct
-  possible causes. See `rendering-path-assessment.md`.
+- The menu aircraft and motion-only flicker have not been classified in the
+  supplied D07 screenshots. They remain separate until explicitly rechecked.
 
 ## External-report and prior-art assessment
 
@@ -278,7 +289,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Track | Assessment | Confidence |
 |---|---|---|
 | Startup | Affinity discovery in the shipped OpenMP path is bypassed by the current environment variables; the responsible Wine API/topology/runtime behavior is unproven. | Low |
-| Graphics | The game definitely uses D3D12 through VKD3D-Proton and DXVK's DXGI. The failure follows an application-managed 800 m baked-terrain page system. D06 exposes a likely missing 1:4 block-unit conversion for complete BC3 pages; D07 will test it directly. | High for rendering architecture and candidate geometry; causality pending |
+| Graphics | The game uses D3D12 through VKD3D-Proton and DXVK's DXGI. Two D07 runs and clean general-build D08 prove that VKD3D-Proton under-populates the application's 800 m baked-terrain pages by retaining source-footprint units in a BC3 Vulkan copy. | High; causal for terrain and fixed by `cf11ba76` |
 | Queue selection | Two `single_queue` runs leave the defects unchanged, making ordinary asynchronous compute/transfer queue selection unlikely to be the primary trigger. | Medium |
 | Upload allocation | `no_upload_hvv` changes the allocation path, but its apparent improvement is inseparable from lower capture altitude. | Low/inconclusive |
 | Streaming/residency/LOD | D02 confirms active ordinary compressed-texture streaming and narrows it to complete uploads plus an unresolved no-upload SRV class; it does not identify which resources produce the visible pages. | Medium for relevance, low for mechanism |
@@ -289,10 +300,11 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Descriptor-buffer backend | One verified disable run on the D03-derived build is visually unchanged and uses the mutable-descriptor fallback; stock-Proton confirmation remains. | Medium that descriptor buffers are not the primary cause |
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
-| BC3 baked-terrain cache copies | D05c excludes borders alone. D06 shows 64x64 interiors on a 256-texel grid and very low emitted coverage; D07 applies the exact conversion to the full observed page family. | High as the leading candidate; runtime causality pending |
+| BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with `cf11ba76`. | Root cause and general remedy validated |
 
-No application override is justified. The next justified experiment is the
-gated D07 full-page copy-unit conversion.
+No application override is justified. D08 validates the general `cf11ba76`
+helper fix without the D07 gate or game-specific filters. The terrain track is
+complete; the menu aircraft blocks/shimmering remain a separate open track.
 
 ## Source-level investigation gate
 
@@ -333,7 +345,9 @@ development-build stage.
 12. D06 is complete. It exposes square interiors emitted at one quarter of the
     page spacing in each dimension and narrows the leading cause to a full-page
     block-unit conversion.
-13. D07 is installed and prepared. It records the square footprint format and
-    applies the exact physical-block conversion to the complete observed page
-    family under an opt-in gate.
-14. Investigate the NUMA caller separately with focused API tracing.
+13. D07 is complete and repairs the high-altitude terrain while adjusting all
+    522 observed page-family copies with zero rejects.
+14. D08 validates the upstream-oriented `cf11ba76` change in game without the
+    diagnostic gate. Terrain is fixed; menu blocks/shimmering are unchanged.
+15. Investigate the menu corruption with a new focused trace and investigate
+    the NUMA caller separately with focused API tracing.

@@ -1,10 +1,12 @@
 # Patch status
 
-No permanent behavior-changing fix is currently justified. D05c excluded a
-border-only correction. D06 then revealed square interiors with the same
-likely source-to-BC3 unit mismatch. D07 extends the opt-in diagnostic to the
-complete observed page family; it must not be treated as an application
-override or upstream-ready fix before the runtime result.
+D07 demonstrates the terrain root cause: its complete page-family conversion
+adjusted 522/522 copies with zero rejects and repaired terrain near 5,500 m.
+`0009-vkd3d-Convert-buffer-image-copies-between-block-formats.patch` is the
+general upstream candidate. It contains a focused regression test and no
+IL-2-specific override. D08 loaded the clean general package without the
+diagnostic gate and repaired the terrain while leaving the separate menu
+artifact unchanged.
 
 `0001-il2-korea-sparse-resource-diagnostics.patch` is a temporary, gated
 instrumentation patch, not a candidate fix. It records the D3D12 reserved and
@@ -52,24 +54,35 @@ no commands.
 `0008-vkd3d-Test-full-BC3-terrain-page-reinterpret-copies.patch` is the D07
 increment on top of D05c. It uses a new opt-in gate and adds only the observed
 `64x64`/`128x128` interiors to the already bounded conversion. It is a causal
-diagnostic, not yet a proposed permanent fix.
+diagnostic, not the proposed permanent fix. Its valid runtime result adjusted
+522/522 copies and repaired the terrain.
+
+`0009-vkd3d-Convert-buffer-image-copies-between-block-formats.patch` is a clean
+commit based on upstream `84c87c83`. It corrects
+`vk_buffer_image_copy_from_d3d12()` by converting source-footprint geometry
+through physical blocks into destination image texels whenever the two formats
+have equal physical block sizes. The included test fails four assertions on
+the old helper and passes all 22 with the fix. Neighboring compressed-copy
+tests pass unchanged.
 
 ## Why there is no application override
 
-- The repeatable E00 baseline confirms the defect but does not identify a
-  behavior that fixes it.
+- The repeatable E00 baseline and successful D07 causal run identify a format-
+  unit conversion, not a game configuration flag.
 - `VKD3D_CONFIG=single_queue` is unchanged across two runs.
 - `VKD3D_CONFIG=no_upload_hvv` was enabled successfully, but its apparent
   vegetation improvement is confounded by altitude and map location.
 - Descriptor-buffer disabling is the prepared E03 control; the combined
   upload/single-queue control has not been run.
-- Ground pages and magenta borders remain in every captured configuration.
+- D07 repairs the ground pages and magenta borders by fixing the complete copy
+  family, without changing a VKD3D configuration flag.
 
 Adding `.NO_UPLOAD_HVV`, `.NO_STAGGERED_SUBMIT`, or another executable override
-for `IL2Series.exe` would therefore convert an unproven hypothesis into a
-permanent game-specific behavior. That is unsuitable for upstream review.
+for `IL2Series.exe` would not address the demonstrated copy-unit defect. The
+general helper fix is narrower in mechanism and applies only when physical
+block sizes match.
 
-## Why there is no general VKD3D-Proton or Mesa patch
+## Why the candidate belongs in VKD3D-Proton
 
 Valid D01b telemetry excludes D3D12 reserved/tiled resources. D02 supplies
 ordinary texture identifiers, mip ranges, upload copies, and lifetime order:
@@ -78,16 +91,18 @@ resources were found, and all SRV minimum-LOD clamps are zero. It also finds
 405 pre-cap placed BC3 textures with an SRV but no logged incoming upload/copy.
 D03 matches all 585 same-run pre-cap candidates and finds no overlap with any
 traced placed buffer/texture range and zero explicit legacy alias barriers.
-This excludes placed-resource memory aliasing for the covered class, but SRV
-creation still does not prove shader use and descriptor propagation/use remains
-untraced. The broad missing-page defect cannot yet be assigned to the game,
-VKD3D-Proton, or RADV. D06 now shows that VKD3D emits 64x64 page interiors at
-destination offsets spaced by 256 texels, alongside borders at the
-corresponding page ends. The projected physical-block conversion fills the
-active caches. D07 is the gated causal run needed before assigning this to
-general VKD3D copy semantics, a game compatibility case, or another layer.
+This excludes placed-resource memory aliasing for the covered class. D06 then
+showed that VKD3D emits 64x64 page interiors at destination offsets spaced by
+256 texels, alongside borders at the corresponding page ends. D07 changed only
+that geometry and repaired the image on the same game, RADV, queue, descriptor,
+and upload paths.
 
-The prefix-only installation attempts did not load the local DLLs because
-stock Proton restored its packaged copies during launch. A dedicated custom
-Proton tool is required before D01 telemetry can be interpreted. Only a
-demonstrated semantic defect should produce a behavior-changing patch.
+D3D12 placed footprints describe the buffer in footprint-format texels.
+Vulkan buffer-image copies describe the layout and extent in image-format
+texels. The conversion therefore belongs at the D3D12-to-Vulkan translation
+boundary. A Mesa workaround would merely hide incorrect Vulkan geometry, and a
+game override would duplicate a general format-unit rule.
+
+The prefix-only installation attempts did not load local DLLs because stock
+Proton restored its packaged copies during launch. D08 therefore uses a
+dedicated custom Proton tool, as did the valid diagnostic runs.

@@ -1,0 +1,204 @@
+From cf11ba76a1cdbee2daa4d5403913e596fb29938f Mon Sep 17 00:00:00 2001
+From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+Date: Fri, 7 Aug 2026 12:05:16 +0200
+Subject: [PATCH] vkd3d: Convert buffer-image copies between block formats
+
+D3D12 placed footprints express buffer geometry in footprint-format texels, while Vulkan buffer-image copies express it in image-format texels. Convert the extent and buffer layout through physical blocks when the source and destination block sizes match.
+
+This fixes R32G32B32A32_UINT upload footprints copied to BC3 images, where the old path populated only one sixteenth of the destination area.
+
+Signed-off-by: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+---
+ libs/vkd3d/command.c | 45 +++++++++++++++++-----
+ tests/d3d12_copy.c   | 88 ++++++++++++++++++++++++++++++++++++++++++++
+ tests/d3d12_tests.h  |  1 +
+ 3 files changed, 125 insertions(+), 9 deletions(-)
+
+diff --git a/libs/vkd3d/command.c b/libs/vkd3d/command.c
+index 5062c480..57566776 100644
+--- a/libs/vkd3d/command.c
++++ b/libs/vkd3d/command.c
+@@ -9634,6 +9634,15 @@ static void vk_buffer_image_copy_from_d3d12(VkBufferImageCopy2 *copy,
+         const struct vkd3d_format *dst_format, const D3D12_BOX *src_box, unsigned int dst_x,
+         unsigned int dst_y, unsigned int dst_z)
+ {
++    VkExtent3D src_extent;
++    bool compatible_block_size;
++
++    /* D3D12 describes the buffer layout in source-format texels, while Vulkan
++     * describes it in destination image texels. Convert through physical
++     * blocks when the formats have compatible block sizes. */
++    compatible_block_size = src_format->byte_count * src_format->block_byte_count ==
++            dst_format->byte_count * dst_format->block_byte_count;
++
+     copy->bufferOffset = footprint->Offset;
+     if (src_box)
+     {
+@@ -9641,9 +9650,19 @@ static void vk_buffer_image_copy_from_d3d12(VkBufferImageCopy2 *copy,
+         copy->bufferOffset += vkd3d_format_get_data_offset(src_format, footprint->Footprint.RowPitch,
+                 row_count * footprint->Footprint.RowPitch, src_box->left, src_box->top, src_box->front);
+     }
+-    copy->bufferRowLength = footprint->Footprint.RowPitch /
+-            (src_format->byte_count * src_format->block_byte_count) * src_format->block_width;
+-    copy->bufferImageHeight = align(footprint->Footprint.Height, src_format->block_height);
++    if (compatible_block_size)
++    {
++        copy->bufferRowLength = footprint->Footprint.RowPitch /
++                (dst_format->byte_count * dst_format->block_byte_count) * dst_format->block_width;
++        copy->bufferImageHeight = align(footprint->Footprint.Height, src_format->block_height) /
++                src_format->block_height * dst_format->block_height;
++    }
++    else
++    {
++        copy->bufferRowLength = footprint->Footprint.RowPitch /
++                (src_format->byte_count * src_format->block_byte_count) * src_format->block_width;
++        copy->bufferImageHeight = align(footprint->Footprint.Height, src_format->block_height);
++    }
+     copy->imageSubresource = vk_image_subresource_layers_from_d3d12(
+             dst_format, sub_resource_idx, image_desc->MipLevels,
+             d3d12_resource_desc_get_layer_count(image_desc));
+@@ -9658,16 +9677,24 @@ static void vk_buffer_image_copy_from_d3d12(VkBufferImageCopy2 *copy,
+ 
+     if (src_box)
+     {
+-        copy->imageExtent.width = min(copy->imageExtent.width, src_box->right - src_box->left);
+-        copy->imageExtent.height = min(copy->imageExtent.height, src_box->bottom - src_box->top);
+-        copy->imageExtent.depth = min(copy->imageExtent.depth, src_box->back - src_box->front);
++        src_extent.width = src_box->right - src_box->left;
++        src_extent.height = src_box->bottom - src_box->top;
++        src_extent.depth = src_box->back - src_box->front;
+     }
+     else
+     {
+-        copy->imageExtent.width = min(copy->imageExtent.width, footprint->Footprint.Width);
+-        copy->imageExtent.height = min(copy->imageExtent.height, footprint->Footprint.Height);
+-        copy->imageExtent.depth = min(copy->imageExtent.depth, footprint->Footprint.Depth);
++        src_extent.width = footprint->Footprint.Width;
++        src_extent.height = footprint->Footprint.Height;
++        src_extent.depth = footprint->Footprint.Depth;
+     }
++
++    if (compatible_block_size)
++        src_extent = vkd3d_compute_texel_count_from_blocks(
++                vkd3d_compute_block_count(src_extent, src_format), dst_format);
++
++    copy->imageExtent.width = min(copy->imageExtent.width, src_extent.width);
++    copy->imageExtent.height = min(copy->imageExtent.height, src_extent.height);
++    copy->imageExtent.depth = min(copy->imageExtent.depth, src_extent.depth);
+ }
+ 
+ static void vk_image_buffer_copy_from_d3d12(VkBufferImageCopy2 *copy, VkDeviceSize *footprint_size,
+diff --git a/tests/d3d12_copy.c b/tests/d3d12_copy.c
+index 7f8704f5..00f14ece 100644
+--- a/tests/d3d12_copy.c
++++ b/tests/d3d12_copy.c
+@@ -957,6 +957,94 @@ void test_copy_texture_bc_rgba(void)
+     destroy_test_context(&context);
+ }
+ 
++void test_copy_buffer_texture_bc_rgba(void)
++{
++    D3D12_TEXTURE_COPY_LOCATION dst_location, src_location;
++    ID3D12Resource *bc_texture, *upload_buffer;
++    struct test_context_desc desc;
++    struct resource_readback rb;
++    struct test_context context;
++    struct uvec4 *upload_row;
++    const struct uvec4 *got;
++    struct uvec4 expected;
++    uint8_t *upload_data;
++    unsigned int i, x, y;
++    HRESULT hr;
++
++    static const unsigned int probes[][2] =
++    {
++        { 0, 0 }, { 15, 0 }, { 16, 0 }, { 0, 15 }, { 0, 16 }, { 63, 63 },
++    };
++
++    memset(&desc, 0, sizeof(desc));
++    desc.no_pipeline = true;
++    desc.no_root_signature = true;
++    desc.no_render_target = true;
++    if (!init_test_context(&context, &desc))
++        return;
++
++    /* Each RGBA32_UINT texel is physically one BC3 block. Keep the source
++     * dimensions large enough that an unconverted Vulkan copy remains valid,
++     * but covers only the upper-left portion of the destination. */
++    upload_buffer = create_upload_buffer(context.device, 64 * 1024, NULL);
++    hr = ID3D12Resource_Map(upload_buffer, 0, NULL, (void **)&upload_data);
++    ok(hr == S_OK, "Failed to map upload buffer, hr %#x.\n", (int)hr);
++    for (y = 0; y < 64; ++y)
++    {
++        upload_row = (struct uvec4 *)(upload_data + y * 1024);
++        for (x = 0; x < 64; ++x)
++        {
++            upload_row[x].x = 0x10000000u | (y << 8) | x;
++            upload_row[x].y = 0x20000000u | (x << 8) | y;
++            upload_row[x].z = 0x30000000u | (y << 16) | x;
++            upload_row[x].w = 0x40000000u | (x << 16) | y;
++        }
++    }
++    ID3D12Resource_Unmap(upload_buffer, 0, NULL);
++
++    bc_texture = create_default_texture(context.device, 256, 256, DXGI_FORMAT_BC3_UNORM,
++            0, D3D12_RESOURCE_STATE_COPY_DEST);
++
++    memset(&src_location, 0, sizeof(src_location));
++    src_location.pResource = upload_buffer;
++    src_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
++    src_location.PlacedFootprint.Footprint.Width = 64;
++    src_location.PlacedFootprint.Footprint.Height = 64;
++    src_location.PlacedFootprint.Footprint.Depth = 1;
++    src_location.PlacedFootprint.Footprint.RowPitch = 1024;
++    src_location.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R32G32B32A32_UINT;
++
++    memset(&dst_location, 0, sizeof(dst_location));
++    dst_location.pResource = bc_texture;
++    dst_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
++    ID3D12GraphicsCommandList_CopyTextureRegion(context.list,
++            &dst_location, 0, 0, 0, &src_location, NULL);
++
++    transition_resource_state(context.list, bc_texture,
++            D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COPY_SOURCE);
++
++    get_texture_readback_with_command_list(bc_texture, 0, &rb, context.queue, context.list);
++    for (i = 0; i < ARRAY_SIZE(probes); ++i)
++    {
++        x = probes[i][0];
++        y = probes[i][1];
++        expected.x = 0x10000000u | (y << 8) | x;
++        expected.y = 0x20000000u | (x << 8) | y;
++        expected.z = 0x30000000u | (y << 16) | x;
++        expected.w = 0x40000000u | (x << 16) | y;
++        got = get_readback_uvec4(&rb, x, y);
++        ok(!memcmp(got, &expected, sizeof(*got)),
++                "Got {%#x, %#x, %#x, %#x} at (%u, %u), expected {%#x, %#x, %#x, %#x}.\n",
++                got->x, got->y, got->z, got->w, x, y,
++                expected.x, expected.y, expected.z, expected.w);
++    }
++    release_resource_readback(&rb);
++
++    ID3D12Resource_Release(upload_buffer);
++    ID3D12Resource_Release(bc_texture);
++    destroy_test_context(&context);
++}
++
+ void test_copy_texture_mismatch_format(void)
+ {
+     static const FLOAT gray_unorm[] = { 10.0f / 255.0f, 10.0f / 255.0f, 10.0f / 255.0f, 10.0f / 255.0f };
+diff --git a/tests/d3d12_tests.h b/tests/d3d12_tests.h
+index fba34419..659b8124 100644
+--- a/tests/d3d12_tests.h
++++ b/tests/d3d12_tests.h
+@@ -183,6 +183,7 @@ decl_test(test_copy_texture);
+ decl_test(test_copy_texture_ds_edge_cases);
+ decl_test(test_copy_texture_buffer);
+ decl_test(test_copy_texture_bc_rgba);
++decl_test(test_copy_buffer_texture_bc_rgba);
+ decl_test(test_copy_texture_mismatch_format);
+ decl_test(test_copy_buffer_texture);
+ decl_test(test_copy_block_compressed_texture);
+-- 
+2.55.0
+

@@ -1,8 +1,8 @@
 # Hypotheses and prior art
 
-These are investigation leads, not conclusions. A symptom match is not proof
-of a shared cause, and no item below justifies an IL-2 application override on
-its own.
+This table retains both historical leads and their current dispositions. A
+symptom match is not proof of a shared cause, and no item below justifies an
+IL-2 application override on its own.
 
 ## Startup / NUMA track
 
@@ -27,13 +27,13 @@ not establish what Wine reports through Win32 processor groups and NUMA APIs.
 | G5 | Reserved/sparse terrain resources or residency updates are mishandled. | Valid D01b trace records zero reserved-resource and tile-mapping calls during reproduction. | Excluded for the tested path; do not pursue without contradictory new evidence. |
 | G6 | Incorrect mip/LOD state causes distant terrain to sample absent mips. | D02 found zero non-zero SRV minimum-LOD clamps and complete geometric uploads for 2,355 compressed mip chains, weakening the broad form of this hypothesis. | Correlate the remaining no-upload SRV class with actual binding and explicit-LOD shader use. |
 | G7 | Image/buffer descriptor type reuse exposes invalid game use or a translation/driver defect. | D03 found no placed-resource range overlap for all 585 pre-cap candidates and zero explicit legacy alias barriers, excluding resource-memory aliasing for the covered class. E03 now isolates the descriptor-buffer backend. | Use descriptor QA after E03; select `avoid_image_buffer_aliasing` only if descriptor evidence specifically supports image/buffer type confusion. |
-| G8 | The repeated split-barrier `END_ONLY` warnings are incidental because VKD3D conservatively completes them. | Count and correlate warning timestamps with resources and visible failures; compare behavior, not warning count alone. | Instrument a suspicious resource's before/after states and layouts. |
-| G9 | RADV is given valid Vulkan but mishandles a specific path. | Reproduce with another AMD Vulkan driver or Mesa version, one variable at a time. | Vulkan validation, RenderDoc/trace if lawful and practical, then minimal Vulkan reproducer. |
+| G8 | The repeated split-barrier `END_ONLY` warnings are incidental because VKD3D conservatively completes them. | D07 renders terrain correctly while retaining 40,408 warnings. | Confirmed incidental for the terrain defect. |
+| G9 | RADV is given valid Vulkan but mishandles a specific path. | D07 changes only VKD3D copy geometry and fixes the image on the same RADV build. | Very low for terrain; no Mesa report justified. |
 | G10 | Shader translation produces incorrect code for a menu/terrain shader. | Artifact is invariant under memory, queue, and descriptor controls; shader debug/hash points to a stable stage. | Shader replacement/bisection and minimal shader test. |
-| G11 | The game texture-provider path fails to resolve, decode, or create required Korea terrain inputs under Wine and substitutes its default white texture. | Compare `data/tex.log` from the same current-build Korea winter scenario on native Windows; D04 already proves six terrain failures and fallback on Linux. | If Linux-only, instrument the package lookup/decode/backend-create boundary; if present on Windows, treat the failures as non-causal. |
+| G11 | The game texture-provider path fails to resolve, decode, or create required Korea terrain inputs under Wine and substitutes its default white texture. | D07 fixes terrain while the same summer/common fallbacks remain in `tex.log`. | Excluded as the primary rectangular terrain cause; possible secondary missing content only. |
 | G12 | The thin baked-terrain border reinterpret geometry alone is the visible cause. | D05c adjusted 202/202 exact thin candidates with zero rejects and visuals remained unchanged. | Excluded as a border-only explanation. |
-| G13 | The same missing 1:4 block-unit conversion affects complete `64x64`/`128x128` terrain pages. | D06 places 64x64 interiors every 256 destination texels; current active-cache union coverage is only 3.46-6.32%, while a 4x mapping gives 54.69-100%. D07 records the footprint format and changes only this exact class. | High as the next causal discriminator; format/visual effect pending D07. |
-| G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | If D07 is unchanged, trace the cache pool and associated RGBA/intermediate producers through writes, barriers, descriptor binding, and first sample. | Separate producer failure, synchronization failure, and selection failure before changing behavior. |
+| G13 | The same missing 1:4 block-unit conversion affects complete `64x64` terrain pages. | D07 finds 178 square `R32G32B32A32_UINT` footprints, converts them to `256x256` BC3 regions, and repairs terrain near 5,500 m; clean general-build D08 repeats the repair. | Confirmed causal for terrain and fixed by `cf11ba76`. |
+| G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -54,10 +54,12 @@ path during the covered interval. D04 is unchanged on current upstream and
 adds direct game-log evidence of failed terrain inputs. Re-analysis of D02 now
 originally promoted G12 because it connected the engine's named
 `stitchBorders` architecture to 432 suspect copy regions. D05c then executed
-the exact border-only mapping without visual change. D06 then exposed the
-interior-page geometry, so G13 is now the selected causal test and G14 is the
-fallback if it is unchanged. Package inspection independently confirms the
-engine's 800 m baked-page geometry; see `evidence-map-package-inspection.md`.
+the exact border-only mapping without visual change. D06 exposed the
+interior-page geometry, and D07 confirmed G13 by adjusting every encountered
+interior and border copy and repairing the high-altitude terrain. D08 validates
+the general `cf11ba76` implementation without the diagnostic gate.
+Package inspection independently confirms the engine's 800 m baked-page
+geometry; see `evidence-map-package-inspection.md`.
 
 ## Direct public report
 
