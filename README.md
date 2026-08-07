@@ -42,8 +42,12 @@ moving squares remain, so VRS is not required for the artifact. The
 investigation now moves to correlating the menu's temporal/reflection resources
 with the visible blocks. D11 is a completed trace-only VKD3D build that records
 application-supplied resource names and PIX pass labels without changing the
-rendering path. The D11 custom tool is installed and the controlled menu run is
-prepared. No application override is proposed.
+rendering path. D11 is visually unchanged and confirms that the menu allocates
+native-resolution current/previous SSR color and weight resources plus
+`rtTempSSR`; the game supplies no PIX pass labels. Allocation is not proof of
+use or cause. A local D12 trace now follows only those named resources through
+bindings, barriers, draws, shader hashes, and submission. No application
+override is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
