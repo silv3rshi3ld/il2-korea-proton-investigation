@@ -1,4 +1,7 @@
-# D05c exact reinterpret-copy diagnostic: runtime test prepared
+# D05c exact reinterpret-copy diagnostic: preparation
+
+> The runtime test is complete and visually unchanged. See
+> [`evidence-d05c-result.md`](evidence-d05c-result.md).
 
 ## State
 

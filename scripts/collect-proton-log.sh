@@ -20,6 +20,7 @@ usage() {
         "  texture-trace" \
         "  alias-trace" \
         "  bc3-border-normalization" \
+        "  baked-cache-trace" \
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
@@ -49,6 +50,9 @@ variant_environment() {
             ;;
         bc3-border-normalization)
             printf '%s' 'VKD3D_IL2_BC3_BORDER_COPY=1 '
+            ;;
+        baked-cache-trace)
+            printf '%s' 'VKD3D_IL2_BAKED_CACHE_TRACE=1 '
             ;;
         no-upload-hvv)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv '
@@ -207,7 +211,7 @@ collect_run() {
 
     awk '
         BEGIN { IGNORECASE = 1 }
-        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
+        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|IL2CACHE|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
     ' "$source_log" >"$run_dir/filtered.log"
 
     awk '
@@ -248,6 +252,13 @@ collect_run() {
         printf 'bc3_border_enabled_count=%s\n' "$(count_matches 'IL2BCCOPY enabled ' "$source_log")"
         printf 'bc3_border_adjustment_count=%s\n' "$(count_matches 'IL2BCCOPY adjust ' "$source_log")"
         printf 'bc3_border_log_limit_count=%s\n' "$(count_matches 'IL2BCCOPY adjustment log limit' "$source_log")"
+        printf 'baked_cache_enabled_count=%s\n' "$(count_matches 'IL2CACHE enabled:' "$source_log")"
+        printf 'baked_cache_create_count=%s\n' "$(count_matches 'IL2CACHE create ' "$source_log")"
+        printf 'baked_cache_srv_count=%s\n' "$(count_matches 'IL2CACHE srv ' "$source_log")"
+        printf 'baked_cache_copy_count=%s\n' "$(count_matches 'IL2CACHE copy_(image|buffer_image|resource)' "$source_log")"
+        printf 'baked_cache_barrier_count=%s\n' "$(count_matches 'IL2CACHE (enhanced_)?barrier ' "$source_log")"
+        printf 'baked_cache_destroy_count=%s\n' "$(count_matches 'IL2CACHE destroy ' "$source_log")"
+        printf 'baked_cache_suppressed_count=%s\n' "$(count_matches 'IL2CACHE suppressed ' "$source_log")"
     } >"$run_dir/summary.txt"
 
     if grep -q -- 'IL2TEX enabled:' "$source_log"; then
@@ -265,6 +276,11 @@ collect_run() {
                 --output "$run_dir/bc3-border-copy-analysis.md"; then
             printf 'BC3 diagnostic validation failed; preserving the run as invalid evidence.\n' >&2
         fi
+    fi
+
+    if grep -q -- 'IL2CACHE enabled:' "$source_log"; then
+        "$script_dir/analyze-baked-cache-trace.py" "$source_log" \
+            --output "$run_dir/baked-cache-analysis.md"
     fi
 
     if ((include_system_info)) && [[ ! -f "$run_dir/system-info.txt" ]]; then
@@ -294,6 +310,9 @@ collect_run() {
     fi
     if [[ -f "$run_dir/bc3-border-copy-analysis.md" ]]; then
         printf '  BC3 analysis:     %s\n' "$run_dir/bc3-border-copy-analysis.md"
+    fi
+    if [[ -f "$run_dir/baked-cache-analysis.md" ]]; then
+        printf '  baked-cache analysis: %s\n' "$run_dir/baked-cache-analysis.md"
     fi
     printf '\nKey counts:\n'
     sed -n '1,120p' "$run_dir/summary.txt"

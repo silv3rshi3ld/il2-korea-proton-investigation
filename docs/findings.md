@@ -192,6 +192,25 @@
     invalid D3D12 usage. The best current attribution is therefore invalid game
     copy parameters tolerated by native Windows plus a VKD3D compatibility gap,
     not a demonstrated RADV defect.
+43. D05c is a valid behavioral run. It adjusted 202/202 exact
+    `R32G32B32A32_UINT`-to-BC3 candidates, rejected none, and touched eight
+    destination resources. The user observed the same missing terrain pages
+    and magenta edges. The reinterpret geometry is therefore excluded as the
+    primary visible cause; no permanent compatibility change is justified.
+44. Read-only extraction of Maps1-6 confirms the Korea terrain system defines
+    five LODs and `textureQuadSize=800`. It contains ordinary mesh, surface,
+    distant-LOD, and hundreds of DDS resources. This independently corroborates
+    application-managed baked pages and explains the rectangular artifact
+    geometry.
+45. The six tested autumn terrain paths in `tex.log` are absent from installed
+    packages and loose files. Nearly the same absent-reference set occurs in
+    every season configuration. Because the same Windows build is reported to
+    render correctly on Windows, these are proven fallbacks but not yet a
+    Proton-specific cause.
+46. Wine's `BitmapScaler_Initialize unsupported mode 3` warnings do not indicate
+    an image-load abort: current Wine falls back to nearest-neighbour scaling,
+    initializes the source, and returns success. The owning log context points
+    to the Noesis UI path rather than a demonstrated terrain-provider failure.
 
 ## Observations not yet promoted to findings
 
@@ -202,9 +221,9 @@
 - The game creates `BlocksCache` CPU threads on mission entry. The ordinary log
   does not connect them to a D3D12 resource or the visible missing pages.
 - During D04 the mission loading display advanced from 25% to 26% and then
-  entered flight. The UI percentage is absent from available logs, so this is
-  not yet evidence of premature completion. Its value depends on comparison
-  with the same current-build scenario on native Windows.
+  entered flight. Package configuration and runtime timing show that baked-page
+  cache activity continues after mission entry, so this percentage is not
+  evidence that loading aborted. It may be phase-local.
 - Screenshot evidence shows strong altitude/distance dependence across several
   configurations. The user reports that additional low-fidelity assets begin
   loading below roughly 1,500 m, while captures near 5,000 m show substantially
@@ -247,7 +266,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Track | Assessment | Confidence |
 |---|---|---|
 | Startup | Affinity discovery in the shipped OpenMP path is bypassed by the current environment variables; the responsible Wine API/topology/runtime behavior is unproven. | Low |
-| Graphics | The game definitely uses D3D12 through VKD3D-Proton and DXVK's DXGI. A concrete `R32G32B32A32_UINT` to BC3 reinterpret-copy translation mismatch is isolated in the buffer-to-image path; whole-page and menu causality still require the D05c runtime result. | High for translation mismatch; medium for terrain causality |
+| Graphics | The game definitely uses D3D12 through VKD3D-Proton and DXVK's DXGI. The failure follows an application-managed 800 m baked-terrain page system. D05c excludes the tested border reinterpret geometry as the primary visible cause; page population, visibility, or selection remains. | High for rendering architecture; medium for remaining mechanism |
 | Queue selection | Two `single_queue` runs leave the defects unchanged, making ordinary asynchronous compute/transfer queue selection unlikely to be the primary trigger. | Medium |
 | Upload allocation | `no_upload_hvv` changes the allocation path, but its apparent improvement is inseparable from lower capture altitude. | Low/inconclusive |
 | Streaming/residency/LOD | D02 confirms active ordinary compressed-texture streaming and narrows it to complete uploads plus an unresolved no-upload SRV class; it does not identify which resources produce the visible pages. | Medium for relevance, low for mechanism |
@@ -257,13 +276,11 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Placed-resource aliasing | D03 matches all 585 same-run pre-cap candidates and finds zero range overlap plus zero explicit legacy alias barriers. | Excluded for covered class, high |
 | Descriptor-buffer backend | One verified disable run on the D03-derived build is visually unchanged and uses the mutable-descriptor fallback; stock-Proton confirmation remains. | Medium that descriptor buffers are not the primary cause |
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
-| Game texture-provider failure | Six exact Korea winter terrain inputs fail and fall back to `defWhite.bmp` during the corrupted D04 run. Whether Windows logs the same failures is unknown. | High that failures occur; medium-low that they cause the corruption |
-| BC3 baked-terrain cache copies | D05b proves all 432 target copies are footprint-only `R32G32B32A32_UINT` to BC3 reinterpret copies. D3D12 requires 4x expansion on both axes; VKD3D's buffer-to-image helper retains source geometry and layout. The existing image-to-image path already performs the analogous block conversion. | High for translation mismatch; medium for visible terrain causality until D05c |
+| Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
+| BC3 baked-terrain cache copies | D05c applies the exact proposed mapping to 202/202 encountered candidates with zero rejects; visuals remain unchanged. | High that this class is not the primary visible cause |
 
-No application override is justified. An opt-in exact-class reinterpret-copy
-experiment is justified to establish visual causality. If it succeeds, the
-likely upstream outcome is a general VKD3D-Proton buffer/image copy correction
-with a regression test, not a Korea-specific flag.
+No application override is justified. The next justified experiment is a
+trace-only producer-to-SRV correlation for the 2048x2048 baked-cache pool.
 
 ## Source-level investigation gate
 
@@ -295,10 +312,11 @@ development-build stage.
    every source is a footprint-only `R32G32B32A32_UINT` resource and every
    destination is BC3. Its unchanged image is not a causal negative because it
    changed no Vulkan command.
-10. D05c applies the documented 1:4 reinterpret mapping on both axes and
-   recomputes the destination-format Vulkan buffer layout for only this
-   observed class. This is the active next causal test.
-11. If D05c fixes only the seams, restrict descriptor QA and copy-to-sample
-   correlation to the 2048x2048 cache pool. A later Windows `tex.log` and D3D12
-   debug-layer comparison will refine ownership but does not block D05c.
-12. Investigate the NUMA caller separately with focused API tracing.
+10. D05c is complete. It applies the documented 1:4 reinterpret mapping to
+    202/202 candidates with zero rejects and the visible defect is unchanged.
+11. Package inspection confirms five LODs, 800 m texture quads, and the
+    installed absence of the logged fallback inputs. The 26% transition is not
+    evidence of aborted loading because cache activity continues after entry.
+12. D06 should trace cache-page production, barriers/layouts, descriptor
+    binding, and first sampling without changing runtime behavior.
+13. Investigate the NUMA caller separately with focused API tracing.

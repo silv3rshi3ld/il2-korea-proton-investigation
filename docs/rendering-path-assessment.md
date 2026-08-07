@@ -18,9 +18,10 @@ map archives / BlocksCache threads
 ```
 
 The compiled class and method names support this model, and runtime traces
-directly verify the D3D12 operations from `CopyTextureRegion` onward. The exact
-archive format, CPU decoder, and shader selection formula remain inferred; no
-game archive was unpacked and no asset was copied.
+directly verify the D3D12 operations from `CopyTextureRegion` onward. A later
+read-only package inspection confirms five LODs and 800 m texture quads. The
+CPU decoder and shader selection formula remain unknown; no extracted game
+asset is retained in this repository.
 
 ## What the captures show
 
@@ -62,31 +63,25 @@ draw. They are not yet a root-cause explanation.
 
 ## Leading explanations
 
-1. **Invalid BC3 terrain-cache border copies.** D02 contains 432 one-texel-wide
-   or one-texel-high buffer uploads into active 2048x2048 BC3 cache textures.
-   The game binary names `BakedTerrain`, `stitchBorders`, and the distant-LOD
-   cache path. VKD3D forwards these internal, non-block-sized regions to Vulkan
-   unchanged even though BC3 transfers are 4x4-block granular. This is high-
-   confidence for the magenta seams and a concrete possible contributor to
-   broader page corruption. See `evidence-d02-bc3-border-copies.md`.
+1. **Page population or copy-to-sample visibility.** The page producer may
+   leave a cache page empty or issue work without the dependency needed before
+   sampling. D05c corrected all encountered border reinterpret copies without
+   changing the image, so this requires the full page path rather than another
+   border-only change.
 2. **Descriptor contents, index, or lifetime on the baked-terrain cache.** A
    shader may read an uninitialized, stale, destroyed, out-of-range, or wrong-
    type descriptor. Disabling descriptor buffers would not necessarily fix
    invalid D3D12 descriptor use because the fallback backend preserves the
    application's descriptor semantics.
-3. **Copy-to-sample or UAV dependency.** The resource may have correct bytes
-   but become visible to a draw without the D3D12 dependency needed for VKD3D
-   to emit the corresponding Vulkan synchronization. A native Windows driver
-   may serialize or tolerate the sequence.
-4. **Translated descriptor/LOD shader calculation.** The game or translated
+3. **Translated descriptor/LOD shader calculation.** The game or translated
    shader may choose the wrong page or mip index, especially in distant-LOD
    paths. The zero SRV minimum clamp does not test explicit shader LOD or
    descriptor-index arithmetic.
-5. **Texture-provider lookup, decode, or creation failure.** D04's game-owned
-   `tex.log` names six failed Korea winter terrain inputs and substitutes
-   `defWhite.bmp`, but `packman.log` reports successful package enumeration and
-   no archive/decode error. This may be a secondary or optional-material path.
-6. **RADV handling of otherwise valid Vulkan.** This remains possible but
+4. **Texture-provider lookup or creation fallback.** The six tested autumn
+   inputs really are absent from installed packages and the backend substitutes
+   white. Nearly the same absent set is referenced by all seasons, so this may
+   be a secondary or optional path rather than a Linux-only failure.
+5. **RADV handling of otherwise valid Vulkan.** This remains possible but
    requires a driver comparison, validation finding, or minimal Vulkan
    reproduction before Mesa attribution.
 
@@ -96,21 +91,22 @@ sampled it, and a later copy after telemetry suppression cannot be excluded.
 
 ## Next discriminator
 
-The next test is one opt-in diagnostic VKD3D build, not another generic launch
-flag. It will expand only the observed one-texel BC3 border-copy dimension to a
-complete 4-texel physical block and record every adjustment. One matched
-high-altitude run will tell us whether the invalid border operation explains
-only the magenta seams or also destabilizes whole baked-terrain pages.
+The next test is a trace-only D06 build, not another generic launch flag.
+D05c's exact behavior executed on 202/202 candidates and the image remained
+unchanged. D06 will therefore follow only the 2048x2048 BC3 cache pages and
+associated producer intermediates through writes/copies, state and layout
+transitions, descriptor creation/binding, first sampling, and destruction.
 
-If only the seams improve, descriptor QA and a copy-to-sample trace should be
-limited to the 2048x2048 cache pool for the remaining black pages. A native
-Windows `tex.log` and D3D12 debug-layer capture remain useful for final
-ownership, but lack of current Windows access no longer blocks the first
-causal terrain experiment.
+A native Windows `tex.log` and D3D12 debug-layer capture remain useful for
+final ownership, but lack of current Windows access does not block this
+producer-to-SRV discriminator.
 
 No current evidence justifies a permanent game-specific application override.
 
 See [`prior-art-msfs.md`](prior-art-msfs.md) for the exact upstream cases and
 why the MSFS host-import fallback is not selected for IL-2. See
 [`evidence-d04-upstream-result.md`](evidence-d04-upstream-result.md) for the
-closed upstream control and texture-provider evidence.
+closed upstream control and texture-provider evidence. See
+[`evidence-d05c-result.md`](evidence-d05c-result.md) and
+[`evidence-map-package-inspection.md`](evidence-map-package-inspection.md) for
+the completed causal copy test and the verified map geometry.

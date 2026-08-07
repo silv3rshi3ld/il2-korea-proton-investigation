@@ -101,4 +101,7 @@ winter free-flight scenario:
   inputs are non-causal and descriptor/resource visibility remains the leading
   graphics path.
 
-No game asset was extracted or copied during this analysis.
+This was true for the original D04 analysis. A later read-only package
+inspection established the map's page geometry and the installed-content
+status of these references; see
+[`evidence-map-package-inspection.md`](evidence-map-package-inspection.md).

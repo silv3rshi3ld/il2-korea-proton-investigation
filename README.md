@@ -19,8 +19,9 @@ shader cache, or unfiltered large trace.
 
 The launch-option matrix E00-E02 is complete as of 2026-08-06. The
 investigation has now moved to source-level diagnosis. No application override
-or permanent fix has been added; D05 is an opt-in diagnostic behavior change
-which is inert unless its investigation-only environment variable is set. The
+or permanent fix has been added. D05c was an opt-in diagnostic behavior change
+and is inert unless its investigation-only environment variable is set. Its
+valid runtime result was visually unchanged. The
 verified environment is:
 
 - Launch executable: `bin/game/IL2Series.exe`
@@ -74,31 +75,36 @@ The user reports that below roughly 1,500 m some low-fidelity assets
 begin to load; around 5,000 m the failure is much more severe. Current logs do
 not expose the relevant altitude, mip, tile-mapping, or residency state.
 
-The whole defect is not yet isolated, but re-analysis of D02 now identifies one
-concrete terrain-path incompatibility. During a valid corrupted run, 2,355 multi-mip compressed textures received
+The whole defect is not yet isolated. During a valid corrupted run, 2,355 multi-mip compressed textures received
 geometrically complete buffer uploads, no partial mip chain was found, every
 logged SRV used a zero minimum-LOD clamp, and no logged operation followed
 resource destruction. Corrected cap-aware analysis leaves 405 pre-cap placed
 BC3 textures with an SRV but no logged incoming upload/copy.
 
-More importantly, the game creates a pool of 164 placed 2048x2048 single-mip
+The game creates a pool of 164 placed 2048x2048 single-mip
 BC3 baked-terrain caches and issues 432 internal border uploads measuring
 `1x64`, `64x1`, `1x128`, or `128x1`. The terrain module names this path
-`BakedTerrain`/`stitchBorders`. Current VKD3D forwards those one-texel extents
-unchanged to Vulkan, whose BC3 transfers are 4x4-block granular. This is the
-strongest current cause for the magenta terrain seams and a possible contributor
-to whole-page loss. It does not yet explain the menu blocks. D05a loaded but
+`BakedTerrain`/`stitchBorders`. D05a loaded but
 matched zero copies because its source-side filter was too strict, so its
 visually unchanged run is invalid as a causal test. D05b recorded 432
 footprint-only candidates and revealed that every source is
 `R32G32B32A32_UINT`, with zero adjustments. D3D12 defines this as a 128-bit
 uncompressed-to-BC3 reinterpret copy: both destination dimensions must be four
 times the source dimensions. VKD3D-Proton already handles that conversion for
-image-to-image copies, but the buffer-to-image helper does not. D05c is the
-next exact-class causal build; it is not an application override. See
+image-to-image copies, but the buffer-to-image helper does not.
+
+D05c then executed the exact proposed conversion for 202/202 encountered
+candidates, with zero rejects across eight destination resources. The missing
+terrain pages and magenta edges remained unchanged. This excludes that copy
+class as the primary visible cause and does not justify making the diagnostic
+behavior permanent. The next build, D06, will be trace-only and follow each
+2048x2048 cache page from its producer through barriers and descriptor binding
+to SRV exposure. That trace-only build is compiled and installed as
+`IL2-Korea-D06-CacheTrace-376652dc`; one runtime trace is prepared. See
 [`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md)
 [`docs/evidence-d05-result.md`](docs/evidence-d05-result.md), and
-[`docs/evidence-d05b-result.md`](docs/evidence-d05b-result.md).
+[`docs/evidence-d05c-result.md`](docs/evidence-d05c-result.md), with the next
+trace in [`docs/evidence-d06-preparation.md`](docs/evidence-d06-preparation.md).
 
 D03 is complete and visually unchanged. In its same-run pre-cap class, all 585
 candidates have placed-resource records, none overlaps any traced placed buffer
@@ -125,10 +131,14 @@ unchanged, closing that lead after one run. See
 D04 also produced a separate, lower-ranked lead in the game's own `tex.log`: six exact
 Korea winter terrain inputs fail, and static inspection shows that
 `dxBackend12.dll` then substitutes `graphics\textures\defWhite.bmp`. All map
-packages were enumerated without a reported package error. A matched native-
-Windows `tex.log` remains useful before calling these failures causal, but it
-does not block the now-selected BC3 border-copy experiment. See
-[`docs/evidence-d04-upstream-result.md`](docs/evidence-d04-upstream-result.md).
+packages were later inspected read-only. The tested autumn references are
+absent, but nearly the same absent set is referenced in every season. The map
+defines five LODs and 800 m texture quads, directly explaining the visible page
+shape and showing why the 25-to-26% loading transition alone is not evidence of
+an aborted load. A matched native-Windows `tex.log` remains useful before
+calling the missing references causal. See
+[`docs/evidence-d04-upstream-result.md`](docs/evidence-d04-upstream-result.md)
+and [`docs/evidence-map-package-inspection.md`](docs/evidence-map-package-inspection.md).
 
 An unmodified development build of the exact installed VKD3D-Proton commit was
 built successfully, but D00 did not validate it: stock Proton recopies its own

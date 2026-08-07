@@ -318,7 +318,9 @@ the four observed source shapes. It maps each 128-bit
 `R32G32B32A32_UINT` source texel to one 4x4 BC3 block, including Vulkan
 `imageExtent`, `bufferRowLength`, and `bufferImageHeight`. This mirrors the
 block-unit conversion already used by VKD3D-Proton's image-to-image copy path.
-It remains a causal diagnostic until its runtime behavior is measured.
+Its runtime behavior has now been measured: all 202 encountered candidates were
+adjusted with zero rejects, and the image remained unchanged. See
+[`evidence-d05c-result.md`](evidence-d05c-result.md).
 
 The official development build completed for x86-64 and x86 in:
 
@@ -338,4 +340,18 @@ markers. A synthetic test containing all four observed shapes validates the
 new extents and buffer layouts. The isolated custom tool
 `IL2-Korea-D05c-Reinterpret-5391ec7f` was created from Proton Experimental
 `experimental-11.0-20260724c`; all four installed DLL hashes match the table.
+
+## D06 focused baked-cache trace
+
+D05c executed its intended conversion on 202/202 candidates with zero rejects,
+but the terrain image remained unchanged. D06 returns to a trace-only current-
+upstream build at diagnostic commit
+`376652dc46fc323d2d2eb59ae8bd0ebd6cf3d189`. It filters only 2048x2048,
+one-mip textures and records creation, SRVs, copies, barriers/layouts, and
+destruction when `VKD3D_IL2_BAKED_CACHE_TRACE=1` is set.
+
+Both DLL architectures built successfully. The isolated custom tool is
+`IL2-Korea-D06-CacheTrace-376652dc`; see
+[`evidence-d06-preparation.md`](evidence-d06-preparation.md) for hashes and the
+runtime protocol. No prefix DLL or source Proton file was overwritten.
 The source tool and prefix remain unchanged.
