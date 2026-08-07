@@ -72,6 +72,10 @@ publish:
 | `D08-r1-terrain-repaired-dive-2427m.png` | terrain fixed at 2,427 m | `78217f416f0262903f8c5aa1e22ea74c529d0b6212fd6a13e830f9e0c05fcbf1` |
 | `D08-r1-terrain-repaired-low-altitude-742m.png` | terrain fixed at 742 m | `2c0b1e25bd394c192ba9b33e7e387ae7d521afcf0386ee629fda5d4a7d711900` |
 
+The 742 m capture is the single reviewed public copy at
+[`docs/images/terrain-repaired-d08-742m.png`](images/terrain-repaired-d08-742m.png).
+The other captures remain ignored local evidence.
+
 The collected run is retained locally under
-`captures/runs/D08-general-fix-r1/`. Nothing from this result has been posted
-or pushed automatically.
+`captures/runs/D08-general-fix-r1/`. The remaining local captures and full logs
+are not part of the public repository.

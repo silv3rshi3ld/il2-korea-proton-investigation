@@ -26,6 +26,8 @@ on the old helper and passes with the fix. No application override has been
 added. The separate menu-aircraft/shimmering and startup/NUMA symptoms remain
 open.
 
+![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
+
 The verified environment is:
 
 - Launch executable: `bin/game/IL2Series.exe`
