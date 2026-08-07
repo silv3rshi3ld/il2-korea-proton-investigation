@@ -97,10 +97,17 @@ contains 64x64 16-byte elements and therefore covers a 256x256 BC3 image, not a
 64x64 BC3 region.
 
 The new regression test fails four assertions before the change and passes 22
-after it. Existing texture BC/RGBA and block-compressed copy tests pass. An
-IL-2 Korea (247970) runtime diagnostic adjusted 522 matching terrain-page
-copies and repaired the high-altitude terrain; final general-build validation
-is recorded separately.
+after it. Existing texture BC/RGBA and block-compressed copy tests pass. The
+complete native `VKD3D_TEST_FILTER=copy` subset executes 6,429,713 checks with
+zero failures. An IL-2 Korea (247970) runtime diagnostic adjusted 522 matching
+terrain-page copies and repaired the high-altitude terrain; a clean general
+build reproduced the repair without the diagnostic gate.
+
+The public D3D12 documentation does not clearly list the game's
+R32G32B32A32_UINT-to-BC3 combination as a compatible format group, so this is
+presented as native-Windows compatibility behavior rather than an
+unqualified specification claim. VKD3D-Proton already supports and tests the
+same physical-block reinterpretation for image-to-image copies.
 ```
 
 ## Historical pre-D07 focused update — superseded

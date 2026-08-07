@@ -308,6 +308,9 @@ Compare collected runs with:
   game-build baseline result
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status
 - [`docs/upstream-drafts.md`](docs/upstream-drafts.md): review-only issue drafts
+- [`docs/upstream-submission-plan.md`](docs/upstream-submission-plan.md): correct
+  repository, publication sequence, impact boundary, regression evidence, and
+  narrower fallback order
 - [`patches/README.md`](patches/README.md): diagnostic history and the general
   upstream candidate
 

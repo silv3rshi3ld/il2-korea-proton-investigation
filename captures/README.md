@@ -29,7 +29,10 @@ This directory contains ignored local evidence:
   are recorded in `docs/evidence-d08-result.md`;
 - `runs/`: exact compressed Proton logs, compact module/summary files,
   metadata, and observations;
-- `comparisons/`: generated log comparisons.
+- `comparisons/`: generated log comparisons;
+- `validation/`: ignored full local test transcripts; the `cf11ba76` native
+  copy-test subset result and hash are recorded in
+  `docs/upstream-submission-plan.md`.
 
 Images and generated logs are deliberately not committed. Their filenames and
 SHA-256 checksums are recorded in the corresponding `docs/evidence-*.md` files.

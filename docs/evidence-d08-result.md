@@ -47,9 +47,18 @@ deterministic failures with the old helper and passes all 22 assertions with
 `cf11ba76`. Neighboring compressed-copy tests pass 147/147 and 50/50. D07-r1,
 D07-r2, and this clean D08 build all produce the same terrain repair.
 
+As a broader regression check, the complete native test subset selected by
+`VKD3D_TEST_FILTER=copy` executes 6,429,713 checks with zero failures (14
+successful todo, one skipped, eight todo, zero bugs). The retained ignored
+transcript is `captures/validation/cf11ba76-copy-tests.log`, SHA-256
+`0a9410ada9861d59c02445354340d514ec430c3d2ca2ebb3b58462685d36c970`.
+
 This establishes high confidence that the missing block-unit conversion is
 causal for terrain and that the general VKD3D-Proton patch is the correct
 remedy. It does not resolve or explain the menu aircraft corruption.
+Passing tests reduce, but do not eliminate, cross-application risk. The exact
+impact boundary and narrower fallback order are documented in
+[`upstream-submission-plan.md`](upstream-submission-plan.md).
 
 ## Screenshots
 
