@@ -192,11 +192,11 @@
     invalid D3D12 usage. The best current attribution is therefore invalid game
     copy parameters tolerated by native Windows plus a VKD3D compatibility gap,
     not a demonstrated RADV defect.
-43. D05c is a valid behavioral run. It adjusted 202/202 exact
+43. D05c is a valid behavioral run. It adjusted 202/202 exact thin
     `R32G32B32A32_UINT`-to-BC3 candidates, rejected none, and touched eight
     destination resources. The user observed the same missing terrain pages
-    and magenta edges. The reinterpret geometry is therefore excluded as the
-    primary visible cause; no permanent compatibility change is justified.
+    and magenta edges. A border-only correction is therefore excluded; the run
+    did not include the square page interiors later identified by D06.
 44. Read-only extraction of Maps1-6 confirms the Korea terrain system defines
     five LODs and `textureQuadSize=800`. It contains ordinary mesh, surface,
     distant-LOD, and hundreds of DDS resources. This independently corroborates
@@ -211,6 +211,18 @@
     an image-load abort: current Wine falls back to nearest-neighbour scaling,
     initializes the source, and returns success. The owning log context points
     to the Noesis UI path rather than a demonstrated terrain-provider failure.
+47. D06 is a valid trace-only run and is visually unchanged as expected. Its
+    six active BC3 cache resources receive 292 `64x64`, 354 `64x1`, and 354
+    `1x64` buffer-to-image copies.
+48. The D06 square interiors are placed on a 256-texel grid while VKD3D emits
+    only 64x64 regions. Border offsets such as 252, 508, and 764 align with the
+    same page ends. Current union coverage is only 3.46-6.32% per active cache;
+    converting each 128-bit source element to one 4x4 BC3 block projects to
+    54.69-100% coverage.
+49. D06 does not log the placed-footprint format for square interiors, so the
+    1:4 interpretation is not yet proven for them. D07 combines exact format
+    telemetry with a tightly gated full-page behavioral conversion, avoiding a
+    separate additional trace run.
 
 ## Observations not yet promoted to findings
 
@@ -266,7 +278,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Track | Assessment | Confidence |
 |---|---|---|
 | Startup | Affinity discovery in the shipped OpenMP path is bypassed by the current environment variables; the responsible Wine API/topology/runtime behavior is unproven. | Low |
-| Graphics | The game definitely uses D3D12 through VKD3D-Proton and DXVK's DXGI. The failure follows an application-managed 800 m baked-terrain page system. D05c excludes the tested border reinterpret geometry as the primary visible cause; page population, visibility, or selection remains. | High for rendering architecture; medium for remaining mechanism |
+| Graphics | The game definitely uses D3D12 through VKD3D-Proton and DXVK's DXGI. The failure follows an application-managed 800 m baked-terrain page system. D06 exposes a likely missing 1:4 block-unit conversion for complete BC3 pages; D07 will test it directly. | High for rendering architecture and candidate geometry; causality pending |
 | Queue selection | Two `single_queue` runs leave the defects unchanged, making ordinary asynchronous compute/transfer queue selection unlikely to be the primary trigger. | Medium |
 | Upload allocation | `no_upload_hvv` changes the allocation path, but its apparent improvement is inseparable from lower capture altitude. | Low/inconclusive |
 | Streaming/residency/LOD | D02 confirms active ordinary compressed-texture streaming and narrows it to complete uploads plus an unresolved no-upload SRV class; it does not identify which resources produce the visible pages. | Medium for relevance, low for mechanism |
@@ -277,10 +289,10 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Descriptor-buffer backend | One verified disable run on the D03-derived build is visually unchanged and uses the mutable-descriptor fallback; stock-Proton confirmation remains. | Medium that descriptor buffers are not the primary cause |
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
-| BC3 baked-terrain cache copies | D05c applies the exact proposed mapping to 202/202 encountered candidates with zero rejects; visuals remain unchanged. | High that this class is not the primary visible cause |
+| BC3 baked-terrain cache copies | D05c excludes borders alone. D06 shows 64x64 interiors on a 256-texel grid and very low emitted coverage; D07 applies the exact conversion to the full observed page family. | High as the leading candidate; runtime causality pending |
 
-No application override is justified. The next justified experiment is a
-trace-only producer-to-SRV correlation for the 2048x2048 baked-cache pool.
+No application override is justified. The next justified experiment is the
+gated D07 full-page copy-unit conversion.
 
 ## Source-level investigation gate
 
@@ -313,10 +325,15 @@ development-build stage.
    destination is BC3. Its unchanged image is not a causal negative because it
    changed no Vulkan command.
 10. D05c is complete. It applies the documented 1:4 reinterpret mapping to
-    202/202 candidates with zero rejects and the visible defect is unchanged.
+    202/202 thin candidates with zero rejects and the visible defect is
+    unchanged, excluding borders alone.
 11. Package inspection confirms five LODs, 800 m texture quads, and the
     installed absence of the logged fallback inputs. The 26% transition is not
     evidence of aborted loading because cache activity continues after entry.
-12. D06 should trace cache-page production, barriers/layouts, descriptor
-    binding, and first sampling without changing runtime behavior.
-13. Investigate the NUMA caller separately with focused API tracing.
+12. D06 is complete. It exposes square interiors emitted at one quarter of the
+    page spacing in each dimension and narrows the leading cause to a full-page
+    block-unit conversion.
+13. D07 is installed and prepared. It records the square footprint format and
+    applies the exact physical-block conversion to the complete observed page
+    family under an opt-in gate.
+14. Investigate the NUMA caller separately with focused API tracing.

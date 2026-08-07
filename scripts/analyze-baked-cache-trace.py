@@ -52,6 +52,39 @@ def resource_for(resources: dict[int, Resource], cookie: int) -> Resource:
     return resources.setdefault(cookie, Resource(cookie=cookie))
 
 
+def parse_triplet(value: str | None) -> tuple[int, int, int] | None:
+    if value is None:
+        return None
+    try:
+        first, second, third = value.split("x" if "x" in value else ",")
+        return int(first), int(second), int(third)
+    except (ValueError, TypeError):
+        return None
+
+
+def union_area(rectangles: list[tuple[int, int, int, int]]) -> int:
+    """Return the exact union area of axis-aligned integer rectangles."""
+    xs = sorted({x for left, _, right, _ in rectangles for x in (left, right)})
+    area = 0
+    for left, right in zip(xs, xs[1:]):
+        intervals = sorted(
+            (top, bottom) for rect_left, top, rect_right, bottom in rectangles
+            if rect_left <= left and rect_right >= right and bottom > top
+        )
+        covered = 0
+        if intervals:
+            current_top, current_bottom = intervals[0]
+            for top, bottom in intervals[1:]:
+                if top > current_bottom:
+                    covered += current_bottom - current_top
+                    current_top, current_bottom = top, bottom
+                else:
+                    current_bottom = max(current_bottom, bottom)
+            covered += current_bottom - current_top
+        area += (right - left) * covered
+    return area
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("log", type=Path)
@@ -115,6 +148,25 @@ def main() -> int:
         if values.get("full_resource") == "1" or values.get("full_subresource") == "1"
     )
 
+    bc3_copy_shapes: collections.Counter[tuple[int, int, int]] = collections.Counter()
+    coverage: list[tuple[int, int, int, int]] = []
+    for resource in bc3:
+        current_rectangles: list[tuple[int, int, int, int]] = []
+        scaled_rectangles: list[tuple[int, int, int, int]] = []
+        for _, values in resource.incoming:
+            extent = parse_triplet(values.get("extent"))
+            offset = parse_triplet(values.get("image_offset"))
+            if extent is None or offset is None or extent[2] != 1 or offset[2] != 0:
+                continue
+            width, height, _ = extent
+            x, y, _ = offset
+            bc3_copy_shapes[extent] += 1
+            current_rectangles.append((x, y, min(x + width, 2048), min(y + height, 2048)))
+            scaled_rectangles.append((x, y, min(x + 4 * width, 2048), min(y + 4 * height, 2048)))
+        if current_rectangles:
+            coverage.append((resource.cookie, len(current_rectangles),
+                    union_area(current_rectangles), union_area(scaled_rectangles)))
+
     format_counts = collections.Counter(resource.format for resource in created)
     signatures = collections.Counter(
         (resource.format, len(resource.incoming), len(resource.outgoing),
@@ -143,6 +195,33 @@ def main() -> int:
         "|---|---:|",
     ]
     output.extend(f"| `{fmt}` | {count} |" for fmt, count in sorted(format_counts.items()))
+
+    output.extend([
+        "",
+        "## Buffer-to-BC3 copy geometry",
+        "",
+        "| Emitted Vulkan extent | Count |",
+        "|---|---:|",
+    ])
+    output.extend(
+        f"| {width}x{height}x{depth} | {count} |"
+        for (width, height, depth), count in sorted(bc3_copy_shapes.items())
+    )
+    output.extend([
+        "",
+        "The square interiors are placed on a 256-texel grid although their emitted extent is 64x64. "
+        "The projected column below keeps each destination offset fixed and expands each observed source "
+        "element to a 4x4 BC3 block. D06 did not log the placed-footprint DXGI format, so this is a "
+        "geometry projection rather than proof that every interior uses `R32G32B32A32_UINT`.",
+        "",
+        "| BC3 cookie | Logged copies | Current union coverage | Projected 4x union coverage |",
+        "|---:|---:|---:|---:|",
+    ])
+    total_pixels = 2048 * 2048
+    output.extend(
+        f"| {cookie} | {count} | {current / total_pixels:.2%} | {scaled / total_pixels:.2%} |"
+        for cookie, count, current, scaled in sorted(coverage)
+    )
 
     output.extend([
         "",

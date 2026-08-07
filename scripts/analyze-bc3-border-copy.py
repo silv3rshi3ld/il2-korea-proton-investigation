@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the bounded D05c RGBA32_UINT-to-BC3 reinterpret-copy diagnostic."""
+"""Validate the bounded RGBA32_UINT-to-BC3 reinterpret-copy diagnostics."""
 
 from __future__ import annotations
 
@@ -43,6 +43,8 @@ REJECTION_RE = re.compile(
 )
 
 EXPECTED_TRANSFORMS = {
+    (64, 64, 1): (256, 256, 1),
+    (128, 128, 1): (512, 512, 1),
     (1, 64, 1): (4, 256, 1),
     (1, 128, 1): (4, 512, 1),
     (64, 1, 1): (256, 4, 1),
@@ -98,7 +100,7 @@ def main() -> int:
     if not contiguous(adjustments):
         errors.append("adjustment sequence numbers are missing, duplicated, or out of order")
     if limit_count:
-        warnings.append("the 1,024-line adjustment cap was reached; later matching copies were still normalized")
+        warnings.append("the configured adjustment-log cap was reached; later matching copies were still normalized")
 
     candidate_ids = {record["sequence"] for record in candidates}
     adjusted_ids = {record["candidate_sequence"] for record in adjustments}
@@ -159,14 +161,9 @@ def main() -> int:
                 f"expected {expected_image_height} BC3 texels"
             )
 
-    if adjustments and len(adjustments) != 432:
-        warnings.append(
-            f"D05c logged {len(adjustments)} adjustments; D02/D05b logged 432, but scene duration and cache demand can change the count"
-        )
-
     status = "valid" if not errors else "invalid"
     lines = [
-        "# D05 BC3 border-copy analysis",
+        "# IL-2 BC3 reinterpret-copy analysis",
         "",
         f"- Instrumentation validity: **{status}**",
         f"- Enable markers: {enabled_count}",
@@ -214,7 +211,7 @@ def main() -> int:
         "",
         "## Interpretation",
         "",
-        "A valid result proves that D05c recognized only the observed Korea terrain-cache border class, "
+        "A valid result proves that the diagnostic recognized only the selected Korea terrain-cache copy class, "
         "mapped every 128-bit R32G32B32A32_UINT source element to one 4x4 BC3 destination block, "
         "and expressed the Vulkan extent and buffer layout in destination-format texels while remaining inside the 2048x2048 mip. "
         "Visual classification is still required to decide whether this compatibility behavior affects seams, "

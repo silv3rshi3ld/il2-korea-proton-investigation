@@ -1,0 +1,113 @@
+From 833cafa0b1bc87153b2e9d2859c6830f4553f80e Mon Sep 17 00:00:00 2001
+From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+Date: Fri, 7 Aug 2026 11:10:38 +0200
+Subject: [PATCH] vkd3d: Test full BC3 terrain-page reinterpret copies for IL-2
+
+---
+ libs/vkd3d/command.c | 30 ++++++++++++++++--------------
+ 1 file changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/libs/vkd3d/command.c b/libs/vkd3d/command.c
+index 5ec6b6ba..28c9271b 100644
+--- a/libs/vkd3d/command.c
++++ b/libs/vkd3d/command.c
+@@ -9628,23 +9628,23 @@ VkImageSubresourceLayers vk_image_subresource_layers_from_d3d12(
+     return layers;
+ }
+ 
+-#define VKD3D_IL2_BC3_BORDER_COPY_LOG_LIMIT 1024
++#define VKD3D_IL2_BC3_PAGE_COPY_LOG_LIMIT 2048
+ 
+-static bool vkd3d_il2_bc3_border_copy_diagnostic_enabled(void)
++static bool vkd3d_il2_bc3_page_copy_diagnostic_enabled(void)
+ {
+     static uint32_t marker_emitted;
+     char env[8];
+     bool enabled;
+ 
+-    enabled = vkd3d_get_env_var("VKD3D_IL2_BC3_BORDER_COPY", env, sizeof(env)) && !strcmp(env, "1");
++    enabled = vkd3d_get_env_var("VKD3D_IL2_BC3_PAGE_COPY", env, sizeof(env)) && !strcmp(env, "1");
+     if (enabled && !vkd3d_atomic_uint32_exchange_explicit(&marker_emitted, 1, vkd3d_memory_order_relaxed))
+-        INFO("IL2BCCOPY enabled mode=reinterpret-rgba32-uint-to-bc3 log_limit=%u.\n",
+-                VKD3D_IL2_BC3_BORDER_COPY_LOG_LIMIT);
++        INFO("IL2BCCOPY enabled mode=reinterpret-rgba32-uint-to-bc3-pages log_limit=%u.\n",
++                VKD3D_IL2_BC3_PAGE_COPY_LOG_LIMIT);
+ 
+     return enabled;
+ }
+ 
+-static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
++static bool vkd3d_il2_normalize_bc3_page_copy(VkBufferImageCopy2 *copy,
+         const D3D12_PLACED_SUBRESOURCE_FOOTPRINT *footprint, const D3D12_RESOURCE_DESC1 *image_desc,
+         const struct vkd3d_format *src_format, const struct vkd3d_format *dst_format,
+         const D3D12_BOX *src_box, uint32_t dst_cookie, D3D12_COMMAND_LIST_TYPE list_type)
+@@ -9655,9 +9655,9 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+     uint32_t emitted_buffer_row_length, emitted_buffer_image_height;
+     uint32_t source_left, source_top, source_front, source_width, source_height, source_depth;
+     uint32_t candidate_sequence, sequence, reject_mask = 0;
+-    bool horizontal, vertical;
++    bool horizontal, interior, vertical;
+ 
+-    if (!vkd3d_il2_bc3_border_copy_diagnostic_enabled())
++    if (!vkd3d_il2_bc3_page_copy_diagnostic_enabled())
+         return false;
+ 
+     /* This is deliberately narrower than a compatibility implementation. It
+@@ -9678,7 +9678,9 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+     original_height = copy->imageExtent.height;
+     vertical = original_width == 1 && (original_height == 64 || original_height == 128);
+     horizontal = original_height == 1 && (original_width == 64 || original_width == 128);
+-    if (!vertical && !horizontal)
++    interior = original_width == original_height &&
++            (original_width == 64 || original_width == 128);
++    if (!vertical && !horizontal && !interior)
+         return false;
+ 
+     if (src_box)
+@@ -9701,7 +9703,7 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+     }
+ 
+     candidate_sequence = vkd3d_atomic_uint32_increment(&candidate_count, vkd3d_memory_order_relaxed);
+-    if (candidate_sequence <= VKD3D_IL2_BC3_BORDER_COPY_LOG_LIMIT)
++    if (candidate_sequence <= VKD3D_IL2_BC3_PAGE_COPY_LOG_LIMIT)
+     {
+         INFO("IL2BCCOPY candidate seq=%u list_type=%u dst_cookie=%u src_box_present=%u"
+                 " src_format=%#x dst_format=%#x original_extent=%ux%ux%u image_offset=%d,%d,%d"
+@@ -9758,7 +9760,7 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+ 
+     if (reject_mask)
+     {
+-        if (candidate_sequence <= VKD3D_IL2_BC3_BORDER_COPY_LOG_LIMIT)
++        if (candidate_sequence <= VKD3D_IL2_BC3_PAGE_COPY_LOG_LIMIT)
+             INFO("IL2BCCOPY reject candidate_seq=%u mask=%#x.\n", candidate_sequence, reject_mask);
+         return false;
+     }
+@@ -9768,7 +9770,7 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+     copy->bufferRowLength = emitted_buffer_row_length;
+     copy->bufferImageHeight = emitted_buffer_image_height;
+     sequence = vkd3d_atomic_uint32_increment(&adjustment_count, vkd3d_memory_order_relaxed);
+-    if (sequence <= VKD3D_IL2_BC3_BORDER_COPY_LOG_LIMIT)
++    if (sequence <= VKD3D_IL2_BC3_PAGE_COPY_LOG_LIMIT)
+     {
+         INFO("IL2BCCOPY adjust seq=%u candidate_seq=%u list_type=%u dst_cookie=%u src_box_present=%u"
+                 " src_format=%#x dst_format=%#x"
+@@ -9785,7 +9787,7 @@ static bool vkd3d_il2_normalize_bc3_border_copy(VkBufferImageCopy2 *copy,
+                 footprint->Footprint.RowPitch, copy->bufferRowLength, copy->bufferImageHeight,
+                 copy->bufferOffset);
+     }
+-    else if (sequence == VKD3D_IL2_BC3_BORDER_COPY_LOG_LIMIT + 1)
++    else if (sequence == VKD3D_IL2_BC3_PAGE_COPY_LOG_LIMIT + 1)
+     {
+         INFO("IL2BCCOPY adjustment log limit reached; later matching regions remain normalized.\n");
+     }
+@@ -10563,7 +10565,7 @@ static bool d3d12_command_list_init_copy_texture_region(struct d3d12_command_lis
+ 
+         vk_buffer_image_copy_from_d3d12(&out->copy.buffer_image, &src->PlacedFootprint, dst->SubresourceIndex,
+                 &dst_resource->desc, out->src_format, out->dst_format, src_box, dst_x, dst_y, dst_z);
+-        vkd3d_il2_normalize_bc3_border_copy(&out->copy.buffer_image,
++        vkd3d_il2_normalize_bc3_page_copy(&out->copy.buffer_image,
+                 &src->PlacedFootprint, &dst_resource->desc, out->src_format, out->dst_format,
+                 src_box, dst_resource->res.cookie.index, list->type);
+         out->copy.buffer_image.bufferOffset += src_resource->mem.offset;
+-- 
+2.55.0

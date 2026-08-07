@@ -31,8 +31,9 @@ not establish what Wine reports through Win32 processor groups and NUMA APIs.
 | G9 | RADV is given valid Vulkan but mishandles a specific path. | Reproduce with another AMD Vulkan driver or Mesa version, one variable at a time. | Vulkan validation, RenderDoc/trace if lawful and practical, then minimal Vulkan reproducer. |
 | G10 | Shader translation produces incorrect code for a menu/terrain shader. | Artifact is invariant under memory, queue, and descriptor controls; shader debug/hash points to a stable stage. | Shader replacement/bisection and minimal shader test. |
 | G11 | The game texture-provider path fails to resolve, decode, or create required Korea terrain inputs under Wine and substitutes its default white texture. | Compare `data/tex.log` from the same current-build Korea winter scenario on native Windows; D04 already proves six terrain failures and fallback on Linux. | If Linux-only, instrument the package lookup/decode/backend-create boundary; if present on Windows, treat the failures as non-causal. |
-| G12 | The baked-terrain border reinterpret geometry is the visible cause. | D05c adjusted 202/202 exact candidates with zero rejects and visuals remained unchanged. | Excluded as the primary visible cause; retain only as a separate semantic observation. |
-| G13 | The 2048x2048 baked-cache page is never populated, not made visible, or sampled through the wrong descriptor/page index. | Trace only the cache pool and associated RGBA/intermediate producers from creation through copy/render/UAV writes, barriers, descriptor binding, and first sample. | Separate producer failure, synchronization failure, and selection failure before changing behavior. |
+| G12 | The thin baked-terrain border reinterpret geometry alone is the visible cause. | D05c adjusted 202/202 exact thin candidates with zero rejects and visuals remained unchanged. | Excluded as a border-only explanation. |
+| G13 | The same missing 1:4 block-unit conversion affects complete `64x64`/`128x128` terrain pages. | D06 places 64x64 interiors every 256 destination texels; current active-cache union coverage is only 3.46-6.32%, while a 4x mapping gives 54.69-100%. D07 records the footprint format and changes only this exact class. | High as the next causal discriminator; format/visual effect pending D07. |
+| G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | If D07 is unchanged, trace the cache pool and associated RGBA/intermediate producers through writes, barriers, descriptor binding, and first sample. | Separate producer failure, synchronization failure, and selection failure before changing behavior. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -53,9 +54,10 @@ path during the covered interval. D04 is unchanged on current upstream and
 adds direct game-log evidence of failed terrain inputs. Re-analysis of D02 now
 originally promoted G12 because it connected the engine's named
 `stitchBorders` architecture to 432 suspect copy regions. D05c then executed
-the exact proposed mapping without visual change, so G13 is now the selected
-trace target. Package inspection independently confirms the engine's 800 m
-baked-page geometry; see `evidence-map-package-inspection.md`.
+the exact border-only mapping without visual change. D06 then exposed the
+interior-page geometry, so G13 is now the selected causal test and G14 is the
+fallback if it is unchanged. Package inspection independently confirms the
+engine's 800 m baked-page geometry; see `evidence-map-package-inspection.md`.
 
 ## Direct public report
 

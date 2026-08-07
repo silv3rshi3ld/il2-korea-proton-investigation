@@ -63,25 +63,28 @@ draw. They are not yet a root-cause explanation.
 
 ## Leading explanations
 
-1. **Page population or copy-to-sample visibility.** The page producer may
-   leave a cache page empty or issue work without the dependency needed before
-   sampling. D05c corrected all encountered border reinterpret copies without
-   changing the image, so this requires the full page path rather than another
-   border-only change.
-2. **Descriptor contents, index, or lifetime on the baked-terrain cache.** A
+1. **Full-page buffer-to-BC3 block-unit conversion.** D06 records `64x64`
+   interiors at 256-texel destination spacing, with borders aligned at page
+   ends. The emitted regions cover only 3.46-6.32% of each active cache; a 4x
+   conversion covers 54.69-100%. D07 tests this exact family and logs the
+   placed-footprint source format.
+2. **Other page population or copy-to-sample visibility failure.** If D07 is
+   unchanged, the page producer may leave a cache page empty or issue work
+   without the dependency needed before sampling.
+3. **Descriptor contents, index, or lifetime on the baked-terrain cache.** A
    shader may read an uninitialized, stale, destroyed, out-of-range, or wrong-
    type descriptor. Disabling descriptor buffers would not necessarily fix
    invalid D3D12 descriptor use because the fallback backend preserves the
    application's descriptor semantics.
-3. **Translated descriptor/LOD shader calculation.** The game or translated
+4. **Translated descriptor/LOD shader calculation.** The game or translated
    shader may choose the wrong page or mip index, especially in distant-LOD
    paths. The zero SRV minimum clamp does not test explicit shader LOD or
    descriptor-index arithmetic.
-4. **Texture-provider lookup or creation fallback.** The six tested autumn
+5. **Texture-provider lookup or creation fallback.** The six tested autumn
    inputs really are absent from installed packages and the backend substitutes
    white. Nearly the same absent set is referenced by all seasons, so this may
    be a secondary or optional path rather than a Linux-only failure.
-5. **RADV handling of otherwise valid Vulkan.** This remains possible but
+6. **RADV handling of otherwise valid Vulkan.** This remains possible but
    requires a driver comparison, validation finding, or minimal Vulkan
    reproduction before Mesa attribution.
 
@@ -91,15 +94,14 @@ sampled it, and a later copy after telemetry suppression cannot be excluded.
 
 ## Next discriminator
 
-The next test is a trace-only D06 build, not another generic launch flag.
-D05c's exact behavior executed on 202/202 candidates and the image remained
-unchanged. D06 will therefore follow only the 2048x2048 BC3 cache pages and
-associated producer intermediates through writes/copies, state and layout
-transitions, descriptor creation/binding, first sampling, and destruction.
+The next test is D07, not another generic launch flag. D05c's border-only
+behavior executed on 202/202 candidates and the image remained unchanged. D06
+then exposed the same missing scale on the square page interiors. D07 retains
+the exact cache and physical-layout checks while expanding all six observed
+interior/border shapes under an opt-in gate.
 
 A native Windows `tex.log` and D3D12 debug-layer capture remain useful for
-final ownership, but lack of current Windows access does not block this
-producer-to-SRV discriminator.
+final ownership, but lack of current Windows access does not block D07.
 
 No current evidence justifies a permanent game-specific application override.
 
@@ -107,6 +109,7 @@ See [`prior-art-msfs.md`](prior-art-msfs.md) for the exact upstream cases and
 why the MSFS host-import fallback is not selected for IL-2. See
 [`evidence-d04-upstream-result.md`](evidence-d04-upstream-result.md) for the
 closed upstream control and texture-provider evidence. See
-[`evidence-d05c-result.md`](evidence-d05c-result.md) and
+[`evidence-d05c-result.md`](evidence-d05c-result.md),
+[`evidence-d06-result.md`](evidence-d06-result.md), and
 [`evidence-map-package-inspection.md`](evidence-map-package-inspection.md) for
-the completed causal copy test and the verified map geometry.
+the copy evidence and verified map geometry.

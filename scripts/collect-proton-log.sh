@@ -20,6 +20,7 @@ usage() {
         "  texture-trace" \
         "  alias-trace" \
         "  bc3-border-normalization" \
+        "  bc3-page-normalization" \
         "  baked-cache-trace" \
         "  no-upload-hvv" \
         "  single-queue" \
@@ -50,6 +51,9 @@ variant_environment() {
             ;;
         bc3-border-normalization)
             printf '%s' 'VKD3D_IL2_BC3_BORDER_COPY=1 '
+            ;;
+        bc3-page-normalization)
+            printf '%s' 'VKD3D_IL2_BC3_PAGE_COPY=1 '
             ;;
         baked-cache-trace)
             printf '%s' 'VKD3D_IL2_BAKED_CACHE_TRACE=1 '

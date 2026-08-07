@@ -355,3 +355,24 @@ Both DLL architectures built successfully. The isolated custom tool is
 [`evidence-d06-preparation.md`](evidence-d06-preparation.md) for hashes and the
 runtime protocol. No prefix DLL or source Proton file was overwritten.
 The source tool and prefix remain unchanged.
+
+## D07 full terrain-page reinterpret diagnostic
+
+D06 is complete. It recorded 292 `64x64` interiors at offsets separated by 256
+destination texels, plus 708 thin borders aligned to the same page grid. This
+shows that D05c tested only a subset of the relevant copy family.
+
+D07 commit: `833cafa0b1bc87153b2e9d2859c6830f4553f80e`
+
+The official development build completed for x86-64 and x86 in:
+
+```text
+build/vkd3d-proton-vkd3d-proton-il2-d07-page-833cafa0/
+```
+
+D07 retains D05c's exact format, resource, physical-byte, pitch, alignment,
+and bounds checks, adds only observed `64x64`/`128x128` interiors, and moves to
+the opt-in `VKD3D_IL2_BC3_PAGE_COPY=1` gate. The installed isolated tool is
+`IL2-Korea-D07-PageCopy-833cafa0`. See
+[`evidence-d07-preparation.md`](evidence-d07-preparation.md) for hashes and the
+runtime protocol. Proton Experimental and the game prefix remain unmodified.

@@ -1,10 +1,10 @@
 # Patch status
 
-No permanent behavior-changing fix is currently justified. D02 justifies one
-opt-in diagnostic behavior change: normalize only the observed internal one-
-texel BC3 border-copy extent to a complete physical block and measure the
-visual result. D05 implements that experiment; it must not be treated as an
-application override or an upstream-ready fix before the runtime result.
+No permanent behavior-changing fix is currently justified. D05c excluded a
+border-only correction. D06 then revealed square interiors with the same
+likely source-to-BC3 unit mismatch. D07 extends the opt-in diagnostic to the
+complete observed page family; it must not be treated as an application
+override or upstream-ready fix before the runtime result.
 
 `0001-il2-korea-sparse-resource-diagnostics.patch` is a temporary, gated
 instrumentation patch, not a candidate fix. It records the D3D12 reserved and
@@ -40,6 +40,20 @@ compatible BC3 source format, and logs target candidates and explicit safety-
 rejection masks before changing the extent. It is compiled but unrun and is
 still diagnostic-only.
 
+`0006-vkd3d-Test-RGBA32-to-BC3-buffer-copy-geometry-for-IL.patch` is the D05c
+behavioral revision. It proves that every observed thin source is a footprint-
+only `R32G32B32A32_UINT` region and performs the physical 1:4 block mapping.
+Its unchanged visual result excludes borders alone.
+
+`0007-vkd3d-Add-focused-IL-2-baked-cache-telemetry.patch` is the trace-only
+D06 patch. It revealed `64x64` interiors placed on a 256-texel grid and changed
+no commands.
+
+`0008-vkd3d-Test-full-BC3-terrain-page-reinterpret-copies.patch` is the D07
+increment on top of D05c. It uses a new opt-in gate and adds only the observed
+`64x64`/`128x128` interiors to the already bounded conversion. It is a causal
+diagnostic, not yet a proposed permanent fix.
+
 ## Why there is no application override
 
 - The repeatable E00 baseline confirms the defect but does not identify a
@@ -67,13 +81,11 @@ traced placed buffer/texture range and zero explicit legacy alias barriers.
 This excludes placed-resource memory aliasing for the covered class, but SRV
 creation still does not prove shader use and descriptor propagation/use remains
 untraced. The broad missing-page defect cannot yet be assigned to the game,
-VKD3D-Proton, or RADV. Separately, D02 contains 432 one-texel internal BC3
-border copies which VKD3D emits as invalid Vulkan regions. VKD3D's own
-cross-test classifies such non-block-sized D3D12 compressed-copy coordinates as
-invalid application usage, making the likely origin the game and the native-
-Windows difference a compatibility behavior. A gated normalization run is
-required before deciding whether this is only the magenta-seam cause or also
-affects whole-page loss.
+VKD3D-Proton, or RADV. D06 now shows that VKD3D emits 64x64 page interiors at
+destination offsets spaced by 256 texels, alongside borders at the
+corresponding page ends. The projected physical-block conversion fills the
+active caches. D07 is the gated causal run needed before assigning this to
+general VKD3D copy semantics, a game compatibility case, or another layer.
 
 The prefix-only installation attempts did not load the local DLLs because
 stock Proton restored its packaged copies during launch. A dedicated custom

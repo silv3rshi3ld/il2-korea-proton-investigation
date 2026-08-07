@@ -19,9 +19,9 @@ shader cache, or unfiltered large trace.
 
 The launch-option matrix E00-E02 is complete as of 2026-08-06. The
 investigation has now moved to source-level diagnosis. No application override
-or permanent fix has been added. D05c was an opt-in diagnostic behavior change
-and is inert unless its investigation-only environment variable is set. Its
-valid runtime result was visually unchanged. The
+or permanent fix has been added. D07 is an opt-in, exact-class diagnostic
+behavior change and is inert unless its investigation-only environment
+variable is set. The
 verified environment is:
 
 - Launch executable: `bin/game/IL2Series.exe`
@@ -55,7 +55,8 @@ Controlled baseline E00 is complete across two runs and reproduces both
 reported graphics signatures: block artifacts on the rendered menu aircraft
 and severe rectangular-page terrain loss with magenta edges in flight. Runtime logging
 confirms the D3D12 path and active host-visible upload, descriptor-buffer, and
-multi-queue paths. No causal path has been isolated. See
+multi-queue paths. A full-page BC3 reinterpret-copy mismatch is now the leading
+causal candidate, with one gated runtime test pending. See
 [`docs/evidence-e00-baseline.md`](docs/evidence-e00-baseline.md).
 
 E01 (`no_upload_hvv`) was collected across two runs, but its apparent vegetation
@@ -93,18 +94,20 @@ uncompressed-to-BC3 reinterpret copy: both destination dimensions must be four
 times the source dimensions. VKD3D-Proton already handles that conversion for
 image-to-image copies, but the buffer-to-image helper does not.
 
-D05c then executed the exact proposed conversion for 202/202 encountered
-candidates, with zero rejects across eight destination resources. The missing
-terrain pages and magenta edges remained unchanged. This excludes that copy
-class as the primary visible cause and does not justify making the diagnostic
-behavior permanent. The next build, D06, will be trace-only and follow each
-2048x2048 cache page from its producer through barriers and descriptor binding
-to SRV exposure. That trace-only build is compiled and installed as
-`IL2-Korea-D06-CacheTrace-376652dc`; one runtime trace is prepared. See
-[`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md)
+D05c then executed the exact proposed conversion for 202/202 encountered thin
+border candidates, with zero rejects across eight destination resources. The
+image remained unchanged, excluding a border-only repair. D06 subsequently
+recorded 292 square `64x64` interiors placed every 256 destination texels, plus
+708 borders aligned to the same page edges. Current union coverage is only
+3.46-6.32% on the active caches; the indicated 4x block mapping gives
+54.69-100%. D07 is now installed as
+`IL2-Korea-D07-PageCopy-833cafa0` to verify the square footprint format and
+apply the exact conversion to complete pages under a new opt-in gate. See
+[`docs/evidence-d02-bc3-border-copies.md`](docs/evidence-d02-bc3-border-copies.md),
 [`docs/evidence-d05-result.md`](docs/evidence-d05-result.md), and
-[`docs/evidence-d05c-result.md`](docs/evidence-d05c-result.md), with the next
-trace in [`docs/evidence-d06-preparation.md`](docs/evidence-d06-preparation.md).
+[`docs/evidence-d05c-result.md`](docs/evidence-d05c-result.md),
+[`docs/evidence-d06-result.md`](docs/evidence-d06-result.md), and the prepared
+test in [`docs/evidence-d07-preparation.md`](docs/evidence-d07-preparation.md).
 
 D03 is complete and visually unchanged. In its same-run pre-cap class, all 585
 candidates have placed-resource records, none overlaps any traced placed buffer

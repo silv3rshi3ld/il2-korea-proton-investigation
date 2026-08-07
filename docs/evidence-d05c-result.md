@@ -4,8 +4,8 @@
 
 D05c executed the intended behavior, but the visible corruption was unchanged.
 The user observed the same rectangular missing terrain pages and magenta edges
-in the mission. This is a valid negative causal result for the tested copy
-class, not another instrumentation failure.
+in the mission. This is a valid negative causal result for the tested thin-
+border subset, not another instrumentation failure.
 
 - Run: `D05c-reinterpret-r1`
 - Game build: `24596901`
@@ -38,12 +38,11 @@ adjusted.
 The buffer-to-image reinterpret geometry differs from the analogous VKD3D
 image-to-image conversion, and D05c demonstrated that the proposed conversion
 can be applied to this exact Korea cache class. It did **not** fix or materially
-improve the visible defect. It is therefore excluded as the primary cause of
-the missing pages and observed seams in this run.
+improve the visible defect. It therefore excludes correction of the thin
+borders alone. D06 later showed that the `64x64` page interiors have the same
+likely unit mismatch; D05c did not modify those interiors and cannot exclude a
+full-page conversion.
 
 No permanent compatibility behavior or application override is justified from
-this result. The next diagnostic must follow population and sampling of the
-2048x2048 baked-terrain cache pages themselves: which producer writes each
-page, which barriers make it visible, and which SRV/descriptors are bound when
-the page is drawn.
-
+this result alone. See `evidence-d06-result.md` for the subsequent full-page
+geometry and `evidence-d07-preparation.md` for the causal follow-up.
