@@ -339,6 +339,25 @@
     and light-volume paths. Together with the cockpit/fire reproduction, this
     promotes tiled dynamic lighting to the strongest current lead. It remains
     correlation until D13 identifies the actual clear/write/read sequence.
+72. D13 is visually unchanged and records the complete 200,000-event budget
+    over about 33.4 seconds of initial menu rendering. The final
+    `rtLightRefs27` generation completes more than 1,500 stable cycles. All
+    tracked transitions have flags `0`; explicit resource UAV barriers separate
+    its compute stages, and `rtSelfLight10` is zero-cleared on every frame.
+    This weakens an omitted clear or simple state/UAV dependency as the cause.
+73. Four stable compute hashes are light-grid producer candidates:
+    `ce5553a11c1e3c3d`, `e41c75bf472dc42b`, `14096b77d9f7cb60`, and
+    `651194bd0a21772e`. The first two nearby draw candidates after self-light
+    becomes readable use pixel shaders `df0bd777fd1bb89d` and
+    `a2d104d5c813322e`, which D12 records writing
+    `m_prtTargetReflections`. This is strong frame-order correlation between
+    self-light and reflection rendering, but D13 does not resolve descriptor
+    tables and therefore does not claim an exact texture read.
+74. The D13 screenshot sequence retains the moving square blocks; its final
+    frame captures them across the aircraft, its shadow, and the lit floor.
+    The visual alignment supports a light/reflection interaction but does not
+    distinguish a bad light-list value from a bad view, descriptor, shader
+    translation, or reflection consumer.
 
 ## Observations not yet promoted to findings
 
@@ -396,7 +415,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
-| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D12 proves stable active SSR cycles but does not expose a named-target transition failure. The same run shows the grid in the cockpit and around a burning aircraft. `rtLightRefs*` maps the frame into approximately 32x32-pixel light tiles. | Cause open; VRS weakened, simple SSR transition failure weakened, tiled dynamic-light list is the strongest current lead pending D13 |
+| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D12 proves stable active SSR cycles. D13 proves stable light-grid/self-light clears, transitions, and UAV dependencies and places the same reflection shaders immediately after those inputs become readable. | Cause open; VRS and simple missing-clear/barrier forms weakened. Light-grid shader translation/view/descriptor handling and its reflection consumer are the focused remaining leads. |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
@@ -451,5 +470,8 @@ development-build stage.
     original path.
 16. The NUMA caller is resolved on the reporting host by exact Wine MR !11604.
     E05 disables only advertised fragment shading rate on D10 and is visually
-    unchanged. Instrument the reflection/temporal path next; do not propose a
-    VRS or reflection workaround without pass/resource evidence.
+    unchanged. D11-D13 narrow the remaining defect to the light-grid,
+    self-light, and reflection sequence without finding a simple missing
+    transition, clear, or UAV barrier. Inspect the exact stable shaders and
+    descriptor/view contract next; do not propose an application workaround
+    without a causal discriminator.

@@ -43,15 +43,16 @@ same run visually confirms the squares in the cockpit and outside around a
 burning aircraft, although D12 reached its bounded event cap before those later
 frames.
 
-D12 also exposes `rtLightRefs*`: `80x34x2 R32_UINT` RTV/UAV resources at the
-2560x1080 runtime resolution. That is the exact geometry of an approximately
-32x32-pixel screen-tile grid. Read-only game strings connect it to
-`g_tLightRefsRW`, light-list collection, self-light, and light-volume passes.
-This correlation makes tiled dynamic lighting the strongest current lead, not
-a conclusion. Trace-only D13 commit `395d9747` is installed locally and its
-short run is prepared to follow only that resource family through clears,
-barriers, writer/reader shader hashes, and submission. It has not been run, and
-no application override is proposed.
+D13 follows the `80x34x2 R32_UINT` `rtLightRefs*` grid and full-resolution
+`rtSelfLight` target for more than 1,500 stable final-generation cycles. It
+finds a per-frame zero clear for self-light and explicit state/UAV dependencies
+between the four light-list compute stages. Immediately after these resources
+become readable, the nearby draws use the same two reflection-pass pixel
+shaders identified by D12. That is a strong frame-order correlation, not exact
+descriptor-binding proof. The simple missing-clear/barrier theory is weakened;
+compute translation, 3D integer-resource addressing/view selection, and the
+reflection consumer remain open. The next passive step is exact DXIL/SPIR-V
+inspection. No application override is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
@@ -345,6 +346,11 @@ Compare collected runs with:
   separate menu-shimmer VRS capability control and decision rules
 - [`docs/evidence-e05-no-vrs-result.md`](docs/evidence-e05-no-vrs-result.md):
   valid unchanged result and transition to temporal/reflection tracing
+- [`docs/evidence-d13-light-grid-trace-result.md`](docs/evidence-d13-light-grid-trace-result.md):
+  stable light-grid/self-light cycles, reflection-pass correlation, and the
+  remaining shader/descriptor boundary
+- [`docs/evidence-d14-shader-dump-preparation.md`](docs/evidence-d14-shader-dump-preparation.md):
+  passive DXIL/SPIR-V capture plan for the exact light/reflection shader hashes
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/rendering-path-assessment.md`](docs/rendering-path-assessment.md):

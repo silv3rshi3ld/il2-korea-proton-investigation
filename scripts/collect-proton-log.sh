@@ -24,6 +24,7 @@ usage() {
         "  baked-cache-trace" \
         "  menu-pass-trace" \
         "  light-trace" \
+        "  shader-dump" \
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
@@ -39,7 +40,10 @@ validate_run_id() {
 }
 
 variant_environment() {
-    case "$1" in
+    local variant=$1
+    local run_id=${2:-}
+
+    case "$variant" in
         baseline|local-vkd3d-baseline)
             printf '%s' ''
             ;;
@@ -66,6 +70,13 @@ variant_environment() {
             ;;
         light-trace)
             printf '%s' 'VKD3D_IL2_LIGHT_TRACE=1 '
+            ;;
+        shader-dump)
+            if [[ -z "$run_id" ]]; then
+                printf 'shader-dump requires a run ID\n' >&2
+                exit 2
+            fi
+            printf 'VKD3D_SHADER_DUMP_PATH=/tmp/il2-%s/shaders ' "$run_id"
             ;;
         no-upload-hvv)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv '
@@ -116,7 +127,7 @@ prepare_run() {
     done
 
     validate_run_id "$run_id"
-    extra=$(variant_environment "$variant")
+    extra=$(variant_environment "$variant" "$run_id")
     if [[ -e "$run_dir" ]]; then
         printf 'Run directory already exists; choose a unique ID: %s\n' "$run_dir" >&2
         exit 1
@@ -130,6 +141,9 @@ prepare_run() {
 
     mkdir -p -- "$run_dir"
     ln -s -- "$run_dir" "$short_log_dir"
+    if [[ "$variant" == shader-dump ]]; then
+        mkdir -p -- "$run_dir/shaders"
+    fi
     printf -v quoted_dir '%q' "$short_log_dir"
     if ((include_openmp_override)); then
         launch_options="PROTON_LOG=1 PROTON_LOG_DIR=$quoted_dir OMP_NUM_THREADS=16 KMP_AFFINITY=disabled ${extra}%command%"
