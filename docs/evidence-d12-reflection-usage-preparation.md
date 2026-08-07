@@ -57,14 +57,21 @@ The intended tool is:
 IL2-Korea-D12-ReflectionUsage-e7f6e303
 ```
 
-It will be copied from D10, retaining the validated Wine NUMA implementation
-and terrain fix, then receive only D12's four packaged D3D12 DLLs. D10 and D11
-remain untouched.
+It was copied from D10 at `2026-08-07T19:09:08Z`, retaining the validated Wine
+NUMA implementation and terrain fix, then received only D12's four packaged
+D3D12 DLLs. The installed hashes exactly match the build identities above.
+D10 and D11 remain untouched.
 
 After installation, prepare the menu-only run as:
 
 ```bash
 ./scripts/collect-proton-log.sh prepare D12-reflection-usage-r1 menu-pass-trace --no-openmp-override
+```
+
+The resulting exact launch options are:
+
+```text
+PROTON_LOG=1 PROTON_LOG_DIR=/tmp/il2-D12-reflection-usage-r1 VKD3D_IL2_MENU_TRACE=1 %command%
 ```
 
 Keep the same affected menu aircraft visible for at least 30 seconds, report
