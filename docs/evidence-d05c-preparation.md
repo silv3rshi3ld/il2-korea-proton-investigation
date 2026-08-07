@@ -1,10 +1,11 @@
-# D05c exact reinterpret-copy diagnostic: build ready
+# D05c exact reinterpret-copy diagnostic: runtime test prepared
 
 ## State
 
-D05c is compiled for both architectures and passes its synthetic log check.
-Creation of the isolated custom Proton tool stopped safely because Steam was
-still running. No Proton installation or game-prefix file was modified.
+D05c is compiled for both architectures, passes its synthetic log check, and
+is installed in an isolated custom Proton tool. The first creation attempt
+stopped safely while Steam was running; after Steam exited, the second attempt
+completed. The source Proton installation and game prefix were not modified.
 
 - Base VKD3D-Proton: `84c87c8390d9df75ba41d911496296fe13f0e275`
 - Diagnostic commit: `5391ec7f427795fe0fc151047422629d849e35be`
@@ -12,7 +13,7 @@ still running. No Proton installation or game-prefix file was modified.
 - Retained diagnostic patch:
   `patches/0006-vkd3d-Test-RGBA32-to-BC3-buffer-copy-geometry-for-IL.patch`
 - Source Proton Experimental: `experimental-11.0-20260724c`
-- Intended custom tool: `IL2-Korea-D05c-Reinterpret-5391ec7f`
+- Installed custom tool: `IL2-Korea-D05c-Reinterpret-5391ec7f`
 
 ## Single changed behavior
 
@@ -37,6 +38,8 @@ unchanged.
 | `x64/d3d12core.dll` | PE32+ x86-64 | `bebc057635a65bf9071afb38a5df96a0e5e88e0e71f274338c67488b773f4cc4` |
 | `x86/d3d12.dll` | PE32 i386 | `0a4166157ab5576ba1711d4a9a047bcb879b32508013b69febd5c5a19b798288` |
 | `x86/d3d12core.dll` | PE32 i386 | `6b2033e2939d349af998c36af006b819ffadab10619836112c41b0d718eb5943` |
+
+The four installed DLL hashes match this table exactly.
 
 ## Runtime protocol after installation
 

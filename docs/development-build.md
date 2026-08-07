@@ -335,5 +335,7 @@ build/vkd3d-proton-il2-d05c-bc3-5391ec7f/
 
 String inspection confirms the D05c enable, adjustment, rejection, and log-cap
 markers. A synthetic test containing all four observed shapes validates the
-new extents and buffer layouts. Installation is pending because Steam was
-still running when the first safe custom-tool creation was attempted.
+new extents and buffer layouts. The isolated custom tool
+`IL2-Korea-D05c-Reinterpret-5391ec7f` was created from Proton Experimental
+`experimental-11.0-20260724c`; all four installed DLL hashes match the table.
+The source tool and prefix remain unchanged.

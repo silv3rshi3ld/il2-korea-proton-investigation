@@ -30,7 +30,7 @@ Allowed final values: **fixed**, **improved**, **unchanged**, **regressed**,
 | D04 | Unmodified current VKD3D-Proton `84c87c83…` with `dxil-spirv` `cc75a0c9…` | [completed](evidence-d04-upstream-result.md) | Post-run DLL hashes match D04; menu blocks and severe 6,400 m terrain-page loss remain | unchanged; current-upstream lead closed |
 | D05a | Gated normalization of only the observed internal one-texel BC3 baked-terrain border copies; commit `35bd875c…` | [completed but invalid](evidence-d05-result.md) | Correct DLLs and one enable marker, but zero adjustments; unchanged screenshot therefore cannot test the behavior | inconclusive; source matcher too strict |
 | D05b | Footprint-aware revision with candidate/rejection telemetry; commit `f6416c79…` | [completed](evidence-d05b-result.md) | 432 candidates, zero adjustments, 432 explicit rejections; all sources are footprint-only `R32G32B32A32_UINT` | inconclusive visually; source model disproved |
-| D05c | Exact observed `R32G32B32A32_UINT` footprint to BC3 reinterpret mapping; commit `5391ec7f…` | [build ready; custom-tool creation waiting for Steam exit](evidence-d05c-preparation.md) | Emit 4x destination geometry on both axes and recompute Vulkan buffer layout; require zero rejected target candidates | pending runtime result |
+| D05c | Exact observed `R32G32B32A32_UINT` footprint to BC3 reinterpret mapping; commit `5391ec7f…` | [installed; run 1 prepared](evidence-d05c-preparation.md) | Emit 4x destination geometry on both axes and recompute Vulkan buffer layout; require zero rejected target candidates | pending runtime result |
 
 For each completed cell, link a run directory or curated evidence file and
 record new warning/error fingerprints from `compare-logs.py`.
