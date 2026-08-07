@@ -48,10 +48,10 @@ D12 also exposes `rtLightRefs*`: `80x34x2 R32_UINT` RTV/UAV resources at the
 32x32-pixel screen-tile grid. Read-only game strings connect it to
 `g_tLightRefsRW`, light-list collection, self-light, and light-volume passes.
 This correlation makes tiled dynamic lighting the strongest current lead, not
-a conclusion. Trace-only D13 commit `395d9747` is built locally to follow only
-that resource family through clears, barriers, writer/reader shader hashes,
-and submission. It is not installed or run, and no application override is
-proposed.
+a conclusion. Trace-only D13 commit `395d9747` is installed locally and its
+short run is prepared to follow only that resource family through clears,
+barriers, writer/reader shader hashes, and submission. It has not been run, and
+no application override is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 

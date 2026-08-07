@@ -58,20 +58,28 @@ descriptor binding.
 
 ## Intended compatibility tool and run
 
-The proposed tool name is:
+The installed tool name is:
 
 ```text
 IL2-Korea-D13-LightUsage-395d9747
 ```
 
-It has not yet been installed. Installation should clone D10, retaining the
-validated Wine NUMA implementation and terrain fix, then replace only the four
-packaged D3D12/D3D12Core DLLs.
+It was installed at `2026-08-07T19:58:02Z` by cloning D10, retaining the
+validated Wine NUMA implementation and terrain fix, and replacing only the four
+packaged D3D12/D3D12Core DLLs. A recursive comparison against D10 reports only
+the Steam-visible tool name and those four DLLs as different. All four installed
+hashes exactly match the packaged hashes above; D10 and D12 remain untouched.
 
-After installation, prepare the run with:
+The run was prepared with:
 
 ```bash
 ./scripts/collect-proton-log.sh prepare D13-light-usage-r1 light-trace --no-openmp-override
+```
+
+The exact Steam launch options are:
+
+```text
+PROTON_LOG=1 PROTON_LOG_DIR=/tmp/il2-D13-light-usage-r1 VKD3D_IL2_LIGHT_TRACE=1 %command%
 ```
 
 The desired visual protocol is short so the bounded trace covers every scene:
