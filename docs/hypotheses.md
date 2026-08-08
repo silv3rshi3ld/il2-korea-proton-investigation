@@ -40,7 +40,7 @@ outside this focused API implementation.
 | G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
 | G15 | The menu shimmer is produced by the game's tiled variable-rate-shading path or VKD3D/RADV translation of it. | E05 removes `VK_KHR_fragment_shading_rate`, makes VKD3D advertise no D3D12 VRS support, and leaves the same moving squares visible. | Weakened: VRS is not required for the reproduced artifact; do not pursue without contradictory runtime evidence. |
 | G16 | A screen-space or temporal reflection resource contains stale or is sampled/interpreted incorrectly. | D12 records about 2,003 stable render/resolve cycles with explicit flag-zero transitions and stable shaders. D14 proves the correlated pixel shaders are tiled-light consumers as well as reflection-target writers. The artifact remains. | Simple named-target transition failure weakened; reflection alone is too broad. Follow the tiled-light inputs to these passes. |
-| G17 | The game's tiled dynamic-light reference list or self-light input is stale, incorrectly synchronized, or mistranslated. | D14 identifies the exact six-stage producer and proves that both pixel shaders read the 3D uint grid plus a separate uint light-index buffer. DXIL/SPIR-V shape, bounds, packing, and atomics agree and validate. D13 did not name the final two dispatches or track the separate buffer after its writer. | Strongest current lead. D15 must resolve the final buffer dependency; test a shader-specific barrier only if it is actually absent. Otherwise move to descriptors or values. |
+| G17 | The game's tiled dynamic-light reference list or self-light input is stale, incorrectly synchronized, or mistranslated. | D14 identifies the exact six-stage producer and proves that both pixel shaders read the 3D uint grid plus a separate uint light-index buffer. D15 records 1,593 complete final cycles: both resources receive the required UAV dependencies and shader-read transitions, and producer atomics use Device scope. The artifact remains. | Missing synchronization is excluded for this sequence. Resolve the fixed `t9`/`t10` descriptors next, then inspect produced values or a subtler translation/compiler defect. Do not add a barrier quirk from the current evidence. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -77,10 +77,11 @@ burning-aircraft scene. D13 then records stable, explicit clear/transition/UAV
 cycles for `rtSelfLight` and `rtLightRefs`. D14 proves that the nearby pixel
 shaders read the tiled-light grid and its separate index buffer, and discovers
 two final producer stages outside D13's logging window. Their translated code
-is structurally faithful, leaving runtime visibility of the separate buffer,
-descriptor/view selection, and computed values as the focused leads. D15
-resolves the synchronization boundary passively before any workaround is
-considered.
+is structurally faithful. D15 then proves that the separate buffer and 3D grid
+receive the application-supplied dependencies and final read transitions in
+1,593 covered cycles while the symptom remains. Runtime descriptor/view
+selection and computed values are now the focused leads; a forced barrier is
+not justified.
 
 ## Direct public report
 

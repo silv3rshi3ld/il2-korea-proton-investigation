@@ -51,9 +51,15 @@ D13's original four-dispatch window. The correlated pixel shaders statically
 read both the 3D light-reference grid and a separate uint light-index buffer;
 bad data can therefore affect a complete approximately 32x32-pixel screen
 tile. The translation preserves the relevant resource shapes, bounds, integer
-packing, and atomics and passes SPIR-V validation. D15 is prepared to resolve
-the still-unobserved dependency on the separate index buffer before any
-behavior-changing barrier test. No application override is proposed.
+packing, and atomics and passes SPIR-V validation. D15 then records 1,593
+complete final light-list cycles while the artifact remains visible. Both the
+3D tile grid and separate index buffer receive explicit UAV dependencies and
+final shader-read transitions. The producer atomics also use Device scope.
+Missing synchronization is therefore excluded for this sequence; adding a
+forced VKD3D-Proton barrier would duplicate the application's dependencies.
+The next passive discriminator resolves the exact `t9` light-list and `t10`
+light-index descriptor-table slots before any value capture. No application
+override is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
@@ -358,6 +364,9 @@ Compare collected runs with:
 - [`docs/evidence-d15-light-list-sync-preparation.md`](docs/evidence-d15-light-list-sync-preparation.md):
   local passive build for the two final light-list stages and all intervening
   buffer/resource barriers
+- [`docs/evidence-d15-light-list-sync-result.md`](docs/evidence-d15-light-list-sync-result.md):
+  unchanged visual result, complete final-resource dependency sequence, and
+  closure of the missing-synchronization hypothesis
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/rendering-path-assessment.md`](docs/rendering-path-assessment.md):

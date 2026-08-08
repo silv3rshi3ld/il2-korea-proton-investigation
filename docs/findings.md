@@ -379,6 +379,27 @@
     `ComputeLightsIndices`. D15 commit `9c6a4338` passively logs the final
     dispatches and all immediately intervening barriers before any forced
     barrier A/B is considered.
+79. D15 is visually unchanged and captures 1,593 occurrences each of
+    `ComputeLightsFirstRef` and `ComputeLightsIndices` over approximately 29.4
+    seconds. The game remained stable, and the log reports no device loss,
+    OOM, GPU reset, or hang.
+80. Every covered final-generation sequence gives both `rtLightRefs25`
+    (cookie 4002) and the separate 87,040-byte UAV buffer (cookie 4001) an
+    inter-stage UAV dependency and a final UAV-to-shader-read transition. The
+    buffer size equals `80 * 34 * 8 * sizeof(uint32_t)`, matching eight light
+    indices per screen tile.
+81. Translated SPIR-V for both final producers uses Vulkan Device scope for
+    its atomic increments. Relaxed atomic memory semantics are consistent with
+    D3D interlocked arithmetic; the explicit D3D12 UAV barriers provide the
+    required inter-dispatch dependencies.
+82. D15 therefore excludes the missing-synchronization form of G17 for this
+    sequence. A forced pre-compute/global barrier or IL-2 application override
+    would duplicate synchronization already requested by the game and is not
+    a valid fix candidate.
+83. D14 reflection fixes the affected pixel-shader inputs at SRV `t9`
+    (`g_tLightsList`) and `t10` (`g_bufLightsIndices`). The next passive test
+    can resolve those exact descriptor-table entries to runtime resources and
+    view metadata before escalating to a GPU value capture.
 
 ## Observations not yet promoted to findings
 
@@ -436,7 +457,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
-| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D14 identifies a six-stage tiled-light producer and proves the correlated pixel shaders consume its 3D grid plus a separate index buffer. Structural DXIL/SPIR-V checks pass; D13 did not resolve the final buffer dependency. | Cause open; VRS, reflection-target transitions, and obvious structural translation errors are weakened. Final light-index-buffer visibility is the next discriminator, followed by descriptor/value checks. |
+| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D14 identifies a six-stage tiled-light producer and proves the correlated pixel shaders consume its 3D grid plus a separate index buffer. Structural DXIL/SPIR-V checks pass. D15 observes 1,593 complete final cycles and proves both resources receive explicit dependencies and read transitions. | Cause open; VRS, reflection-target transitions, obvious structural translation errors, and missing final-producer synchronization are weakened or excluded. Fixed `t9`/`t10` descriptor resolution is the next discriminator, followed by value checks. |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
@@ -493,7 +514,8 @@ development-build stage.
     E05 disables only advertised fragment shading rate on D10 and is visually
     unchanged. D11-D14 narrow the remaining defect to the tiled-light grid and
     separate light-index buffer consumed by the reflection/light passes.
-    Structural shader translation checks pass. Use D15 to resolve the final
-    buffer dependency, then inspect descriptors/values if synchronization is
-    sufficient; do not propose an application workaround without a causal
-    discriminator.
+    Structural shader translation checks pass. D15 proves that both final
+    resources receive explicit UAV dependencies and shader-read transitions,
+    so no barrier quirk is justified. Resolve the fixed `t9`/`t10`
+    descriptors, then inspect values if they are correct; do not propose an
+    application workaround without a causal discriminator.
