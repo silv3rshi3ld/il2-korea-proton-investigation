@@ -400,6 +400,13 @@
     (`g_tLightsList`) and `t10` (`g_bufLightsIndices`). The next passive test
     can resolve those exact descriptor-table entries to runtime resources and
     view metadata before escalating to a GPU value capture.
+84. D16 commit `274f6f8e` is prepared to resolve those two fixed slots on the
+    normal RDNA3 descriptor path. A gated CPU sidecar follows application
+    CBV/SRV/UAV creation and descriptor copies, then combines the live root
+    table base with the reflected range/register offsets at only the two
+    affected pixel shaders. It changes no descriptor bytes, shader, resource,
+    barrier, or Vulkan command; its CPU/memory overhead makes it diagnostic,
+    not a performance test.
 
 ## Observations not yet promoted to findings
 
@@ -516,6 +523,7 @@ development-build stage.
     separate light-index buffer consumed by the reflection/light passes.
     Structural shader translation checks pass. D15 proves that both final
     resources receive explicit UAV dependencies and shader-read transitions,
-    so no barrier quirk is justified. Resolve the fixed `t9`/`t10`
-    descriptors, then inspect values if they are correct; do not propose an
-    application workaround without a causal discriminator.
+    so no barrier quirk is justified. D16 is prepared to resolve the fixed
+    `t9`/`t10` descriptors on the normal descriptor path, then inspect values
+    if they are correct; do not propose an application workaround without a
+    causal discriminator.

@@ -58,8 +58,11 @@ final shader-read transitions. The producer atomics also use Device scope.
 Missing synchronization is therefore excluded for this sequence; adding a
 forced VKD3D-Proton barrier would duplicate the application's dependencies.
 The next passive discriminator resolves the exact `t9` light-list and `t10`
-light-index descriptor-table slots before any value capture. No application
-override is proposed.
+light-index descriptor-table slots before any value capture. D16 is prepared
+for that check on the normal RDNA3 descriptor path; its gated CPU sidecar
+follows application descriptor writes/copies and logs only those two slots at
+the affected draws. It changes no shader, descriptor, barrier, or Vulkan
+command. No application override is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
@@ -367,6 +370,9 @@ Compare collected runs with:
 - [`docs/evidence-d15-light-list-sync-result.md`](docs/evidence-d15-light-list-sync-result.md):
   unchanged visual result, complete final-resource dependency sequence, and
   closure of the missing-synchronization hypothesis
+- [`docs/evidence-d16-descriptor-trace-preparation.md`](docs/evidence-d16-descriptor-trace-preparation.md):
+  local normal-path sidecar for resolving the affected pixel shaders' fixed
+  `t9`/`t10` descriptor-table entries
 - [`docs/game-binary-inspection.md`](docs/game-binary-inspection.md): read-only
   import, symbol, and diagnostic-string evidence from the compiled game files
 - [`docs/rendering-path-assessment.md`](docs/rendering-path-assessment.md):

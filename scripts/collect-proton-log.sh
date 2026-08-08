@@ -24,6 +24,7 @@ usage() {
         "  baked-cache-trace" \
         "  menu-pass-trace" \
         "  light-trace" \
+        "  descriptor-trace" \
         "  shader-dump" \
         "  no-upload-hvv" \
         "  single-queue" \
@@ -70,6 +71,9 @@ variant_environment() {
             ;;
         light-trace)
             printf '%s' 'VKD3D_IL2_LIGHT_TRACE=1 '
+            ;;
+        descriptor-trace)
+            printf '%s' 'VKD3D_IL2_DESCRIPTOR_TRACE=1 '
             ;;
         shader-dump)
             if [[ -z "$run_id" ]]; then
@@ -337,6 +341,15 @@ collect_run() {
         printf 'il2light_copy_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=copy_(texture|resource)' "$source_log")"
         printf 'il2light_execute_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=execute' "$source_log")"
         printf 'il2light_trace_suppressed_count=%s\n' "$(count_matches 'IL2LIGHT .*suppressed after limit' "$source_log")"
+        printf 'il2descriptor_enabled_count=%s\n' "$(count_matches 'IL2DESC descriptor sidecar trace enabled' "$source_log")"
+        printf 'il2descriptor_heap_count=%s\n' "$(count_matches 'IL2DESC heap=' "$source_log")"
+        printf 'il2descriptor_resource_name_count=%s\n' "$(count_matches 'IL2DESC resource_name ' "$source_log")"
+        printf 'il2descriptor_draw_event_count=%s\n' "$(count_matches 'IL2DESC sequence=' "$source_log")"
+        printf 'il2descriptor_resolved_count=%s\n' "$(count_matches 'IL2DESC sequence=.*status=resolved' "$source_log")"
+        printf 'il2descriptor_t9_resolved_count=%s\n' "$(count_matches 'IL2DESC sequence=.*register=t9 status=resolved' "$source_log")"
+        printf 'il2descriptor_t10_resolved_count=%s\n' "$(count_matches 'IL2DESC sequence=.*register=t10 status=resolved' "$source_log")"
+        printf 'il2descriptor_failure_count=%s\n' "$(count_matches 'IL2DESC sequence=.*status=(no_|heap_oob)' "$source_log")"
+        printf 'il2descriptor_trace_suppressed_count=%s\n' "$(count_matches 'IL2DESC draw events suppressed after limit' "$source_log")"
     } >"$run_dir/summary.txt"
 
     if grep -q -- 'IL2TEX enabled:' "$source_log"; then
