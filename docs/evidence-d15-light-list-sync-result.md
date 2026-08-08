@@ -71,9 +71,11 @@ before the two target entries; it does not indicate that the application
 omitted them. The normal cycles, matching counts, and adjacent full-resource
 transition batches establish the repeated dependency pattern.
 
-The unnamed buffer size is not arbitrary: 87,040 bytes equals
-`80 * 34 * 8 * sizeof(uint32_t)`, matching eight uint light-index slots for
-every screen tile. D14 identifies it statically as `g_bufLightsIndices`.
+The unnamed buffer size is not arbitrary. D16 later resolves its SRV as 43,520
+`R16_UINT` elements, so 87,040 bytes equals
+`80 * 34 * 16 * sizeof(uint16_t)`: sixteen light-index slots for every screen
+tile. D14 identifies it statically as `g_bufLightsIndices`; the typed uint load
+zero-extends each `R16_UINT` element for shader use.
 
 ## Atomic-scope check
 

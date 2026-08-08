@@ -386,8 +386,9 @@
 80. Every covered final-generation sequence gives both `rtLightRefs25`
     (cookie 4002) and the separate 87,040-byte UAV buffer (cookie 4001) an
     inter-stage UAV dependency and a final UAV-to-shader-read transition. The
-    buffer size equals `80 * 34 * 8 * sizeof(uint32_t)`, matching eight light
-    indices per screen tile.
+    D16 later resolves the buffer as 43,520 `R16_UINT` elements, so its size
+    equals `80 * 34 * 16 * sizeof(uint16_t)`, matching sixteen light indices
+    per screen tile.
 81. Translated SPIR-V for both final producers uses Vulkan Device scope for
     its atomic increments. Relaxed atomic memory semantics are consistent with
     D3D interlocked arithmetic; the explicit D3D12 UAV barriers provide the
@@ -400,13 +401,25 @@
     (`g_tLightsList`) and `t10` (`g_bufLightsIndices`). The next passive test
     can resolve those exact descriptor-table entries to runtime resources and
     view metadata before escalating to a GPU value capture.
-84. D16 commit `274f6f8e` is prepared to resolve those two fixed slots on the
-    normal RDNA3 descriptor path. A gated CPU sidecar follows application
-    CBV/SRV/UAV creation and descriptor copies, then combines the live root
-    table base with the reflected range/register offsets at only the two
-    affected pixel shaders. It changes no descriptor bytes, shader, resource,
-    barrier, or Vulkan command; its CPU/memory overhead makes it diagnostic,
-    not a performance test.
+84. D16 commit `274f6f8e` resolves all 13,236 covered fixed-slot lookups with
+    zero failures. Each shader has 3,309 stable `t9` and 3,309 stable `t10`
+    events. `t9` is the expected `rtLightRefs25` cookie 4002, viewed as a
+    `80x34x2 R32_UINT` Texture3D; `t10` is the expected cookie-4001 buffer,
+    viewed as 43,520 `R16_UINT` elements. Root signature, table base, heap
+    offsets, descriptor serials, types, resource cookies, and view shapes do
+    not vary.
+85. The D16 artifact remains visible. Wrong descriptor selection,
+    propagation, type, and view shape for the two tiled-light inputs are
+    excluded for the covered draws. The trace changes no GPU command and
+    reports no device loss, OOM, reset, or hang. The post-run configuration
+    does not verify the user's anti-aliasing/HDR UI A/B, so that observation is
+    retained as reported rather than promoted to a setting exclusion.
+86. A read-only upstream refresh finds no relevant newer translator fix.
+    VKD3D-Proton master remains the D04 baseline `84c87c83`; the four newer
+    `dxil-spirv` commits only affect NVIDIA/SM 6.9 ray-tracing local-root-table
+    constant loads. The next one-variable discriminator is RADV `fullsync`,
+    followed by produced-value or typed-buffer code-generation inspection if
+    unchanged.
 
 ## Observations not yet promoted to findings
 
@@ -464,7 +477,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
-| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D14 identifies a six-stage tiled-light producer and proves the correlated pixel shaders consume its 3D grid plus a separate index buffer. Structural DXIL/SPIR-V checks pass. D15 observes 1,593 complete final cycles and proves both resources receive explicit dependencies and read transitions. | Cause open; VRS, reflection-target transitions, obvious structural translation errors, and missing final-producer synchronization are weakened or excluded. Fixed `t9`/`t10` descriptor resolution is the next discriminator, followed by value checks. |
+| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D14 identifies a six-stage tiled-light producer. D15 proves both outputs receive explicit dependencies/read transitions. D16 resolves every covered `t9`/`t10` consumer binding to the exact expected resources and `R32_UINT`/`R16_UINT` views. | Cause open; VRS, reflection-target transitions, obvious structural translation errors, missing final-producer synchronization, and wrong descriptors/views for the two principal tiled inputs are weakened or excluded. Test RADV full cache synchronization once, then inspect produced values/code generation. |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
@@ -523,7 +536,8 @@ development-build stage.
     separate light-index buffer consumed by the reflection/light passes.
     Structural shader translation checks pass. D15 proves that both final
     resources receive explicit UAV dependencies and shader-read transitions,
-    so no barrier quirk is justified. D16 is prepared to resolve the fixed
-    `t9`/`t10` descriptors on the normal descriptor path, then inspect values
-    if they are correct; do not propose an application workaround without a
-    causal discriminator.
+    so no barrier quirk is justified. D16 resolves all fixed `t9`/`t10`
+    descriptors to the expected resources and view shapes. Run RADV `fullsync`
+    once as a cache/synchronization discriminator, then inspect produced values
+    or typed-buffer code generation if unchanged; do not propose an
+    application workaround without a causal discriminator.

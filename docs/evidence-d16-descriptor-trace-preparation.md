@@ -62,11 +62,13 @@ because `VKD3D_CONFIG=descriptor_qa` would deliberately select validation
 structures and shader instrumentation, changing the descriptor path under
 investigation.
 
-The expected mapping is:
+The expected image mapping and initial size-only buffer interpretation were:
 
 - `t9`: an SRV of the `80x34x2 R32_UINT` 3D `rtLightRefs*` resource;
-- `t10`: an SRV of the 87,040-byte buffer, equivalent to
-  `80 * 34 * 8 * sizeof(uint32_t)`.
+- `t10`: an SRV of the 87,040-byte buffer. D16 later resolved its actual view
+  as 43,520 `R16_UINT` elements, equivalent to
+  `80 * 34 * 16 * sizeof(uint16_t)`, rather than the initial eight-`uint32_t`
+  size interpretation.
 
 The trace also emits the selected `rtLightRefs*` resource name and cookie, so
 the image descriptor can be correlated without relying on its raw Vulkan

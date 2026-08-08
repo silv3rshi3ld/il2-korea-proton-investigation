@@ -57,12 +57,13 @@ complete final light-list cycles while the artifact remains visible. Both the
 final shader-read transitions. The producer atomics also use Device scope.
 Missing synchronization is therefore excluded for this sequence; adding a
 forced VKD3D-Proton barrier would duplicate the application's dependencies.
-The next passive discriminator resolves the exact `t9` light-list and `t10`
-light-index descriptor-table slots before any value capture. D16 is prepared
-for that check on the normal RDNA3 descriptor path; its gated CPU sidecar
-follows application descriptor writes/copies and logs only those two slots at
-the affected draws. It changes no shader, descriptor, barrier, or Vulkan
-command. No application override is proposed.
+D16 resolves the exact `t9` light-list and `t10` light-index descriptor-table
+slots on the normal RDNA3 descriptor path. All 13,236 lookups are stable and
+correct: `t9` is the expected `80x34x2 R32_UINT` grid and `t10` is the expected
+87,040-byte buffer, viewed as 43,520 `R16_UINT` elements (sixteen indices per
+tile). This excludes wrong selection, propagation, type, and shape for those
+two inputs. Values and translated Vulkan cache behavior remain open. The next
+one-variable control is RADV `fullsync`; no application override is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
