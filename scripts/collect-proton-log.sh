@@ -25,6 +25,7 @@ usage() {
         "  menu-pass-trace" \
         "  light-trace" \
         "  descriptor-trace" \
+        "  radv-fullsync-descriptor-trace" \
         "  shader-dump" \
         "  no-upload-hvv" \
         "  single-queue" \
@@ -74,6 +75,9 @@ variant_environment() {
             ;;
         descriptor-trace)
             printf '%s' 'VKD3D_IL2_DESCRIPTOR_TRACE=1 '
+            ;;
+        radv-fullsync-descriptor-trace)
+            printf '%s' 'RADV_DEBUG=startup,fullsync VKD3D_IL2_DESCRIPTOR_TRACE=1 '
             ;;
         shader-dump)
             if [[ -z "$run_id" ]]; then
