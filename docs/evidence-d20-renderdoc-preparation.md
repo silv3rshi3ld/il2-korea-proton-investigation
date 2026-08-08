@@ -55,14 +55,24 @@ the game prefix were not modified.
 
 ## Local RenderDoc tool
 
-RenderDoc 1.45 was downloaded from the CachyOS package repository and unpacked
-under the ignored `build/` tree. It was not installed system-wide and no Vulkan
-layer registration was added to the user account.
+RenderDoc 1.45 and its matching 32-bit capture library were downloaded from the
+CachyOS/Arch package repositories and unpacked under the ignored `build/` tree.
+They were not installed system-wide and no Vulkan layer registration was added
+to the user account. Architecture-tagged local manifests are exposed to the
+test process through `VK_ADD_IMPLICIT_LAYER_PATH`, preserving the normal system
+implicit-layer search.
 
 - Version: `1.45`, commit `2fc0bc04cb95499635f63986a55bc6f67849dd9f`
 - Package SHA-256:
   `6f6b4df21cca642a3e3cb3c2b818b0a887a6d2c9daa1da2d87ac097269e7ef8a`
+- 32-bit package SHA-256:
+  `c11dc78df1f0dffedaa87ea6ff0ca2da46e82673d9ef2524fc9aec7a2c03a57f`
 - APIs reported: Vulkan, GL, GLES
+
+A local Vulkan control loaded the same 64-bit manifest on RADV 26.1.6 and
+captured `vkcube` successfully. This validates the layer search, capture
+library, `RENDERDOC_CAPFILE` output path, and replay-file creation before the
+game test.
 
 ## Run protocol
 
@@ -94,6 +104,8 @@ The launcher sets these variables only for its Steam process tree:
 ENABLE_VULKAN_RENDERDOC_CAPTURE=1
 VKD3D_AUTO_CAPTURE_SHADER=df0bd777fd1bb89d
 VKD3D_AUTO_CAPTURE_COUNTS=0
+VK_ADD_IMPLICIT_LAYER_PATH=<local architecture-tagged manifest directory>
+RENDERDOC_CAPFILE=<ignored D20 run directory>/renderdoc/il2-d20
 ```
 
 The expected log must show RenderDoc capture enabled, the exact target shader,
