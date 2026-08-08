@@ -48,6 +48,11 @@ adbfbe0236b06e36313ad3b20ca451b0658b4b3336f3d2b333778d8d9c46c2ec  x86/d3d12core.
 The built `d3d12core.dll` contains the expected
 `VKD3D_AUTO_CAPTURE_SHADER` and `capture-marker,begin_capture` strings.
 
+The custom tool was created at
+`IL2-Korea-D20-RenderDoc-5735f64f` from the D16 tool after Steam exited. All
+four installed DLL hashes match the build hashes above. The source D16 tool and
+the game prefix were not modified.
+
 ## Local RenderDoc tool
 
 RenderDoc 1.45 was downloaded from the CachyOS package repository and unpacked

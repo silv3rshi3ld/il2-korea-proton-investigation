@@ -28,6 +28,7 @@ usage() {
         "  radv-fullsync-descriptor-trace" \
         "  radv-nodcc-descriptor-trace" \
         "  aco-force-waitcnt-descriptor-trace" \
+        "  renderdoc-light-values" \
         "  shader-dump" \
         "  no-upload-hvv" \
         "  single-queue" \
@@ -86,6 +87,11 @@ variant_environment() {
             ;;
         aco-force-waitcnt-descriptor-trace)
             printf '%s' 'RADV_DEBUG=startup ACO_DEBUG=force-waitcnt VKD3D_IL2_DESCRIPTOR_TRACE=1 '
+            ;;
+        renderdoc-light-values)
+            # The RenderDoc wrapper owns capture variables so that they are
+            # inherited by the complete Steam process tree.
+            printf '%s' ''
             ;;
         shader-dump)
             if [[ -z "$run_id" ]]; then
