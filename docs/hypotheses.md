@@ -40,7 +40,7 @@ outside this focused API implementation.
 | G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
 | G15 | The menu shimmer is produced by the game's tiled variable-rate-shading path or VKD3D/RADV translation of it. | E05 removes `VK_KHR_fragment_shading_rate`, makes VKD3D advertise no D3D12 VRS support, and leaves the same moving squares visible. | Weakened: VRS is not required for the reproduced artifact; do not pursue without contradictory runtime evidence. |
 | G16 | A screen-space or temporal reflection resource contains stale or is sampled/interpreted incorrectly. | D12 records about 2,003 stable render/resolve cycles with explicit flag-zero transitions and stable shaders. D14 proves the correlated pixel shaders are tiled-light consumers as well as reflection-target writers. The artifact remains. | Simple named-target transition failure weakened; reflection alone is too broad. Follow the tiled-light inputs to these passes. |
-| G17 | The game's tiled dynamic-light reference list or self-light input is stale, incorrectly synchronized, compressed incorrectly, or mistranslated. | D14 identifies the six-stage producer. D15 proves dependencies. D16 resolves all descriptors. D17 remains unchanged under full waits/cache flushes. D18 remains defective with DCC disabled; it may look worse, but the user is uncertain and no matched frames exist. | D3D12 synchronization, descriptor selection/type/shape, ordinary cache visibility, and DCC as the sole cause/remedy are excluded. Test ACO wait hazards, then produced values. Retain possible DCC influence without promoting it. |
+| G17 | The game's tiled dynamic-light reference list or self-light input contains wrong values or is mistranslated. | D14 identifies the six-stage producer. D15 proves dependencies. D16 resolves all descriptors. D17 remains unchanged under full waits/cache flushes. D18 remains defective with DCC disabled. D19 remains unchanged after fresh ACO compilation with forced waits, and its close-up localizes the grid to bright/specular/reflected light contributions. | D3D12 synchronization, descriptor selection/type/shape, ordinary cache visibility, DCC as the sole cause/remedy, and an ACO wait-state omission are excluded or strongly weakened. Capture/validate the produced `t9`/`t10` values next. Retain possible DCC influence without promoting it. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -87,8 +87,10 @@ focused leads. D17 leaves the artifact unchanged even with RADV full cache
 flushes and waits after every draw/dispatch, closing ordinary translated cache
 visibility as well. D18 remains defective with DCC disabled; a possible visual
 regression is too uncertain to classify but means compression influence is not
-fully excluded. Intra-shader ACO wait handling is the last cheap control before
-value capture.
+fully excluded. D19 remains unchanged with forced ACO waits, using fresh
+compilation because Mesa disables its pipeline caches for ACO code-generation
+debug flags. The light-aligned appearance and negative controls now select
+produced-value capture rather than another broad launch-option test.
 
 ## Direct public report
 

@@ -443,6 +443,26 @@
     the sole cause and disabling it is not a remedy. Possible influence on the
     appearance is retained pending a future matched A/B if value evidence
     points back to image metadata.
+92. D19 is visually unchanged with `ACO_DEBUG=force-waitcnt`. The close-up
+    screenshot retains the approximately 32-pixel grid on the aircraft wing
+    and reflected hangar-floor light. The grid is strongest in bright,
+    specular, and reflected-light regions while shadowed areas are
+    comparatively clean. This localizes the visible corruption to a light
+    contribution but does not distinguish bad tiled-light input from the
+    reflection-related output that reveals it.
+93. All 9,404 D19 descriptor lookups resolve with zero failures and retain the
+    exact D16-D18 mappings: `t9` is cookie 4002, `rtLightRefs25`, an
+    `80x34x2 R32_UINT` Texture3D; `t10` is cookie 4001, an 87,040-byte buffer
+    viewed as 43,520 `R16_UINT` elements. There is no device-loss, OOM, reset,
+    page-fault, or hang signature.
+94. Mesa 26.1.6 RADV explicitly disables pipeline caches when
+    `aco_get_codegen_flags()` is non-zero. D19 therefore freshly compiled its
+    shaders with the forced-wait option despite VKD3D-Proton loading its normal
+    disk pipeline archive. The unchanged result excludes an ordinary ACO
+    outstanding-operation wait-state omission for the reproduced path.
+95. D15-D19 now select the actual produced grid/index values as the next
+    discriminator. Another broad launch option, a forced barrier, or a
+    game-specific workaround would not follow the accumulated evidence.
 
 ## Observations not yet promoted to findings
 
@@ -500,7 +520,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
-| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes. D14 identifies a six-stage tiled-light producer. D15 proves dependencies; D16 resolves all principal bindings; D17 remains unchanged under full waits/cache flushes; D18 remains defective without DCC, with uncertain possible worsening. | Cause open; VRS, reflection-target transitions, missing final-producer synchronization, wrong descriptors/views, ordinary cache visibility, and DCC as the sole cause are weakened or excluded. Test ACO wait hazards, then inspect produced values. |
+| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes. D14 identifies a six-stage tiled-light producer. D15 proves dependencies; D16 resolves all principal bindings; D17 remains unchanged under full waits/cache flushes; D18 remains defective without DCC; D19 remains unchanged with freshly compiled forced-wait ACO shaders. The latest close-up concentrates the grid in bright/specular/reflected light. | Cause open; VRS, reflection-target transitions, missing final-producer synchronization, wrong descriptors/views, ordinary cache visibility, DCC as the sole cause, and an ACO wait-state omission are weakened or excluded. Inspect the produced grid/index values next. |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
@@ -562,7 +582,7 @@ development-build stage.
     so no barrier quirk is justified. D16 resolves all fixed `t9`/`t10`
     descriptors to the expected resources and view shapes. D17 remains
     unchanged under RADV full synchronization and cache flushing. D18 remains
-    defective with DCC disabled, with possible but unconfirmed worsening. Test
-    ACO wait hazards once, then inspect produced values or typed-buffer code
-    generation; do not propose an application workaround without a causal
-    discriminator.
+    defective with DCC disabled, with possible but unconfirmed worsening. D19
+    remains unchanged with fresh forced-wait ACO compilation. Inspect produced
+    `t9`/`t10` values next; do not propose an application workaround without a
+    causal discriminator.

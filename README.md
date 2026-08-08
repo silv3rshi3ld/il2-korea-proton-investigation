@@ -67,9 +67,13 @@ and flushing all caches. The same grid remains at about 10 FPS while another
 8,304 descriptor resolutions stay identical. Ordinary cross-dispatch cache
 visibility is therefore strongly excluded. D18 disables DCC image compression
 and the artifact remains; the user thought it might be more pronounced but was
-not certain, so severity is inconclusive rather than a causal DCC result.
-Produced values and intra-shader code generation remain open; no application
-override is proposed.
+not certain, so severity is inconclusive rather than a causal DCC result. D19
+then forces ACO wait states and freshly recompiles the shaders; the same grid
+remains while all 9,404 descriptor lookups stay correct. Its close-up shows the
+grid mainly where bright, specular, or reflected light contributes. That does
+not prove reflection is causal, because the covered reflection-output shaders
+also consume the tiled-light lists. Produced values are now the primary lead;
+no application override is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
