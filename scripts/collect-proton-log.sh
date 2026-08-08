@@ -27,6 +27,7 @@ usage() {
         "  descriptor-trace" \
         "  radv-fullsync-descriptor-trace" \
         "  radv-nodcc-descriptor-trace" \
+        "  aco-force-waitcnt-descriptor-trace" \
         "  shader-dump" \
         "  no-upload-hvv" \
         "  single-queue" \
@@ -82,6 +83,9 @@ variant_environment() {
             ;;
         radv-nodcc-descriptor-trace)
             printf '%s' 'RADV_DEBUG=startup,nodcc VKD3D_IL2_DESCRIPTOR_TRACE=1 '
+            ;;
+        aco-force-waitcnt-descriptor-trace)
+            printf '%s' 'RADV_DEBUG=startup ACO_DEBUG=force-waitcnt VKD3D_IL2_DESCRIPTOR_TRACE=1 '
             ;;
         shader-dump)
             if [[ -z "$run_id" ]]; then

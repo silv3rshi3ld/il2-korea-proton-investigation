@@ -434,6 +434,15 @@
     next cheap controls are `RADV_DEBUG=nodcc`, then
     `ACO_DEBUG=force-waitcnt` if needed; produced-value capture follows if both
     are unchanged. Neither option is a proposed fix.
+90. D18 remains defective with RADV DCC disabled. The user reports that the
+    squares may be more pronounced but is not entirely certain; no matched D18
+    screenshot/video exists. The correct classification is artifact present,
+    possible regression, magnitude inconclusive—not a confirmed DCC effect.
+91. All 6,544 D18 descriptor lookups remain identical to D16/D17, with zero
+    failures and no device-loss/OOM/reset/page-fault/hang signature. DCC is not
+    the sole cause and disabling it is not a remedy. Possible influence on the
+    appearance is retained pending a future matched A/B if value evidence
+    points back to image metadata.
 
 ## Observations not yet promoted to findings
 
@@ -491,7 +500,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
-| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D14 identifies a six-stage tiled-light producer. D15 proves both outputs receive explicit dependencies/read transitions. D16 resolves every covered `t9`/`t10` binding correctly. D17 leaves the artifact and bindings unchanged under RADV full synchronization/cache flushing. | Cause open; VRS, reflection-target transitions, obvious structural translation errors, missing final-producer synchronization, wrong descriptors/views, and ordinary cache visibility are weakened or excluded. Test DCC and ACO wait hazards, then inspect produced values. |
+| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes. D14 identifies a six-stage tiled-light producer. D15 proves dependencies; D16 resolves all principal bindings; D17 remains unchanged under full waits/cache flushes; D18 remains defective without DCC, with uncertain possible worsening. | Cause open; VRS, reflection-target transitions, missing final-producer synchronization, wrong descriptors/views, ordinary cache visibility, and DCC as the sole cause are weakened or excluded. Test ACO wait hazards, then inspect produced values. |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
@@ -552,7 +561,8 @@ development-build stage.
     resources receive explicit UAV dependencies and shader-read transitions,
     so no barrier quirk is justified. D16 resolves all fixed `t9`/`t10`
     descriptors to the expected resources and view shapes. D17 remains
-    unchanged under RADV full synchronization and cache flushing. Test DCC and
-    ACO wait hazards once each, then inspect produced values or typed-buffer
-    code generation; do not propose an application workaround without a causal
+    unchanged under RADV full synchronization and cache flushing. D18 remains
+    defective with DCC disabled, with possible but unconfirmed worsening. Test
+    ACO wait hazards once, then inspect produced values or typed-buffer code
+    generation; do not propose an application workaround without a causal
     discriminator.
