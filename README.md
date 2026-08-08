@@ -62,8 +62,12 @@ slots on the normal RDNA3 descriptor path. All 13,236 lookups are stable and
 correct: `t9` is the expected `80x34x2 R32_UINT` grid and `t10` is the expected
 87,040-byte buffer, viewed as 43,520 `R16_UINT` elements (sixteen indices per
 tile). This excludes wrong selection, propagation, type, and shape for those
-two inputs. Values and translated Vulkan cache behavior remain open. The next
-one-variable control is RADV `fullsync`; no application override is proposed.
+two inputs. D17 then enables RADV `fullsync`, waiting after every draw/dispatch
+and flushing all caches. The same grid remains at about 10 FPS while another
+8,304 descriptor resolutions stay identical. Ordinary cross-dispatch cache
+visibility is therefore strongly excluded. DCC image compression, produced
+values, and intra-shader code generation remain open; no application override
+is proposed.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 

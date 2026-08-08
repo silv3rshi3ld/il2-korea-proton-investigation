@@ -420,6 +420,20 @@
     constant loads. The next one-variable discriminator is RADV `fullsync`,
     followed by produced-value or typed-buffer code-generation inspection if
     unchanged.
+87. D17 is visually unchanged under RADV `fullsync`. The supplied 2560x1080
+    screenshot visibly captures the same approximately 32-pixel grid across
+    the aircraft and floor at about 10 FPS. RADV startup diagnostics are
+    present, and no unknown debug option, device loss, OOM, reset, page fault,
+    or hang is reported.
+88. All 8,304 D17 descriptor lookups remain identical to D16: 2,076 events per
+    shader and register, cookie 4002 at `t9`, and cookie 4001 at `t10`, with
+    zero failures. RADV waits after every draw/dispatch and flushes all caches
+    without changing the artifact. Ordinary cross-dispatch cache visibility is
+    therefore strongly excluded.
+89. D17 does not disable DCC compression or alter ACO shader compilation. The
+    next cheap controls are `RADV_DEBUG=nodcc`, then
+    `ACO_DEBUG=force-waitcnt` if needed; produced-value capture follows if both
+    are unchanged. Neither option is a proposed fix.
 
 ## Observations not yet promoted to findings
 
@@ -477,7 +491,7 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
-| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D14 identifies a six-stage tiled-light producer. D15 proves both outputs receive explicit dependencies/read transitions. D16 resolves every covered `t9`/`t10` consumer binding to the exact expected resources and `R32_UINT`/`R16_UINT` views. | Cause open; VRS, reflection-target transitions, obvious structural translation errors, missing final-producer synchronization, and wrong descriptors/views for the two principal tiled inputs are weakened or excluded. Test RADV full cache synchronization once, then inspect produced values/code generation. |
+| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes and after E05 removes advertised VRS support. D14 identifies a six-stage tiled-light producer. D15 proves both outputs receive explicit dependencies/read transitions. D16 resolves every covered `t9`/`t10` binding correctly. D17 leaves the artifact and bindings unchanged under RADV full synchronization/cache flushing. | Cause open; VRS, reflection-target transitions, obvious structural translation errors, missing final-producer synchronization, wrong descriptors/views, and ordinary cache visibility are weakened or excluded. Test DCC and ACO wait hazards, then inspect produced values. |
 
 No application override is justified. D08 validates general predecessor `cf11ba76`;
 current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
@@ -537,7 +551,8 @@ development-build stage.
     Structural shader translation checks pass. D15 proves that both final
     resources receive explicit UAV dependencies and shader-read transitions,
     so no barrier quirk is justified. D16 resolves all fixed `t9`/`t10`
-    descriptors to the expected resources and view shapes. Run RADV `fullsync`
-    once as a cache/synchronization discriminator, then inspect produced values
-    or typed-buffer code generation if unchanged; do not propose an
-    application workaround without a causal discriminator.
+    descriptors to the expected resources and view shapes. D17 remains
+    unchanged under RADV full synchronization and cache flushing. Test DCC and
+    ACO wait hazards once each, then inspect produced values or typed-buffer
+    code generation; do not propose an application workaround without a causal
+    discriminator.

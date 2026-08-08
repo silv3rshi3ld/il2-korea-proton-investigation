@@ -40,7 +40,7 @@ outside this focused API implementation.
 | G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
 | G15 | The menu shimmer is produced by the game's tiled variable-rate-shading path or VKD3D/RADV translation of it. | E05 removes `VK_KHR_fragment_shading_rate`, makes VKD3D advertise no D3D12 VRS support, and leaves the same moving squares visible. | Weakened: VRS is not required for the reproduced artifact; do not pursue without contradictory runtime evidence. |
 | G16 | A screen-space or temporal reflection resource contains stale or is sampled/interpreted incorrectly. | D12 records about 2,003 stable render/resolve cycles with explicit flag-zero transitions and stable shaders. D14 proves the correlated pixel shaders are tiled-light consumers as well as reflection-target writers. The artifact remains. | Simple named-target transition failure weakened; reflection alone is too broad. Follow the tiled-light inputs to these passes. |
-| G17 | The game's tiled dynamic-light reference list or self-light input is stale, incorrectly synchronized, or mistranslated. | D14 identifies the exact six-stage producer. D15 records 1,593 complete final cycles with the required dependencies. D16 resolves all 13,236 fixed `t9`/`t10` lookups to those exact resources and expected view shapes: a `R32_UINT` 3D grid and a `R16_UINT` index-buffer view. The artifact remains. | D3D12 synchronization and descriptor selection/type/shape are excluded for this sequence. Use RADV `fullsync` once to distinguish translated cache handling from bad values/code generation, then capture values if unchanged. Do not add a barrier or descriptor quirk from the current evidence. |
+| G17 | The game's tiled dynamic-light reference list or self-light input is stale, incorrectly synchronized, compressed incorrectly, or mistranslated. | D14 identifies the exact six-stage producer. D15 proves the required dependencies. D16 resolves all 13,236 fixed `t9`/`t10` lookups correctly. D17 retains the exact mappings and artifact across 8,304 more events while RADV waits after every draw/dispatch and flushes all caches. | D3D12 synchronization, descriptor selection/type/shape, and ordinary translated cache visibility are excluded for this sequence. Test DCC once, then ACO wait hazards or produced values. Do not add a barrier/descriptor quirk or ship the diagnostic options. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -83,9 +83,10 @@ receive the application-supplied dependencies and final read transitions in
 covered `t9`/`t10` lookup to the exact D15 resources with the expected view
 types and shapes. Descriptor selection is now closed; computed values,
 typed-buffer code generation, or translated Vulkan cache handling remain
-focused leads. A forced Proton barrier is not justified from the D3D12 trace,
-so RADV `fullsync` is retained only as a one-run diagnostic before value
-capture.
+focused leads. D17 leaves the artifact unchanged even with RADV full cache
+flushes and waits after every draw/dispatch, closing ordinary translated cache
+visibility as well. DCC image compression and intra-shader code generation are
+the last cheap driver controls before value capture.
 
 ## Direct public report
 
