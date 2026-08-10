@@ -74,7 +74,47 @@ complete native copy-test subset passes 6,429,713 checks with zero failures.
 The patch SHA-256 is
 `ca20fb05e712f2ae8216e65843990720a67d49c81b506245a17bb82fc0b58d2a`.
 
-## Why there is no application override
+`0010-vkd3d-Add-focused-menu-resource-and-pass-telemetry.patch` through
+`0014-vkd3d-Trace-IL-2-tiled-light-descriptors.patch` are a cumulative,
+gated diagnostic series on terrain-fix predecessor `cf11ba76`. D11 names menu
+resources and nearby passes; D12 follows reflection-target use; D13 follows the
+tiled-light grid and self-light target; D15 extends that trace through the two
+final light-list compute stages and records barriers for unnamed buffers as
+well as named images. D16 follows descriptor writes and copies in a CPU sidecar
+and resolves fixed SRV slots `t9`/`t10` at only the affected pixel shaders while
+leaving the normal descriptor implementation active. They change no rendering
+unless their private telemetry environment variables are enabled and are not
+proposed as a compatibility fix. The series is retained only for
+reproducibility and possible later review.
+
+`0015-vkd3d-Trace-IL-2-t7-and-t8-descriptor-contracts.patch` is the final
+trace-only increment used to resolve the allocator shader's descriptor
+contract. It is diagnostic evidence, not a compatibility candidate.
+
+`0016-vkd3d-shader-Work-around-IL-2-tiled-light-allocator.patch` is the clean
+lighting candidate. It is commit `9b6e15be` on local branch
+`fix-il2-tiled-light-allocator`, based directly on upstream `84c87c83`. The
+29-line change applies only to `IL2Series.exe` and exact shader
+`7cefa1bc80bb4c70`: it lowers the shader's typed-UAV access as an SSBO and
+selects VKD3D-Proton's raw SSBO descriptor sibling. It contains no depth-gate
+bypass, producer-shader overrides, launch option, processor value, or game
+modification. Allocator-only D47 validates this behavior with the original
+lighting and depth predicates: the blocks and broad flicker are gone while
+real lighting and shadows remain. The patch SHA-256 is
+`4d43ac526b47d07b9694633de42cacc284e961d9fc84050df5d166c650a7216a`.
+
+The clean package builds successfully for x86-64 and x86. A fresh matched A/B
+on 2026-08-10 used the following exact candidate binaries; see
+[`../docs/evidence-u01-upstream-candidate-ab.md`](../docs/evidence-u01-upstream-candidate-ab.md):
+
+| Architecture | File | SHA-256 |
+| --- | --- | --- |
+| x86-64 | `d3d12.dll` | `effc65c16745831c276d5fdf2a50c26ad8b51e355356eb62c5b7ede940721a65` |
+| x86-64 | `d3d12core.dll` | `164847d8ad795d308fa076f91567a3a9320b8c6eb24b1bad5b2f92527d90e72b` |
+| x86 | `d3d12.dll` | `17de6a419afe8c1dd90e8af25bb9e6d95a58ddbf2edfb0ed935bec9ea23c6e72` |
+| x86 | `d3d12core.dll` | `73a77a5c27bc73c584a8a8ec7b226558d6528bef1f0387468eb074439b2beeca` |
+
+## Why the terrain candidate has no application override
 
 - The repeatable E00 baseline and successful D07 causal run identify a format-
   unit conversion, not a game configuration flag.

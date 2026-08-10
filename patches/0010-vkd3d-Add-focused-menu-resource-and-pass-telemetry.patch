@@ -1,0 +1,207 @@
+From d3cba21d9c88749273003e03ea38a1e7df4238c7 Mon Sep 17 00:00:00 2001
+From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+Date: Fri, 7 Aug 2026 20:41:20 +0200
+Subject: [PATCH] vkd3d: Add focused menu resource and pass telemetry
+
+---
+ libs/vkd3d/command.c  | 64 +++++++++++++++++++++++++++++++++++++++++++
+ libs/vkd3d/resource.c | 61 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 125 insertions(+)
+
+diff --git a/libs/vkd3d/command.c b/libs/vkd3d/command.c
+index 57566776..ef417b70 100644
+--- a/libs/vkd3d/command.c
++++ b/libs/vkd3d/command.c
+@@ -28,6 +28,41 @@
+ #include "vkd3d_renderdoc.h"
+ #endif
+ 
++#define VKD3D_IL2_MENU_PIX_EVENT_LIMIT 50000u
++
++static pthread_once_t vkd3d_il2_menu_command_trace_once = PTHREAD_ONCE_INIT;
++static bool vkd3d_il2_menu_command_trace;
++static uint32_t vkd3d_il2_menu_pix_event_count;
++
++static void vkd3d_il2_menu_command_trace_init(void)
++{
++    char value[16];
++
++    vkd3d_il2_menu_command_trace = vkd3d_get_env_var("VKD3D_IL2_MENU_TRACE", value, sizeof(value)) &&
++            strcmp(value, "0") != 0;
++    if (vkd3d_il2_menu_command_trace)
++        INFO("IL2MENU PIX-event trace enabled; limit=%u.\n", VKD3D_IL2_MENU_PIX_EVENT_LIMIT);
++}
++
++static bool vkd3d_il2_menu_command_trace_take(uint32_t *sequence)
++{
++    uint32_t value;
++
++    pthread_once(&vkd3d_il2_menu_command_trace_once, vkd3d_il2_menu_command_trace_init);
++    if (!vkd3d_il2_menu_command_trace)
++        return false;
++
++    value = vkd3d_atomic_uint32_increment(&vkd3d_il2_menu_pix_event_count,
++            vkd3d_memory_order_relaxed);
++    *sequence = value;
++    if (value <= VKD3D_IL2_MENU_PIX_EVENT_LIMIT)
++        return true;
++
++    if (value == VKD3D_IL2_MENU_PIX_EVENT_LIMIT + 1)
++        INFO("IL2MENU PIX events suppressed after limit=%u.\n", VKD3D_IL2_MENU_PIX_EVENT_LIMIT);
++    return false;
++}
++
+ static HRESULT d3d12_fence_signal(struct d3d12_fence *fence, struct vkd3d_fence_worker *worker, uint64_t value);
+ static void d3d12_command_queue_add_submission(struct d3d12_command_queue *queue,
+         const struct d3d12_command_queue_submission *sub);
+@@ -17083,12 +17118,37 @@ static char *decode_pix_string(UINT metadata, const void *data, size_t size)
+     return label_str;
+ }
+ 
++static void vkd3d_il2_menu_trace_pix_event(const char *scope, const char *kind,
++        UINT metadata, const void *data, UINT size)
++{
++    uint32_t sequence;
++    char *label_str;
++
++    if (!vkd3d_il2_menu_command_trace_take(&sequence))
++        return;
++
++    label_str = decode_pix_string(metadata, data, size);
++    if (label_str)
++    {
++        INFO("IL2MENU pix_event sequence=%u scope=%s kind=%s metadata=%u label=%s.\n",
++                sequence, scope, kind, metadata, debugstr_a(label_str));
++        vkd3d_free(label_str);
++    }
++    else
++    {
++        INFO("IL2MENU pix_event sequence=%u scope=%s kind=%s metadata=%u undecoded size=%u.\n",
++                sequence, scope, kind, metadata, size);
++    }
++}
++
+ static void STDMETHODCALLTYPE d3d12_command_list_SetMarker(d3d12_command_list_iface *iface,
+         UINT metadata, const void *data, UINT size)
+ {
+     struct d3d12_command_list *list = impl_from_ID3D12GraphicsCommandList(iface);
+     char *label_str;
+ 
++    vkd3d_il2_menu_trace_pix_event("command_list", "marker", metadata, data, size);
++
+     if (!list->device->vk_info.EXT_debug_utils)
+         return;
+ 
+@@ -17115,6 +17175,8 @@ static void STDMETHODCALLTYPE d3d12_command_list_BeginEvent(d3d12_command_list_i
+     TRACE("iface %p, metadata %u, data %p, size %u.\n",
+           iface, metadata, data, size);
+ 
++    vkd3d_il2_menu_trace_pix_event("command_list", "begin", metadata, data, size);
++
+     if (!list->device->vk_info.EXT_debug_utils)
+         return;
+ 
+@@ -23258,6 +23320,7 @@ static void STDMETHODCALLTYPE d3d12_command_queue_ExecuteCommandLists(ID3D12Comm
+ static void STDMETHODCALLTYPE d3d12_command_queue_SetMarker(ID3D12CommandQueue *iface,
+         UINT metadata, const void *data, UINT size)
+ {
++    vkd3d_il2_menu_trace_pix_event("command_queue", "marker", metadata, data, size);
+     FIXME("iface %p, metadata %#x, data %p, size %u stub!\n",
+             iface, metadata, data, size);
+ }
+@@ -23265,6 +23328,7 @@ static void STDMETHODCALLTYPE d3d12_command_queue_SetMarker(ID3D12CommandQueue *
+ static void STDMETHODCALLTYPE d3d12_command_queue_BeginEvent(ID3D12CommandQueue *iface,
+         UINT metadata, const void *data, UINT size)
+ {
++    vkd3d_il2_menu_trace_pix_event("command_queue", "begin", metadata, data, size);
+     FIXME("iface %p, metatdata %#x, data %p, size %u stub!\n",
+             iface, metadata, data, size);
+ }
+diff --git a/libs/vkd3d/resource.c b/libs/vkd3d/resource.c
+index 78db89c0..244e1eba 100644
+--- a/libs/vkd3d/resource.c
++++ b/libs/vkd3d/resource.c
+@@ -30,9 +30,58 @@
+ 
+ #define VKD3D_NULL_SRV_FORMAT DXGI_FORMAT_R8G8B8A8_UNORM
+ #define VKD3D_NULL_UAV_FORMAT DXGI_FORMAT_R32_UINT
++#define VKD3D_IL2_MENU_RESOURCE_NAME_LIMIT 20000u
+ 
+ static UINT global_cookie_counter;
+ static UINT global_cookie_va_timestamp;
++static pthread_once_t vkd3d_il2_menu_resource_trace_once = PTHREAD_ONCE_INIT;
++static bool vkd3d_il2_menu_resource_trace;
++static uint32_t vkd3d_il2_menu_resource_name_count;
++
++static void vkd3d_il2_menu_resource_trace_init(void)
++{
++    char value[16];
++
++    vkd3d_il2_menu_resource_trace = vkd3d_get_env_var("VKD3D_IL2_MENU_TRACE", value, sizeof(value)) &&
++            strcmp(value, "0") != 0;
++    if (vkd3d_il2_menu_resource_trace)
++        INFO("IL2MENU resource-name trace enabled; limit=%u.\n", VKD3D_IL2_MENU_RESOURCE_NAME_LIMIT);
++}
++
++static bool vkd3d_il2_menu_resource_trace_take(uint32_t *sequence)
++{
++    uint32_t value;
++
++    pthread_once(&vkd3d_il2_menu_resource_trace_once, vkd3d_il2_menu_resource_trace_init);
++    if (!vkd3d_il2_menu_resource_trace)
++        return false;
++
++    value = vkd3d_atomic_uint32_increment(&vkd3d_il2_menu_resource_name_count,
++            vkd3d_memory_order_relaxed);
++    *sequence = value;
++    if (value <= VKD3D_IL2_MENU_RESOURCE_NAME_LIMIT)
++        return true;
++
++    if (value == VKD3D_IL2_MENU_RESOURCE_NAME_LIMIT + 1)
++        INFO("IL2MENU resource-name events suppressed after limit=%u.\n",
++                VKD3D_IL2_MENU_RESOURCE_NAME_LIMIT);
++    return false;
++}
++
++static void vkd3d_il2_menu_trace_resource_name(struct d3d12_resource *resource, const char *name)
++{
++    uint32_t sequence;
++
++    if (!vkd3d_il2_menu_resource_trace_take(&sequence))
++        return;
++
++    INFO("IL2MENU resource_name sequence=%u cookie=%u dimension=%u width=%"PRIu64
++            " height=%u depth_or_layers=%u mips=%u format=%u flags=%#x name=%s.\n",
++            sequence, resource->res.cookie.index, resource->desc.Dimension,
++            resource->desc.Width, resource->desc.Height, resource->desc.DepthOrArraySize,
++            resource->desc.MipLevels, resource->desc.Format, resource->desc.Flags,
++            debugstr_a(name));
++}
+ 
+ static bool d3d12_resource_supports_small_resource_alignment(const D3D12_RESOURCE_DESC1 *desc,
+         const struct vkd3d_format *format);
+@@ -2443,9 +2492,21 @@ static HRESULT STDMETHODCALLTYPE d3d12_resource_SetPrivateData(d3d12_resource_if
+         REFGUID guid, UINT data_size, const void *data)
+ {
+     struct d3d12_resource *resource = impl_from_ID3D12Resource2(iface);
++    char *name = NULL;
+ 
+     TRACE("iface %p, guid %s, data_size %u, data %p.\n", iface, debugstr_guid(guid), data_size, data);
+ 
++    if (data && data_size && IsEqualGUID(guid, &WKPDID_D3DDebugObjectName))
++        name = vkd3d_strdup_n(data, data_size);
++    else if (data && data_size >= sizeof(WCHAR) && IsEqualGUID(guid, &WKPDID_D3DDebugObjectNameW))
++        name = vkd3d_strdup_w_utf8(data, data_size / sizeof(WCHAR));
++
++    if (name)
++    {
++        vkd3d_il2_menu_trace_resource_name(resource, name);
++        vkd3d_free(name);
++    }
++
+     return vkd3d_set_private_data(&resource->private_store, guid, data_size, data,
+             (vkd3d_set_name_callback) d3d12_resource_set_name, resource);
+ }
+-- 
+2.55.0
+

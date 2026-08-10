@@ -38,6 +38,19 @@ outside this focused API implementation.
 | G12 | The thin baked-terrain border reinterpret geometry alone is the visible cause. | D05c adjusted 202/202 exact thin candidates with zero rejects and visuals remained unchanged. | Excluded as a border-only explanation. |
 | G13 | The same missing 1:4 block-unit conversion affects complete `64x64` terrain pages. | D07 finds 178 square `R32G32B32A32_UINT` footprints, converts them to `256x256` BC3 regions, and repairs terrain near 5,500 m; clean general-build D08 repeats the repair. | Confirmed causal for terrain; D08-tested predecessor `cf11ba76` is narrowed without changing the IL-2 branch in current PR commit `64ec55e7`. |
 | G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
+| G15 | The menu shimmer is produced by the game's tiled variable-rate-shading path or VKD3D/RADV translation of it. | E05 removes `VK_KHR_fragment_shading_rate`, makes VKD3D advertise no D3D12 VRS support, and leaves the same moving squares visible. | Weakened: VRS is not required for the reproduced artifact; do not pursue without contradictory runtime evidence. |
+| G16 | A screen-space or temporal reflection resource contains stale or is sampled/interpreted incorrectly. | D12 records about 2,003 stable render/resolve cycles with explicit flag-zero transitions and stable shaders. D14 proves the correlated pixel shaders are tiled-light consumers as well as reflection-target writers. The artifact remains. | Simple named-target transition failure weakened; reflection alone is too broad. Follow the tiled-light inputs to these passes. |
+| G17 | The game's tiled dynamic-light reference list contains overlapping allocation ranges, and those ranges cause the visible squares and broad flicker. | D20 finds all 50 workgroups independently allocating from zero. D23 reproduces it with the invalid `R16_UINT` view. D44 captures the same 320-entry ceiling under D42: tile metadata is identical while 69–107 overwritten IDs change between adjacent affected frames. Inspection proves D25 emitted an SSBO access but still selected the typed descriptor binding. Correctly wired allocator-only D47 removes the blocks and broad flicker. | Confirmed root cause and sufficient minimal fix. |
+| G18 | RADV incorrectly executes an otherwise legal device-scope `R32ui` storage-texel-buffer atomic as though it were workgroup-local. | D21 and exact-shader D22 pass on both RADV GPUs through mutable descriptor sets and descriptor buffers. The failure appears only when D23 binds the 32-bit atomic shader through the live `R16_UINT` view. | Rejected. RADV correctly executes the legal form; D23 is an application descriptor/operation mismatch rather than a general driver atomic bug. |
+| G19 | The visible blocks arise inside the tiled dynamic-light loop of the two correlated pixel shaders rather than solely in a later write/blend/composition stage. | D26 replaces only the packed `t9` start/count fetch with zero, preserving the rest of both shaders and the scene. Both runtime overrides are verified and the square grid disappears completely. | Confirmed causal boundary. |
+| G20 | Genuine record 2 can trigger the grid rather than loop count, common record-1 math, or sentinel skipping alone. | D27 makes every iteration evaluate record 1 and is clean. D31 eliminates all skips while preserving genuine records and remains defective. D32 keeps only records 1 and 2, with no skipped iterations, and the squares remain. D33 proves record 2 is in bounds in the live `t7` view and its captured values are finite. | Confirmed sufficient for the covered scene. The remaining distinction from safe record 1 is record-2-specific spotlight/shadow behavior, not descriptor placement or bounds. |
+| G21 | The apparent `t7`/`t8` reversal in raw captured descriptor bytes is a live D3D binding error. | D33 resolves 9,064/9,064 target lookups: `t7` is the 2,048-byte float4 record view, `t8` is the 4096x2048 shadow image, and both are inside the declared `t0`–`t22` range. | Rejected. Raw mutable-descriptor physical encoding was not authoritative for logical D3D heap placement. |
+| G22 | Record 2's shadow projection/comparison result, absent for safe record 1, is required for the visible squares. | D34 preserves the D32 record-1/record-2 mixture and all ordinary record-2 lighting but substitutes fully visible `1.0` for the final `t8` comparison/filter result. Both overrides load and the squares remain. | Rejected for the returned visibility value. Do not pursue shadow sampling as the next fix. |
+| G23 | The grid comes from screen-tiled `t9`/`t10` membership or iteration multiplicity rather than record 2's per-pixel spotlight calculation alone. | D27 keeps real counts with safe record 1 and is clean; D32 keeps genuine record-2 membership and is defective; D35 removes all list variation, evaluates record 2 once everywhere, and removes the squares. | Confirmed causal boundary. The real tile-dependent placement/evaluation mask for record 2 is required; inspect producer culling and post-D25 list values. |
+| G24 | Record 2's producer culling has false-negative tiles, exposing its otherwise smooth per-pixel contribution as square boundaries. | D36 retains the original consumers, every real light, and normal shadows while both producers use `original_membership || light_id == 2`; the blocks return. | Rejected as a sufficient explanation. Record 2's boundary alone is not the complete defect. |
+| G25 | The artifact requires tile-dependent placement of a broader nontrivial light class or interaction between genuine records, rather than record 2 alone. | D27 is clean when all real iterations use record 1; D35 is clean with only global record 2; D36 restores genuine record diversity while making record 2 global and the blocks return. | Leading boundary. Analyse common producer culling branches by record class before another runtime test. |
+| G26 | Degenerate normalization in the shared producer culling math yields infinite `rsqrt`, then NaN, causing false-negative tile membership on Vulkan where Windows drivers tolerate the game math. | Runtime D37 applies the existing finite-`rsqrt` quirk to both exact producers. Dumps prove all 12 operations per module receive finite clamps and validate, but the original blocks return. | Rejected as sufficient. Do not promote the finite-`rsqrt` quirk for IL-2. |
+| G27 | The shared final packed tile-depth mask/min-max gate falsely rejects otherwise geometrically intersecting local lights. | D38 hides the blocks while the list remains malformed; D39 and D40 restore their presentation. Correctly wired D47 retains the complete original depth gate and is clean after repairing the allocator. The fine residual film-grain lighting is confirmed native on Windows. | Rejected as an independent defect or final fix. It controlled presentation of corrupted membership data only. |
 
 The cross-configuration screenshot set shows substantially worse page loss
 near 5,000-6,300 m and more low-fidelity content near 1,250-1,900 m. Valid D01b
@@ -66,6 +79,28 @@ commit `64ec55e7` preserves that conversion only for equal-byte formats whose
 block dimensions differ.
 Package inspection independently confirms the engine's 800 m baked-page
 geometry; see `evidence-map-package-inspection.md`.
+
+The remaining square artifact is a separate graphics batch. E05 weakens VRS,
+and D12 weakens a simple transition failure on the actively rendered SSR
+targets. The same run expands the symptom from the menu to the cockpit and a
+burning-aircraft scene. D13 then records stable, explicit clear/transition/UAV
+cycles for `rtSelfLight` and `rtLightRefs`. D14 proves that the nearby pixel
+shaders read the tiled-light grid and its separate index buffer, and discovers
+two final producer stages outside D13's logging window. Their translated code
+is structurally faithful. D15 then proves that the separate buffer and 3D grid
+receive the application-supplied dependencies and final read transitions in
+1,593 covered cycles while the symptom remains. D16 then resolves every
+covered `t9`/`t10` lookup to the exact D15 resources with the expected view
+types and shapes. Descriptor selection is now closed; computed values,
+typed-buffer code generation, or translated Vulkan cache handling remain
+focused leads. D17 leaves the artifact unchanged even with RADV full cache
+flushes and waits after every draw/dispatch, closing ordinary translated cache
+visibility as well. D18 remains defective with DCC disabled; a possible visual
+regression is too uncertain to classify but means compression influence is not
+fully excluded. D19 remains unchanged with forced ACO waits, using fresh
+compilation because Mesa disables its pipeline caches for ACO code-generation
+debug flags. The light-aligned appearance and negative controls now select
+produced-value capture rather than another broad launch-option test.
 
 ## Direct public report
 

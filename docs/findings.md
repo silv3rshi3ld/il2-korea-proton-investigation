@@ -294,6 +294,260 @@
     also leaving it unchanged. The shimmering is therefore independent of the
     NUMA/OpenMP startup defect and the resolved terrain-copy defect. Its own
     cause remains open.
+65. Read-only inspection of `dxBackend12.dll` shows exported D3D12 VRS controls,
+    including `enableVRS`, `setVRSRate`, `setVRSCombiners`, and
+    `getVRSFeatures`. VKD3D-Proton maps that path through
+    `VK_KHR_fragment_shading_rate` and stops advertising D3D12 VRS when that
+    extension is disabled. This makes E05 a valid capability A/B test, but the
+    symbols alone do not prove that the menu enables VRS.
+66. The game renderer also names current and previous screen-space reflection
+    targets (`rtSSR`, `rtSSRPrev`, and `g_tPrevReflections`) and distinct screen,
+    overlay, cockpit, and accumulated-reflection passes. Because the visible
+    blocks move over reflective metal while the base aircraft texture remains
+    present, a temporal reflection resource is the leading alternative if E05
+    is unchanged. This remains a hypothesis until runtime pass/resource use is
+    correlated.
+67. E05 ran on updated game build `24615759` with exact runtime VKD3D build
+    `cf11ba76`, no OpenMP/topology override, and 228 explicit warnings confirming
+    that `VK_KHR_fragment_shading_rate` was disabled. The user confirmed that
+    the same main-menu shimmering squares remain. No device-loss, OOM, or GPU
+    reset signature was found. The artifact therefore does not require the VRS
+    path, and the temporal/reflection lead now ranks above G15.
+68. D11 is visually unchanged and records 3,145 application-supplied resource
+    names with no trace suppression. The game allocates `m_prtTargetReflections`,
+    current and previous full-resolution SSR color/weight targets, and
+    `rtTempSSR` while constructing the affected menu. It makes no PIX marker or
+    begin-event calls. Runtime allocation is now confirmed, but binding/use and
+    causality remain unproven.
+69. D12 records 100,000 focused usage events over about 2,003 repeated
+    reflection cycles. The current/previous SSR targets are bound, cleared,
+    rendered with stable shader hashes, resolved, and transitioned through
+    coherent render-target/shader-resource/resolve states. Every logged
+    transition on this named family has flags `0`; no tracked UAV, alias, or
+    copy event occurs. This weakens a simple missing or split transition on the
+    named SSR targets without clearing reflection shaders or descriptors.
+70. D12's usage cap was reached around 21:12:49 local time and its broad name
+    cap around 21:18:12. The cockpit and exterior/fire screenshots were written
+    at 21:35:31 and 21:35:54. They validly show the same artifact outside the
+    menu, but their rendering operations are not inside D12's bounded usage
+    window.
+71. D12 names multiple `rtLightRefs*` generations as `80x34x2`, one-mip,
+    `DXGI_FORMAT_R32_UINT` resources with render-target and UAV flags. At
+    2560x1080, this maps the screen into approximately 32x32-pixel tiles.
+    `enviro.dll` and `renderers.dll` independently name `rtLightRefs`,
+    `g_tLightRefsRW`, `g_tLightsListRW`, light-list collection/draw, self-light,
+    and light-volume paths. Together with the cockpit/fire reproduction, this
+    promotes tiled dynamic lighting to the strongest current lead. It remains
+    correlation until D13 identifies the actual clear/write/read sequence.
+72. D13 is visually unchanged and records the complete 200,000-event budget
+    over about 33.4 seconds of initial menu rendering. The final
+    `rtLightRefs27` generation completes more than 1,500 stable cycles. All
+    tracked transitions have flags `0`; explicit resource UAV barriers separate
+    its compute stages, and `rtSelfLight10` is zero-cleared on every frame.
+    This weakens an omitted clear or simple state/UAV dependency as the cause.
+73. Four stable compute hashes are light-grid producer candidates:
+    `ce5553a11c1e3c3d`, `e41c75bf472dc42b`, `14096b77d9f7cb60`, and
+    `651194bd0a21772e`. The first two nearby draw candidates after self-light
+    becomes readable use pixel shaders `df0bd777fd1bb89d` and
+    `a2d104d5c813322e`, which D12 records writing
+    `m_prtTargetReflections`. This is strong frame-order correlation between
+    self-light and reflection rendering, but D13 does not resolve descriptor
+    tables and therefore does not claim an exact texture read.
+74. The D13 screenshot sequence retains the moving square blocks; its final
+    frame captures them across the aircraft, its shadow, and the lit floor.
+    The visual alignment supports a light/reflection interaction but does not
+    distinguish a bad light-list value from a bad view, descriptor, shader
+    translation, or reflection consumer.
+75. D14 captures all target DXIL/SPIR-V pairs and identifies six exact
+    light-list compute stages. D13's bounded dispatch window missed
+    `ComputeLightsFirstRef` (`7cefa1bc80bb4c70`) and
+    `ComputeLightsIndices` (`11e32439a86036ba`). The latter writes a separate
+    uint light-index buffer after the count stage.
+76. Pixel shaders `PixOutLight_msp` (`df0bd777fd1bb89d`) and
+    `PixOutLight_mss` (`a2d104d5c813322e`) statically read both a 3D uint
+    light-reference SRV and that separate index buffer. They derive a tile
+    coordinate from screen position and unpack count/start bits from the grid,
+    so incorrect data can affect one complete approximately 32x32 screen tile.
+    Reflection is therefore involved as an output pass, but tiled-light data is
+    the narrower causal lead.
+77. The relevant translated SPIR-V modules validate and preserve the DXIL
+    resource dimensions, `8x8` group sizes, bounds checks, integer packing, and
+    atomics. This weakens an obvious structural translator mismatch without
+    proving descriptor correctness, computed values, or runtime visibility.
+78. D13's named-image transition does not resolve whether the separate
+    light-index buffer receives an adequate dependency after
+    `ComputeLightsIndices`. D15 commit `9c6a4338` passively logs the final
+    dispatches and all immediately intervening barriers before any forced
+    barrier A/B is considered.
+79. D15 is visually unchanged and captures 1,593 occurrences each of
+    `ComputeLightsFirstRef` and `ComputeLightsIndices` over approximately 29.4
+    seconds. The game remained stable, and the log reports no device loss,
+    OOM, GPU reset, or hang.
+80. Every covered final-generation sequence gives both `rtLightRefs25`
+    (cookie 4002) and the separate 87,040-byte UAV buffer (cookie 4001) an
+    inter-stage UAV dependency and a final UAV-to-shader-read transition. The
+    D16 later resolves the buffer as 43,520 `R16_UINT` elements, so its size
+    equals `80 * 34 * 16 * sizeof(uint16_t)`, matching sixteen light indices
+    per screen tile.
+81. Translated SPIR-V for both final producers uses Vulkan Device scope for
+    its atomic increments. Relaxed atomic memory semantics are consistent with
+    D3D interlocked arithmetic; the explicit D3D12 UAV barriers provide the
+    required inter-dispatch dependencies.
+82. D15 therefore excludes the missing-synchronization form of G17 for this
+    sequence. A forced pre-compute/global barrier or IL-2 application override
+    would duplicate synchronization already requested by the game and is not
+    a valid fix candidate.
+83. D14 reflection fixes the affected pixel-shader inputs at SRV `t9`
+    (`g_tLightsList`) and `t10` (`g_bufLightsIndices`). The next passive test
+    can resolve those exact descriptor-table entries to runtime resources and
+    view metadata before escalating to a GPU value capture.
+84. D16 commit `274f6f8e` resolves all 13,236 covered fixed-slot lookups with
+    zero failures. Each shader has 3,309 stable `t9` and 3,309 stable `t10`
+    events. `t9` is the expected `rtLightRefs25` cookie 4002, viewed as a
+    `80x34x2 R32_UINT` Texture3D; `t10` is the expected cookie-4001 buffer,
+    viewed as 43,520 `R16_UINT` elements. Root signature, table base, heap
+    offsets, descriptor serials, types, resource cookies, and view shapes do
+    not vary.
+85. The D16 artifact remains visible. Wrong descriptor selection,
+    propagation, type, and view shape for the two tiled-light inputs are
+    excluded for the covered draws. The trace changes no GPU command and
+    reports no device loss, OOM, reset, or hang. The post-run configuration
+    does not verify the user's anti-aliasing/HDR UI A/B, so that observation is
+    retained as reported rather than promoted to a setting exclusion.
+86. A read-only upstream refresh finds no relevant newer translator fix.
+    VKD3D-Proton master remains the D04 baseline `84c87c83`; the four newer
+    `dxil-spirv` commits only affect NVIDIA/SM 6.9 ray-tracing local-root-table
+    constant loads. The next one-variable discriminator is RADV `fullsync`,
+    followed by produced-value or typed-buffer code-generation inspection if
+    unchanged.
+87. D17 is visually unchanged under RADV `fullsync`. The supplied 2560x1080
+    screenshot visibly captures the same approximately 32-pixel grid across
+    the aircraft and floor at about 10 FPS. RADV startup diagnostics are
+    present, and no unknown debug option, device loss, OOM, reset, page fault,
+    or hang is reported.
+88. All 8,304 D17 descriptor lookups remain identical to D16: 2,076 events per
+    shader and register, cookie 4002 at `t9`, and cookie 4001 at `t10`, with
+    zero failures. RADV waits after every draw/dispatch and flushes all caches
+    without changing the artifact. Ordinary cross-dispatch cache visibility is
+    therefore strongly excluded.
+89. D17 does not disable DCC compression or alter ACO shader compilation. The
+    next cheap controls are `RADV_DEBUG=nodcc`, then
+    `ACO_DEBUG=force-waitcnt` if needed; produced-value capture follows if both
+    are unchanged. Neither option is a proposed fix.
+90. D18 remains defective with RADV DCC disabled. The user reports that the
+    squares may be more pronounced but is not entirely certain; no matched D18
+    screenshot/video exists. The correct classification is artifact present,
+    possible regression, magnitude inconclusive—not a confirmed DCC effect.
+91. All 6,544 D18 descriptor lookups remain identical to D16/D17, with zero
+    failures and no device-loss/OOM/reset/page-fault/hang signature. DCC is not
+    the sole cause and disabling it is not a remedy. Possible influence on the
+    appearance is retained pending a future matched A/B if value evidence
+    points back to image metadata.
+92. D19 is visually unchanged with `ACO_DEBUG=force-waitcnt`. The close-up
+    screenshot retains the approximately 32-pixel grid on the aircraft wing
+    and reflected hangar-floor light. The grid is strongest in bright,
+    specular, and reflected-light regions while shadowed areas are
+    comparatively clean. This localizes the visible corruption to a light
+    contribution but does not distinguish bad tiled-light input from the
+    reflection-related output that reveals it.
+93. All 9,404 D19 descriptor lookups resolve with zero failures and retain the
+    exact D16-D18 mappings: `t9` is cookie 4002, `rtLightRefs25`, an
+    `80x34x2 R32_UINT` Texture3D; `t10` is cookie 4001, an 87,040-byte buffer
+    viewed as 43,520 `R16_UINT` elements. There is no device-loss, OOM, reset,
+    page-fault, or hang signature.
+94. Mesa 26.1.6 RADV explicitly disables pipeline caches when
+    `aco_get_codegen_flags()` is non-zero. D19 therefore freshly compiled its
+    shaders with the forced-wait option despite VKD3D-Proton loading its normal
+    disk pipeline archive. The unchanged result excludes an ordinary ACO
+    outstanding-operation wait-state omission for the reproduced path.
+95. D15-D19 now select the actual produced grid/index values as the next
+    discriminator. Another broad launch option, a forced barrier, or a
+    game-specific workaround would not follow the accumulated evidence.
+96. D20-D25 identify and repair a real but visually non-causal typed-UAV
+    incompatibility. The game performs a 32-bit atomic through an `R16_UINT`
+    view; legal 32-bit forms pass on both tested RADV GPUs, but translating the
+    real game shader to a raw 32-bit storage-buffer atomic does not remove the
+    visible square blocks.
+97. D26 removes only the two affected pixel shaders' tiled dynamic-light loop
+    and removes the blocks. D27 keeps the loop count and substitutes safe light
+    record 1 and is also clean. D32 keeps genuine record 2 and is defective;
+    D33 validates its bounds/data; D34 excludes returned shadow visibility.
+98. D35 evaluates record 2 once everywhere and is clean, while D36 makes record
+    2 global in the real producer lists and restores every other genuine light;
+    the blocks return. The defect therefore requires the real tile-dependent
+    placement/evaluation of a broader light set, not record 2's arithmetic or
+    shadow comparison alone.
+99. D37 clamps all relevant reciprocal-square-root inputs in both exact
+    producers. The original blocks remain, excluding non-finite `rsqrt` as a
+    sufficient cause.
+100. D38 preserves each producer's valid light-volume interval and bypasses
+    only the later packed-mask and scalar tile-depth rejection. Exactly two
+    overrides load; the large blocks disappear while real light records,
+    consumer loops, per-light math, and shadows remain.
+101. D39 retains geometry plus scalar tile-depth overlap and the blocks return.
+    D40 retains geometry plus the packed logarithmic mask and the blocks also
+    return. Either depth term can independently expose the defect, so D38 is
+    the minimum tested conservative predicate.
+102. The fine sandy/film-grain-like temporal lighting observed after D38 is
+    also present in the native Windows renderer. It is normal game rendering
+    and is excluded from the Proton-fix acceptance criterion.
+103. D41 implements D38 in VKD3D-Proton on clean base `84c87c83`. It is scoped
+    to exact executable `IL2Series.exe` and exact producer hashes
+    `651194bd0a21772e` and `11e32439a86036ba`. Strict instruction contracts
+    reject any structural mismatch instead of applying a broad rewrite.
+104. D41 builds successfully for x86-64 and x86, and `git diff --check` passes.
+    A no-launch-parameter runtime test remains required before calling the
+    integrated quirk complete.
+105. D42 initially appeared to remove the large square blocks with empty Steam
+    launch options, but broad aircraft-light flicker remained and later
+    identical runs restored the blocks. The clean-looking view was transient,
+    not a complete integrated fix.
+106. The broad D42 flicker must not be conflated with the fine sandy/film-grain
+    effect confirmed on Windows. Only the latter is accepted as native.
+107. D43 keeps the original depth gates and widens their shared producer's
+    packed interval and mask by one encoded step. Verified D43 runtime DLLs
+    restore the large blocks and exhibit the same lighting flicker.
+108. VKD3D pipeline-cache contamination is excluded for D43: the runtime prefix
+    DLLs match the tool, while VKD3D hashes its build, compiler revision, and
+    full shader-quirk table into cache compatibility. D43 therefore rejects
+    one-step quantization widening as sufficient. The next discriminator must
+    capture consecutive depth-range and membership values rather than widen
+    the workaround blindly.
+109. CPU-only extraction of both retained D20 full-frame captures resolves the
+    active `ComputeDepthRange` output as `m_rtDepthRange26`, an exact
+    `80x34 R32G32_UINT` image containing 2,720 packed interval/mask records.
+    Every decoded interval is ordered in both frames; the similarly shaped
+    `m_rtDepthRange21` is zero. The captures are not consecutive, so this
+    excludes gross resource corruption but does not yet locate the temporal
+    flicker. D44 preserves D42 rendering and captures three adjacent frames for
+    that comparison.
+110. D44 captures three consecutive affected frames. Active packed depth and
+    tile count/start/end metadata are bit-identical, but the grid requests
+    12,126 entries while all 50 workgroups independently reuse offsets 0–320.
+    Only that 320-entry index prefix is populated, and 69–107 light IDs change
+    between adjacent frames. This directly explains stable square regions plus
+    temporal flicker or an occasionally favourable-looking frame.
+111. The captured D44 `7cefa1bc80bb4c70` module contains the D25
+    `StorageBuffer` atomic but still maps it to typed descriptor set 1. D25 did
+    not select VKD3D-Proton's raw SSBO sibling in set 2, so its visual result
+    was not a valid negative for the allocation hypothesis.
+112. D45 adds the missing `RAW_SSBO` binding selection only under the existing
+    exact IL-2 allocator quirk and retains D38's two exact producer depth-gate
+    bypasses. Commit `1368b538` builds for x86-64 and x86. Two independent
+    starts with empty launch options completely resolve both the blocks and
+    broad flicker; the running process and all four prefix DLL hashes verify
+    D45.
+113. D46 was intended to remove only the two depth-gate bypasses, but source
+    review finds that its `IL2Series.exe` application-table entry was absent.
+    The allocator quirk table was compiled but unused, matching the warning
+    emitted by both builds. Prefix provenance verifies D46 ran, not that its
+    unwired quirk activated. Its visual failure is invalid for minimality.
+114. D47 restores only the missing executable mapping. It retains the exact
+    allocator hash, SSBO lowering, and raw descriptor selection, while no depth
+    quirk or producer hash remains. Prefix provenance and all four DLL hashes
+    verify D47; with empty launch options the blocks and broad flicker are gone
+    while normal lighting and shadows remain. The allocator correction alone
+    is sufficient and D38 must not be proposed upstream.
 
 ## Observations not yet promoted to findings
 
@@ -351,11 +605,16 @@ unchanged, so no MSFS-derived fix path remains selected. See
 | Current upstream | D04 with unmodified VKD3D-Proton `84c87c83` is visually unchanged and all four runtime hashes match. | Excluded as an existing broad version fix, high |
 | Game texture-provider failure | Six exact Korea autumn terrain inputs fail both requested and common fallback lookup and default to white. Package inspection proves the references absent, but a nearly identical absent set occurs in every season. | High that fallbacks occur; low-medium that they cause the Linux corruption |
 | BC3 baked-terrain cache copies | D07 adjusts 522/522 complete-page and border copies with zero rejects and repairs terrain near 5,500 m. D07-r2 repeats the repair. Clean general-build D08 repairs terrain at 4,813 m, 2,427 m, and 742 m without a diagnostic gate. The general regression fails on the old helper and passes with D08 predecessor `cf11ba76` and narrowed PR candidate `64ec55e7`. | Root cause and general remedy validated |
+| Menu/cockpit square artifact | Persists after the terrain-copy and Wine-NUMA fixes. D44 captures identical depth/grid metadata but a 12,126-entry list collapsed into the same 320 slots by all 50 workgroups, with 69–107 changing IDs per adjacent frame. D25's SSBO shader still selected the typed descriptor binding. Correctly wired allocator-only D47 is clean with original depth predicates, lighting, and shadows. | The exact allocator shader must use VKD3D-Proton's raw SSBO descriptor sibling for its invalid 32-bit atomic through an `R16_UINT` UAV. D47 is the minimal tested fix; D38's depth bypass only hid the malformed-list presentation and is unnecessary after repair. Native sandy/film-grain lighting is accepted. |
 
-No application override is justified. D08 validates general predecessor `cf11ba76`;
-current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
-same-block-geometry copies on the old path. The terrain track is complete; the
-menu aircraft blocks/shimmering remain a separate open track.
+The terrain track is complete: D08 validates general predecessor `cf11ba76`,
+and current PR candidate `64ec55e7` preserves its IL-2 conversion while leaving
+same-block-geometry copies on the old path. The separate menu/cockpit blocks
+justify a narrow native-compatibility allowance for the shipped invalid
+typed-UAV atomic. D47 proves that this single exact-shader behavior is
+sufficient; the diagnostic producer depth bypasses are excluded from final
+scope. The fix remains scoped to `IL2Series.exe` and one shader hash. It does
+not affect unrelated games or use a game mod.
 
 ## Source-level investigation gate
 
@@ -403,5 +662,52 @@ development-build stage.
 15. PR candidate `64ec55e7` narrows the activation predicate without changing
     the conversion selected for IL-2; same-block-geometry copies retain the
     original path.
-16. Investigate the menu corruption with a new focused trace and investigate
-    the NUMA caller separately with focused API tracing.
+16. The NUMA caller is resolved on the reporting host by exact Wine MR !11604.
+    E05 disables only advertised fragment shading rate on D10 and is visually
+    unchanged. D11-D14 narrow the remaining defect to the tiled-light grid and
+    separate light-index buffer consumed by the reflection/light passes.
+    Structural shader translation checks pass. D15 proves that both final
+    resources receive explicit UAV dependencies and shader-read transitions,
+    so no barrier quirk is justified. D16 resolves all fixed `t9`/`t10`
+    descriptors to the expected resources and view shapes. D17 remains
+    unchanged under RADV full synchronization and cache flushing. D18 remains
+    defective with DCC disabled, with possible but unconfirmed worsening. D19
+    remains unchanged with fresh forced-wait ACO compilation. D20 captures two
+    coherent frames in which every workgroup independently allocates a
+    light-index prefix beginning at zero. D21 and D22 pass all legal forms on
+    both RADV devices. D23 reproduces the pattern by binding the exact 32-bit
+    atomic shader through the game's live `R16_UINT` view, while D24's raw
+    32-bit storage-buffer atomic passes. D25 emits a storage-buffer atomic in
+    the real game and is visually unchanged, but D44 later proves it still
+    selects the typed live descriptor binding. D25 is therefore not a valid
+    causal negative for the allocation hypothesis. D26
+    replaces only the packed `t9` count/start fetch with zero in both consumer
+    pixel shaders. Both overrides load, the rest of the scene remains, and the
+    user reports the square grid completely resolved. The visible failure is
+    therefore inside the per-light loop. D27 preserves the real count/start
+    and original number of complete iterations while substituting valid light
+    ID 1. Both overrides load and the grid is gone. The real IDs or selected
+    records are therefore required. D31 excludes sentinel handling, and D32
+    proves record 2 sufficient while every other iteration evaluates safe
+    record 1. D33 then resolves every target `t7`–`t10` lookup, excludes the
+    apparent adjacent descriptor reversal and an out-of-bounds record 2, and
+    identifies record 2's shadow-enabled spotlight path as the next causal
+    boundary. D34 then replaces the returned shadow visibility with fully lit
+    `1.0`; both overrides load and the squares remain. The comparison/filter
+    result is therefore not required. D35 then evaluates record 2 once for
+    every target pixel, independent of real list membership and multiplicity;
+    the original squares disappear and the lighting becomes smooth. The
+    tile-dependent placement/evaluation mask is required. D36 keeps the
+    original consumers, shadows, and all real lights while including record 2
+    in every valid tile in both producer passes; both replacements load, but
+    the blocks return. False-negative membership of record 2 alone is
+    insufficient. D35 also removed genuine record diversity, so the remaining
+    boundary is a broader nontrivial light class or record interaction. D44
+    then captures the exact earlier instability: every workgroup overwrites
+    the same 320-entry prefix, while the winning light IDs vary between three
+    consecutive frames. D45 selects the raw SSBO descriptor sibling while
+    retaining D38's exact depth-gate behavior and is clean across two starts.
+    D46 is invalid because it also lost the application mapping, leaving its
+    remaining quirk inactive. D47 restores that mapping and is clean with the
+    original depth predicates. The allocator correction is the final minimal
+    fix. Do not repeat D28-D46 or include the D38 depth bypass upstream.

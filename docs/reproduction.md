@@ -114,6 +114,19 @@ of each single-variable variant before any combined test:
 Use `r2` only after completing and recording `r1`. Do not combine descriptor
 buffer disabling with another flag in this first matrix.
 
+The resumed menu-shimmer batch uses the D10 Wine-NUMA validation tool and no
+OpenMP workaround. After selecting `IL2-Korea-D10-WineMR11604-Proton11`, prepare
+the first VRS capability control with:
+
+```bash
+./scripts/collect-proton-log.sh prepare E05-no-vrs-r1 no-fragment-shading-rate --no-openmp-override
+```
+
+This removes `VK_KHR_fragment_shading_rate` from VKD3D's advertised device
+extensions. It is valid only when the Proton log confirms the extension-disable
+message. Observe the rotating menu aircraft for at least 30 seconds and record
+video if possible; a still image alone cannot classify the shimmer.
+
 ## D01 focused resource trace
 
 D01a proved that copying DLLs directly into the prefix is ineffective because

@@ -30,15 +30,56 @@ elements with different block dimensions, leaving same-geometry copies on the
 original path while selecting unchanged conversion arithmetic for IL-2.
 
 The startup/OpenMP problem remains an independent Wine/NUMA investigation.
+The menu/cockpit/fire-lit squares are also independent. D20 found overlapping
+tiled-light index ranges. D21-D24 traced that data pattern to the game's
+32-bit atomic through a live `R16_UINT` typed UAV, but D25 only changed the
+shader access class and left it mapped to the typed descriptor binding. D26 then
+suppressed only the two pixel shaders' tiled dynamic-light loop and completely
+removed the grid while preserving the scene. D27 retained the real tile counts
+and complete loop but substituted valid light ID 1; the verified run was also
+clean. D28–D30 remained defective while progressively replacing higher records
+with the zero sentinel. D31 then preserved every real nonzero record but
+replaced only zero with safe record 1; the squares still remained. D32 then
+kept genuine record 2 and mapped every other entry to safe record 1; the
+squares remained without skipped iterations. D33 validates record 2's live
+view, bounds, and finite data; D34 excludes the returned shadow visibility;
+D35 evaluates record 2 exactly once without the real tile list and removes the
+original squares. The remaining boundary is the real tile-dependent
+membership/evaluation mask. D36 retains the original consumers, shadows, and
+all real lights while both producers include record 2 in every valid tile;
+the blocks return. Record 2's boundary alone is therefore insufficient. The
+remaining boundary was a broader nontrivial light class or interaction between
+genuine records. D37 then excluded non-finite reciprocal-square-root results.
+D38 preserved the real producer geometry, IDs, consumer loops, per-light math,
+and shadows but bypassed the shared packed-mask and scalar tile-depth rejection;
+the large blocks disappeared. D39 retained the scalar depth overlap and D40
+retained the packed mask overlap; each independently restored the blocks.
+This made the shared tile-depth optimization look causal. D44 then supplied
+the missing temporal evidence: three consecutive affected D42 frames have
+bit-identical packed depth and tile metadata, while all 50 workgroups still
+reuse offsets 0–320 for 12,126 requested light IDs. Between adjacent frames,
+69–107 of those overwritten IDs change. The capture also proves why D25 was
+not a valid allocator negative: its SPIR-V uses `StorageBuffer`, but it still
+addresses the typed descriptor set rather than VKD3D-Proton's emitted raw SSBO
+sibling. The malformed global list is therefore the first demonstrated
+unstable boundary and explains the temporal instability. D45 completes that
+binding selection, retains the exact D38 depth-gate behavior, and is clean on
+two independent starts. D46 appeared to retain only the allocator correction,
+but later source review proves its `IL2Series.exe` mapping was absent and the
+quirk never activated. D46 is invalid for minimality. Correctly wired D47 is
+clean with the original depth predicates, proving the allocator correction is
+sufficient. The fine sandy/film-grain lighting is also present on Windows and
+is normal game rendering, not a Proton defect.
 
 ## Ranked graphics assessment
 
 | Rank | Mechanism | Evidence | Confidence |
 |---:|---|---|---|
 | 1 | Missing block-unit conversion on buffer-to-BC3 terrain-page copies | D07 adjusted 522/522 exact-class copies in run 1 and 304/304 in run 2, with zero rejects, and repaired high-altitude terrain both times; clean general-build D08 repeats the repair; the focused synthetic test fails four assertions on the old path and passes 22/22 with the narrowed general fix | High; causal for terrain and addressed by current PR candidate `64ec55e7` |
-| 2 | Separate menu effect, shadow, or temporal-resource defect | D07-r2 and clean D08 preserve the terrain repair while aircraft blocks and shimmering remain | Confirmed separate; cause open |
-| 3 | Game texture-provider fallback contributes secondary missing inputs | The successful D07 run still logs missing summer/common inputs, proving they are not required for the rectangular terrain failure | Low as a remaining contributor |
-| 4 | RADV mishandles otherwise valid Vulkan | The same driver renders correctly when VKD3D emits converted copy geometry; no driver change was required | Very low for the terrain defect |
+| 2 | IL-2's invalid typed-UAV atomic reaches the wrong live Vulkan descriptor class and makes every workgroup overwrite the same light-index prefix | D44 captures identical depth/grid metadata, a 12,126-entry request collapsed into offsets 0–320 in all 50 workgroups, and 69–107 changing IDs between adjacent affected frames. D25's captured shader is SSBO code still mapped to the typed descriptor set. Correctly wired allocator-only D47 is visually clean. | High; causal and sufficient for the blocks and broad flicker |
+| 3 | The producers' packed-mask/scalar tile-depth rejection changes presentation of the malformed light list | D38 can hide blocks while retaining lighting; D39/D40 restore them. D47 retains the original predicates but is clean once the allocator is corrected. | Diagnostic presentation factor only; rejected from the final fix |
+| 4 | Game texture-provider fallback contributes secondary missing inputs | The successful D07 run still logs missing summer/common inputs, proving they are not required for the rectangular terrain failure | Low as a remaining contributor |
+| 5 | RADV mishandles otherwise valid Vulkan terrain copies or global typed-buffer atomics | The same driver renders terrain correctly when VKD3D emits converted copy geometry; D21/D22 pass legal global atomic forms on both RADV GPUs | Very low for the terrain defect and rejected for the legal D21/D22 atomic forms |
 
 ## Terrain model established by files and traces
 
@@ -97,5 +138,38 @@ validates the general `vk_buffer_image_copy_from_d3d12()` conversion at
 predecessor `cf11ba76` without the IL-2 resource/shape filter or
 `VKD3D_IL2_BC3_PAGE_COPY`. Current PR commit `64ec55e7` preserves that IL-2
 branch while returning all same-block-geometry copies to the original path;
-its focused and full copy tests pass. The next graphics work should instrument
-the menu aircraft and motion-only flicker as a separate defect.
+its focused and full copy tests pass.
+
+For the separate shimmering defect, D44 invalidates D25 as a causal negative:
+its intended shader access translation is present, but the forced SSBO still
+selects the typed descriptor binding. D26
+proves the visual defect requires the tiled dynamic-light loop in
+`df0bd777fd1bb89d` and `a2d104d5c813322e`, not merely a later composition
+ stage. D27 further proves that the real `t10` IDs or records they select are
+required while record 1/common loop math is safe in the control. D31 excludes
+the zero/sentinel skip path as necessary. D32 keeps genuine record 2, replaces
+every other entry with record 1, and remains defective, proving record 2
+sufficient. D33 resolves every target `t7`-`t10` lookup, excludes the apparent
+adjacent descriptor reversal and an out-of-bounds record 2, and identifies
+record 2's shadow-enabled spotlight path as the next causal boundary. D34
+forces the returned shadow visibility to fully lit and the squares remain,
+excluding that comparison/filter result. D35 then evaluates record 2 exactly
+once independently of the real tile list; the original squares disappear and
+the contribution becomes smooth. The real tile-dependent membership/evaluation
+mask is therefore required. D36 makes record 2 global while restoring all
+other genuine records and the blocks return, rejecting record 2's boundary as
+the complete explanation. D37 excludes non-finite `rsqrt` behavior. D38 then
+removes the large blocks while preserving real lighting and shadows by
+retaining valid producer geometry and bypassing the common tile-depth
+rejection. D39 and D40 prove that retaining either depth component changes the
+visible presentation. D44 then locates the earlier unstable boundary in the
+overwritten light-index list. D45 selects the raw SSBO descriptor sibling
+under the exact allocator quirk, retains the two exact depth-gate bypasses, and
+passes twice with empty Steam launch options. D46 was meant to remove only
+those depth bypasses, but source review proves its executable-to-quirk mapping
+was absent. Correctly wired D47 is clean with the original depth predicates,
+proving the allocator translation is the final minimal fix. Accept the native
+sandy/film-grain lighting and reject either large square blocks or broad
+non-native flicker. See
+[`evidence-d45-correct-ssbo-binding-result.md`](evidence-d45-correct-ssbo-binding-result.md)
+and [`evidence-d47-allocator-only-wired-result.md`](evidence-d47-allocator-only-wired-result.md).

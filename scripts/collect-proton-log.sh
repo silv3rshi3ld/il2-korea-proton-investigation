@@ -10,7 +10,7 @@ usage() {
     printf '%s\n' \
         "Usage:" \
         "  $0 list-variants" \
-        "  $0 prepare RUN_ID VARIANT" \
+        "  $0 prepare RUN_ID VARIANT [--no-openmp-override]" \
         "  $0 collect RUN_ID [--source PATH] [--notes TEXT] [--no-system-info]" \
         "" \
         "Variants:" \
@@ -22,9 +22,18 @@ usage() {
         "  bc3-border-normalization" \
         "  bc3-page-normalization" \
         "  baked-cache-trace" \
+        "  menu-pass-trace" \
+        "  light-trace" \
+        "  descriptor-trace" \
+        "  radv-fullsync-descriptor-trace" \
+        "  radv-nodcc-descriptor-trace" \
+        "  aco-force-waitcnt-descriptor-trace" \
+        "  renderdoc-light-values" \
+        "  shader-dump" \
         "  no-upload-hvv" \
         "  single-queue" \
         "  no-descriptor-buffer" \
+        "  no-fragment-shading-rate" \
         "  no-upload-hvv-single-queue"
 }
 
@@ -36,7 +45,10 @@ validate_run_id() {
 }
 
 variant_environment() {
-    case "$1" in
+    local variant=$1
+    local run_id=${2:-}
+
+    case "$variant" in
         baseline|local-vkd3d-baseline)
             printf '%s' ''
             ;;
@@ -58,6 +70,36 @@ variant_environment() {
         baked-cache-trace)
             printf '%s' 'VKD3D_IL2_BAKED_CACHE_TRACE=1 '
             ;;
+        menu-pass-trace)
+            printf '%s' 'VKD3D_IL2_MENU_TRACE=1 '
+            ;;
+        light-trace)
+            printf '%s' 'VKD3D_IL2_LIGHT_TRACE=1 '
+            ;;
+        descriptor-trace)
+            printf '%s' 'VKD3D_IL2_DESCRIPTOR_TRACE=1 '
+            ;;
+        radv-fullsync-descriptor-trace)
+            printf '%s' 'RADV_DEBUG=startup,fullsync VKD3D_IL2_DESCRIPTOR_TRACE=1 '
+            ;;
+        radv-nodcc-descriptor-trace)
+            printf '%s' 'RADV_DEBUG=startup,nodcc VKD3D_IL2_DESCRIPTOR_TRACE=1 '
+            ;;
+        aco-force-waitcnt-descriptor-trace)
+            printf '%s' 'RADV_DEBUG=startup ACO_DEBUG=force-waitcnt VKD3D_IL2_DESCRIPTOR_TRACE=1 '
+            ;;
+        renderdoc-light-values)
+            # The RenderDoc wrapper owns capture variables so that they are
+            # inherited by the complete Steam process tree.
+            printf '%s' ''
+            ;;
+        shader-dump)
+            if [[ -z "$run_id" ]]; then
+                printf 'shader-dump requires a run ID\n' >&2
+                exit 2
+            fi
+            printf 'VKD3D_SHADER_DUMP_PATH=/tmp/il2-%s/shaders ' "$run_id"
+            ;;
         no-upload-hvv)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv '
             ;;
@@ -66,6 +108,9 @@ variant_environment() {
             ;;
         no-descriptor-buffer)
             printf '%s' 'VKD3D_DISABLE_EXTENSIONS=VK_EXT_descriptor_buffer '
+            ;;
+        no-fragment-shading-rate)
+            printf '%s' 'VKD3D_DISABLE_EXTENSIONS=VK_KHR_fragment_shading_rate '
             ;;
         no-upload-hvv-single-queue)
             printf '%s' 'VKD3D_CONFIG=no_upload_hvv,single_queue '
@@ -85,11 +130,26 @@ game_processes() {
 prepare_run() {
     local run_id=$1
     local variant=$2
+    shift 2
     local run_dir="$runs_dir/$run_id"
     local extra launch_options quoted_dir short_log_dir
+    local include_openmp_override=1
+
+    while (($#)); do
+        case "$1" in
+            --no-openmp-override)
+                include_openmp_override=0
+                shift
+                ;;
+            *)
+                printf 'Unknown prepare argument: %s\n' "$1" >&2
+                exit 2
+                ;;
+        esac
+    done
 
     validate_run_id "$run_id"
-    extra=$(variant_environment "$variant")
+    extra=$(variant_environment "$variant" "$run_id")
     if [[ -e "$run_dir" ]]; then
         printf 'Run directory already exists; choose a unique ID: %s\n' "$run_dir" >&2
         exit 1
@@ -103,8 +163,15 @@ prepare_run() {
 
     mkdir -p -- "$run_dir"
     ln -s -- "$run_dir" "$short_log_dir"
+    if [[ "$variant" == shader-dump ]]; then
+        mkdir -p -- "$run_dir/shaders"
+    fi
     printf -v quoted_dir '%q' "$short_log_dir"
-    launch_options="PROTON_LOG=1 PROTON_LOG_DIR=$quoted_dir OMP_NUM_THREADS=16 KMP_AFFINITY=disabled ${extra}%command%"
+    if ((include_openmp_override)); then
+        launch_options="PROTON_LOG=1 PROTON_LOG_DIR=$quoted_dir OMP_NUM_THREADS=16 KMP_AFFINITY=disabled ${extra}%command%"
+    else
+        launch_options="PROTON_LOG=1 PROTON_LOG_DIR=$quoted_dir ${extra}%command%"
+    fi
 
     printf '%s\n' "$variant" >"$run_dir/variant.txt"
     printf '%s\n' "$launch_options" >"$run_dir/launch-options.txt"
@@ -112,6 +179,7 @@ prepare_run() {
         printf 'run_id=%s\n' "$run_id"
         printf 'variant=%s\n' "$variant"
         printf 'app_id=%s\n' "$app_id"
+        printf 'openmp_override=%s\n' "$([[ $include_openmp_override -eq 1 ]] && printf enabled || printf disabled)"
         printf 'prepared_utc=%s\n' "$(date -u --iso-8601=seconds)"
         printf 'status=prepared\n'
     } >"$run_dir/metadata.txt"
@@ -215,7 +283,7 @@ collect_run() {
 
     awk '
         BEGIN { IGNORECASE = 1 }
-        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|IL2CACHE|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
+        /IL2TRACE|IL2TEX|IL2ALIAS|IL2BCCOPY|IL2CACHE|IL2MENU|IL2LIGHT|vkd3d|d3d12|dxgi|d3d11|vulkan|radv|amdgpu|queue|descriptor|fragment.shading|shading.rate|VRS|sparse|residen|barrier|image layout|upload|host.visible|memory (heap|type|budget)|GetNuma|NUMA|OpenMP|KMP_|err:|warn:/ { print }
     ' "$source_log" >"$run_dir/filtered.log"
 
     awk '
@@ -234,6 +302,8 @@ collect_run() {
         printf 'dxgi_module_lines=%s\n' "$(count_matches 'dxgi\.dll' "$run_dir/modules.log")"
         printf 'd3d11_module_lines=%s\n' "$(count_matches 'd3d11\.dll' "$run_dir/modules.log")"
         printf 'descriptor_buffer_lines=%s\n' "$(count_matches 'descriptor.buffer|VK_EXT_descriptor_buffer' "$source_log")"
+        printf 'fragment_shading_rate_lines=%s\n' "$(count_matches 'fragment.shading|shading.rate|VK_KHR_fragment_shading_rate' "$source_log")"
+        printf 'fragment_shading_rate_disabled_count=%s\n' "$(count_matches 'Extension .*VK_KHR_fragment_shading_rate.* is disabled' "$source_log")"
         printf 'queue_lines=%s\n' "$(count_matches 'queue family|queue.*(compute|transfer|graphics)|single.queue' "$source_log")"
         printf 'il2trace_enabled_count=%s\n' "$(count_matches 'IL2TRACE enabled:' "$source_log")"
         printf 'reserved_create_count=%s\n' "$(count_matches 'IL2TRACE reserved_create' "$source_log")"
@@ -263,6 +333,41 @@ collect_run() {
         printf 'baked_cache_barrier_count=%s\n' "$(count_matches 'IL2CACHE (enhanced_)?barrier ' "$source_log")"
         printf 'baked_cache_destroy_count=%s\n' "$(count_matches 'IL2CACHE destroy ' "$source_log")"
         printf 'baked_cache_suppressed_count=%s\n' "$(count_matches 'IL2CACHE suppressed ' "$source_log")"
+        printf 'il2menu_resource_trace_enabled_count=%s\n' "$(count_matches 'IL2MENU resource-name trace enabled' "$source_log")"
+        printf 'il2menu_pix_trace_enabled_count=%s\n' "$(count_matches 'IL2MENU PIX-event trace enabled' "$source_log")"
+        printf 'il2menu_resource_name_count=%s\n' "$(count_matches 'IL2MENU resource_name ' "$source_log")"
+        printf 'il2menu_pix_event_count=%s\n' "$(count_matches 'IL2MENU pix_event ' "$source_log")"
+        printf 'il2menu_reflection_name_count=%s\n' "$(count_matches 'IL2MENU.*(SSR|reflection|reflect)' "$source_log")"
+        printf 'il2menu_usage_trace_enabled_count=%s\n' "$(count_matches 'IL2MENU usage trace enabled' "$source_log")"
+        printf 'il2menu_usage_event_count=%s\n' "$(count_matches 'IL2MENU usage sequence=' "$source_log")"
+        printf 'il2menu_barrier_count=%s\n' "$(count_matches 'IL2MENU usage .*op=(barrier|uav_barrier|alias_barrier)' "$source_log")"
+        printf 'il2menu_rtv_bind_count=%s\n' "$(count_matches 'IL2MENU usage .*op=rtv_bind' "$source_log")"
+        printf 'il2menu_rtv_clear_count=%s\n' "$(count_matches 'IL2MENU usage .*op=rtv_clear' "$source_log")"
+        printf 'il2menu_draw_count=%s\n' "$(count_matches 'IL2MENU usage .*op=draw(_indexed)? ' "$source_log")"
+        printf 'il2menu_copy_count=%s\n' "$(count_matches 'IL2MENU usage .*op=copy_(texture|resource)' "$source_log")"
+        printf 'il2menu_execute_count=%s\n' "$(count_matches 'IL2MENU usage .*op=execute' "$source_log")"
+        printf 'il2menu_trace_suppressed_count=%s\n' "$(count_matches 'IL2MENU .*suppressed after limit' "$source_log")"
+        printf 'il2light_resource_trace_enabled_count=%s\n' "$(count_matches 'IL2LIGHT resource-name trace enabled' "$source_log")"
+        printf 'il2light_usage_trace_enabled_count=%s\n' "$(count_matches 'IL2LIGHT usage trace enabled' "$source_log")"
+        printf 'il2light_resource_name_count=%s\n' "$(count_matches 'IL2LIGHT resource_name ' "$source_log")"
+        printf 'il2light_usage_event_count=%s\n' "$(count_matches 'IL2LIGHT usage sequence=' "$source_log")"
+        printf 'il2light_barrier_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=(barrier|enhanced_barrier|uav_barrier|alias_barrier)' "$source_log")"
+        printf 'il2light_rtv_bind_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=rtv_bind' "$source_log")"
+        printf 'il2light_clear_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=(rtv_clear|uav_clear_uint|uav_clear_float)' "$source_log")"
+        printf 'il2light_draw_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=draw(_indexed)? ' "$source_log")"
+        printf 'il2light_dispatch_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=dispatch ' "$source_log")"
+        printf 'il2light_copy_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=copy_(texture|resource)' "$source_log")"
+        printf 'il2light_execute_count=%s\n' "$(count_matches 'IL2LIGHT usage .*op=execute' "$source_log")"
+        printf 'il2light_trace_suppressed_count=%s\n' "$(count_matches 'IL2LIGHT .*suppressed after limit' "$source_log")"
+        printf 'il2descriptor_enabled_count=%s\n' "$(count_matches 'IL2DESC descriptor sidecar trace enabled' "$source_log")"
+        printf 'il2descriptor_heap_count=%s\n' "$(count_matches 'IL2DESC heap=' "$source_log")"
+        printf 'il2descriptor_resource_name_count=%s\n' "$(count_matches 'IL2DESC resource_name ' "$source_log")"
+        printf 'il2descriptor_draw_event_count=%s\n' "$(count_matches 'IL2DESC sequence=' "$source_log")"
+        printf 'il2descriptor_resolved_count=%s\n' "$(count_matches 'IL2DESC sequence=.*status=resolved' "$source_log")"
+        printf 'il2descriptor_t9_resolved_count=%s\n' "$(count_matches 'IL2DESC sequence=.*register=t9 status=resolved' "$source_log")"
+        printf 'il2descriptor_t10_resolved_count=%s\n' "$(count_matches 'IL2DESC sequence=.*register=t10 status=resolved' "$source_log")"
+        printf 'il2descriptor_failure_count=%s\n' "$(count_matches 'IL2DESC sequence=.*status=(no_|heap_oob)' "$source_log")"
+        printf 'il2descriptor_trace_suppressed_count=%s\n' "$(count_matches 'IL2DESC draw events suppressed after limit' "$source_log")"
     } >"$run_dir/summary.txt"
 
     if grep -q -- 'IL2TEX enabled:' "$source_log"; then
@@ -328,11 +433,14 @@ case "$command_name" in
         usage
         ;;
     prepare)
-        if (($# != 3)); then
+        if (($# < 3 || $# > 4)); then
             usage >&2
             exit 2
         fi
-        prepare_run "$2" "$3"
+        run_id=$2
+        variant=$3
+        shift 3
+        prepare_run "$run_id" "$variant" "$@"
         ;;
     collect)
         if (($# < 2)); then

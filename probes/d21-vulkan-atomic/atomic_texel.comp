@@ -1,0 +1,19 @@
+#version 460
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer counter_buffer;
+layout(set = 0, binding = 1, std430) buffer OutputBuffer
+{
+    uint values[];
+} output_buffer;
+
+void main()
+{
+    uvec2 id = gl_GlobalInvocationID.xy;
+    if (id.x >= 80 || id.y >= 34)
+        return;
+
+    uint index = id.y * 80 + id.x;
+    output_buffer.values[index] = imageAtomicAdd(counter_buffer, 0, 1u);
+}
