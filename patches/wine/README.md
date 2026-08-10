@@ -43,7 +43,9 @@ Validation completed:
   the full game with launch options empty and no OpenMP/topology override.
 
 This does not yet validate a different physical CPU or a multi-node topology.
-MR !11604 is open and mergeable, and its head pipeline 72369 is successful as
-of 2026-08-07. Maintainer review and physical cross-topology validation remain.
-Any future local submission still requires the real contributor's identity;
-this repository does not invent one.
+MR !11604 was open and mergeable, and its head pipeline 72369 was successful at
+the 2026-08-07 validation check. By 2026-08-10, the same six commits were also
+present in Valve's Wine fork and pinned by the Proton Bleeding Edge source
+branch, while the upstream Wine MR itself remained open. Maintainer review and
+physical cross-topology validation remain. Any future local submission still
+requires the real contributor's identity; this repository does not invent one.

@@ -1,5 +1,12 @@
 # Community updates — posted 2026-08-06
 
+> [!NOTE]
+> Historical publication record. Despite the retained filename, the text below
+> was posted on 2026-08-06 and reflects the investigation before the terrain,
+> Wine NUMA, and tiled-light conclusions were complete. Use the
+> [consolidated Proton update](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5238316414)
+> and [`final-report.md`](final-report.md) for current status.
+
 The concise versions below were posted to
 [ValveSoftware/Proton #9906](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5209002066)
 and

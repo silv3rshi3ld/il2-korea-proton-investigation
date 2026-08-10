@@ -1,5 +1,15 @@
 # Upstream submission plan
 
+> [!NOTE]
+> Historical completed plan. The terrain branch was published as
+> [VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202).
+> The separate startup and tiled-light outcomes were later published through
+> Wine MR !11604 and VKD3D-Proton PR #3207. The direct lighting
+> implementation was subsequently superseded by D49. The published PR #3207
+> head is not a mergeable final implementation and should be converted to a
+> dependent draft before its next update. Current status is maintained in
+> [`final-report.md`](final-report.md).
+
 The user approved publication on 2026-08-07. The investigation repository is
 public, VKD3D-Proton PR
 [#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) is open,
@@ -111,3 +121,70 @@ Keep the submission compact:
 Large Proton logs, all diagnostic patches, duplicate screenshots, game files,
 prefix data, and unrelated menu/NUMA investigation material should not be
 attached to the initial pull request.
+
+## D49 lighting supersession
+
+This section supersedes only the tiled-light submission path. The terrain plan
+above remains its historical record, and the startup work remains independent
+in Wine.
+
+The D47 `9b6e15be` implementation and patch `0016` remain causal and runtime
+evidence, but are no longer the implementation proposed for merging. The D49
+design requires two coordinated repositories:
+
+1. **dxil-spirv:** one atomic commit containing the additive typed-UAV atomic
+   quirk, compiler-owned analysis and lowering, existing-remapper fallback,
+   API version update, shader sources, and generated references.
+2. **VKD3D-Proton:** one dependent atomic commit containing the interface
+   capability, the `RAW_SSBO && !MUTABLE_TYPE_RAW_SSBO` gate, capability-gated
+   dxil-spirv option, exact `IL2Series.exe` and shader
+   `0x7cefa1bc80bb4c70` selection, and the final upstream-reachable dxil-spirv
+   gitlink if VKD3D-Proton master does not already contain it.
+
+The compiler mechanism is generic. For an eligible scalar 32-bit `I32` or
+`U32` atomic on a typed UAV, dxil-spirv temporarily asks the resource remapper
+for a raw-buffer binding. Only an SSBO result enables lowering. Failure or
+another descriptor type restores the original typed binding and retries. No
+public C callback structure grows. The path excludes 64-bit atomics, sparse
+operations, non-atomic resources, and the SM 6.6 heap path.
+
+### Draft PR order and dependency
+
+1. Clean and validate the dxil-spirv change first, then open it as a draft PR.
+2. Convert existing VKD3D-Proton PR #3207 to a dependent draft. Do not open a
+   replacement unless the maintainer requests one.
+3. Cross-link the two PRs, but do not point the VKD3D-Proton submodule at a
+   commit that exists only in a personal fork.
+4. After dxil-spirv merges or the maintainer lands an equivalent, rebase
+   VKD3D-Proton on current master and use that upstream-reachable commit.
+5. Rerun exact-head validation and mark #3207 ready only after the dependency
+   and its gitlink are final.
+
+The initial dxil-spirv PR should explain the generic legality boundary and
+test matrix. It should not contain the game executable, AppID, captured shader,
+or screenshots. The VKD3D-Proton PR should explain the exact app/hash policy,
+capability gate, D44-D47 causal evidence, and D49 before/after result. The
+terrain and Wine work should be linked only as separate context.
+
+### D49 readiness evidence and boundary
+
+The retained tool is
+`IL2-Korea-D49-CompilerAware-ABISafe-731c4aae`, using VKD3D-Proton base
+`731c4aae5991b33f2ddab45d3cb1b4779159bf4b` and dxil-spirv base
+`edd8fdf702c3445eb659f2652d04436ed86e4206`.
+
+- The dxil-spirv resources suite passes cleanly.
+- The full suite has only the baseline-reproduced
+  `control-flow/switch-continue.frag` validator failure.
+- Candidate, fallback, and baseline outputs for the exact captured shader
+  validate.
+- VKD3D-Proton x86-64, x86, and package builds pass.
+- The exact remapper harness emits `StorageBuffer` plus `OpAtomicIAdd` with
+  capability ON. Capability OFF is byte-identical to the typed baseline.
+- D49 runtime provenance is verified. One menu, short-flight, and map run is
+  clean for the square blocks and broad flicker while terrain, real lighting,
+  and shadows remain correct.
+
+The sandy or film-grain lighting also occurs on native Windows and is excluded
+from acceptance criteria. D49 has not received cross-hardware runtime
+validation, so neither PR should claim it.

@@ -40,7 +40,7 @@ The issue log used a Faugus-launched, bleeding-edge Proton build rather than a
 normal Steam AppID 247970 launch, so it is corroborating evidence rather than
 the controlled local baseline.
 
-- Launcher: `/home/reanimate/Faugus/IL2Series/Launcher.exe`
+- Launcher: `/home/USER/Faugus/IL2Series/Launcher.exe`
 - Game process later launched: `IL2Series.exe`
 - VKD3D-Proton build identifier: `074c5b6352d58f4`
 - GPU: Radeon RX 9070 XT

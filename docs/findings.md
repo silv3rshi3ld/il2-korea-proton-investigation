@@ -1,4 +1,11 @@
-# Findings and evidence ledger
+# Chronological findings and evidence ledger
+
+> [!IMPORTANT]
+> This is an append-only investigation record, not the current executive
+> summary. Individual numbered findings state what was verified at that point
+> in the chronology and may be narrowed or superseded by later entries. Use
+> [`final-report.md`](final-report.md) for the final conclusions and
+> [`README.md`](README.md) for the curated evidence order.
 
 ## Verified findings
 
@@ -548,6 +555,47 @@
     verify D47; with empty launch options the blocks and broad flicker are gone
     while normal lighting and shadows remain. The allocator correction alone
     is sufficient and D38 must not be proposed upstream.
+115. Upstream review of PR #3207 identified that the direct `9b6e15be`
+    implementation relied on VKD3D-Proton selecting an SSBO without a complete
+    compiler-owned interpretation of the typed resource. Patch `0016` and the
+    D47 run remain valid causal and runtime evidence, but that implementation is
+    superseded for upstream submission.
+116. D49 divides responsibility between two components. dxil-spirv implements
+    a generic typed-UAV atomic legalization. VKD3D-Proton retains only the
+    exact `IL2Series.exe` and `0x7cefa1bc80bb4c70` selection plus a capability
+    gate for its descriptor layout.
+117. For an eligible scalar 32-bit `I32` or `U32` typed-UAV atomic,
+    dxil-spirv temporarily asks the existing resource remapper for a raw-buffer
+    binding. It commits the lowering only when the result is an SSBO. A failed
+    remap or a non-SSBO result restores the original typed kind, alignment, and
+    range before retrying the normal typed path. No public C callback structure
+    was extended.
+118. D49 deliberately excludes 64-bit atomics, sparse operations,
+    non-atomic typed UAVs, and the SM 6.6 heap path. VKD3D-Proton advertises the
+    required alias capability only with `RAW_SSBO` and without the mutable
+    single-descriptor `MUTABLE_TYPE_RAW_SSBO` layout.
+119. The dxil-spirv resources reference suite passes cleanly. The full suite
+    has one validator failure in `control-flow/switch-continue.frag`, and the
+    same failure reproduces on the unmodified base. It is therefore a baseline
+    issue rather than a D49 regression.
+120. The exact captured allocator shader validates in D49 candidate,
+    capability-fallback, and no-quirk baseline modes. The exact VKD3D remapper
+    harness emits `StorageBuffer` plus `OpAtomicIAdd` with capability ON. With
+    capability OFF its output is byte-identical to the typed baseline.
+121. D49 builds VKD3D-Proton successfully for x86-64 and x86 and completes the
+    package build. The retained tool is
+    `IL2-Korea-D49-CompilerAware-ABISafe-731c4aae`, based on VKD3D-Proton
+    `731c4aae5991b33f2ddab45d3cb1b4779159bf4b` and dxil-spirv
+    `edd8fdf702c3445eb659f2652d04436ed86e4206`.
+122. Runtime provenance verifies that D49 loaded. One run covering the menu, a
+    short flight, and the map retained correct terrain, lighting, and shadows
+    while the square blocks and broad flicker were absent. The fine sandy or
+    film-grain lighting remains excluded as native Windows behavior. This is
+    reporting-host evidence only and is not cross-hardware validation.
+123. PR #3207 should become a dependent VKD3D-Proton draft before its next
+    update. Its published head still contains the superseded implementation.
+    It is not a mergeable final form until the generic dxil-spirv mechanism is
+    reviewed and available through an upstream-reachable commit.
 
 ## Observations not yet promoted to findings
 
@@ -615,6 +663,12 @@ typed-UAV atomic. D47 proves that this single exact-shader behavior is
 sufficient; the diagnostic producer depth bypasses are excluded from final
 scope. The fix remains scoped to `IL2Series.exe` and one shader hash. It does
 not affect unrelated games or use a game mod.
+
+D49 supersedes only the implementation statement in the preceding paragraph,
+not the D44-D47 causal record. The compatibility policy remains scoped in
+VKD3D-Proton to the exact executable and shader hash, while the actual typed
+atomic legalization is now generic compiler behavior in dxil-spirv and is
+enabled only for a supported raw-SSBO descriptor layout.
 
 ## Source-level investigation gate
 
@@ -710,4 +764,6 @@ development-build stage.
     D46 is invalid because it also lost the application mapping, leaving its
     remaining quirk inactive. D47 restores that mapping and is clean with the
     original depth predicates. The allocator correction is the final minimal
-    fix. Do not repeat D28-D46 or include the D38 depth bypass upstream.
+    behavioral fix. D49 supersedes its direct implementation with generic
+    dxil-spirv legalization and capability-gated VKD3D-Proton selection. Do not
+    repeat D28-D46 or include the D38 depth bypass upstream.

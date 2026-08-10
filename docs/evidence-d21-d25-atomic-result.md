@@ -1,5 +1,15 @@
 # D21-D25 tiled-light atomic investigation: result
 
+> [!IMPORTANT]
+> Historical interim result. D25 emitted a StorageBuffer atomic but still
+> selected the typed texel-buffer descriptor, so it did not execute the complete
+> compatibility translation. D44-D47 later identified that missing descriptor
+> half and established the allocator as the visual root cause. See
+> [`evidence-d45-correct-ssbo-binding-result.md`](evidence-d45-correct-ssbo-binding-result.md),
+> [`evidence-d47-allocator-only-wired-result.md`](evidence-d47-allocator-only-wired-result.md),
+> and [`final-report.md`](final-report.md). The text below is preserved as the
+> accurate conclusion from the evidence available at D25.
+
 ## Result
 
 The D20 captures exposed a real invalid descriptor/atomic combination, but

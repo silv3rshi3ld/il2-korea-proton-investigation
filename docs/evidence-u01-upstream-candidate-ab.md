@@ -1,10 +1,21 @@
 # U01 clean upstream-candidate A/B result
 
+> [!IMPORTANT]
+> U01 remains valid runtime and mechanism evidence: its clean one-commit build
+> removed the blocks and broad flicker while preserving real lighting. The
+> implementation architecture was later superseded after maintainer review.
+> The current ABI-safe paired dxil-spirv and capability-gated VKD3D-Proton
+> result is D49; see
+> [`evidence-d49-compiler-aware-result.md`](evidence-d49-compiler-aware-result.md).
+> This evidence file remains at its original path so existing references and
+> image provenance stay stable.
+
 ## Purpose
 
-U01 validates the review-ready lighting change independently of the diagnostic
-branches. It compares a fresh build of unmodified VKD3D-Proton master with a
-fresh build of the single clean candidate commit:
+U01 validated the visual behavior of the first clean lighting implementation
+independently of the diagnostic branches. It compares a fresh build of
+unmodified VKD3D-Proton master with a fresh build of the single clean candidate
+commit:
 
 - baseline: upstream `84c87c8390d9df75ba41d911496296fe13f0e275`;
 - candidate: `9b6e15be29fc1ebb1c26796477009152cb1c760d`, exactly one
@@ -80,8 +91,16 @@ no crop, recompression, or annotation was applied.
 ## Conclusion
 
 The clean one-commit candidate reproduces D47's allocator-only correction on
-top of current upstream master. No depth workaround, launch parameter,
-hard-coded processor value, or game customization is required. The appropriate
-upstream form is one narrowly application- and shader-hash-scoped
-VKD3D-Proton compatibility quirk, proposed as
-[VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207).
+top of its then-current upstream master. No depth workaround, launch parameter,
+hard-coded processor value, or game customization was required. This proves the
+required runtime behavior, but not the suitability of the original
+one-repository implementation. That implementation was proposed in
+[VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207)
+and was superseded after valid maintainer feedback about how dxil-spirv and
+descriptor layouts interpret the resource.
+
+D49 retains the same exact executable and shader scope while moving the generic
+legalization into dxil-spirv, avoiding public callback-struct growth, requiring
+a valid SSBO remap, and allowing VKD3D-Proton to withhold the quirk on unsafe
+layouts. U01 should therefore be cited as historical causal and visual evidence;
+D49 is the current implementation result.

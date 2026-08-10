@@ -34,9 +34,9 @@ binary captures to repository history. Each image is 2560x1080.
 |---|---|---|---|
 | r1 | [`E00-r1-menu-aircraft-block-artifacts.png`](../captures/curated/e00-baseline/E00-r1-menu-aircraft-block-artifacts.png) | `4d752c078160bc705f540c0fd1fa960d0a965845a64ff85547334742667a85ef` | Menu aircraft; user observed dynamic block artifacts |
 | r1 | [`E00-r1-terrain-cockpit-missing-pages.png`](../captures/curated/e00-baseline/E00-r1-terrain-cockpit-missing-pages.png) | `02588ae5ac934f23e75dcd8bcfaa10153cd2656ade55c187aa81f6b17b9fa899` | Cockpit view; dark terrain, isolated pages, magenta edges |
-| r1 | [`E00-r1-terrain-external-missing-pages.png`](../captures/curated/e00-baseline/E00-r1-terrain-external-missing-pages.png) | `508f098869c40ceeb9bcdf0d2357f39b14bc6ed5ffc40ae2e0b47397d0b08bfc` | External view; tiled terrain loss around aircraft |
-| r1 | [`E00-r1-terrain-external-wide-missing-pages.png`](../captures/curated/e00-baseline/E00-r1-terrain-external-wide-missing-pages.png) | `16cdb8a9b35a8eaa3d8a3077e7a86a968d50613dbd29cc3d9895dab799c3f7d9` | Paused external view; widespread page pattern at distance |
-| r2 | [`E00-r2-menu-aircraft-block-artifacts.png`](../captures/curated/e00-baseline/E00-r2-menu-aircraft-block-artifacts.png) | `c608752d5d3583ca86d0ee8d7d5fb89f701cfcd9179651d0a2999ad9c0541249` | Second menu reproduction; user confirms blocks persist |
+| r1 | `E00-r1-terrain-external-missing-pages.png` (local evidence, not published) | `508f098869c40ceeb9bcdf0d2357f39b14bc6ed5ffc40ae2e0b47397d0b08bfc` | External view; tiled terrain loss around aircraft |
+| r1 | `E00-r1-terrain-external-wide-missing-pages.png` (local evidence, not published) | `16cdb8a9b35a8eaa3d8a3077e7a86a968d50613dbd29cc3d9895dab799c3f7d9` | Paused external view; widespread page pattern at distance |
+| r2 | `E00-r2-menu-aircraft-block-artifacts.png` (local evidence, not published) | `c608752d5d3583ca86d0ee8d7d5fb89f701cfcd9179651d0a2999ad9c0541249` | Second menu reproduction; user confirms blocks persist |
 | r2 | [`E00-r2-terrain-external-missing-pages-magenta-seams.png`](../captures/curated/e00-baseline/E00-r2-terrain-external-missing-pages-magenta-seams.png) | `d613c4f044d7a9dccef12cba9992aa7210909f86c7feca82ae5459cb07badacd` | Second terrain reproduction; most ground missing, bright magenta borders |
 
 ## Runtime path and controls

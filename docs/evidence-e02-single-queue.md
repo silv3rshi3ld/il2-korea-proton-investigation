@@ -12,16 +12,16 @@ both runs. The
 flight screenshot still shows dark/absent ground, isolated rectangular terrain
 pages, vegetation without the underlying surface, and magenta page edges.
 
-Curated capture:
-[`E02-r1-terrain-unchanged-missing-pages-magenta-seams.png`](../captures/curated/e02-single-queue/E02-r1-terrain-unchanged-missing-pages-magenta-seams.png),
+Local capture, retained by hash but not published:
+`E02-r1-terrain-unchanged-missing-pages-magenta-seams.png`,
 SHA-256
 `ca3ac0a873bd971cd601c8418b30fd1b2b1700356893605cba6e8c0514b7a1f1`.
 
 Run-2 captures:
 
-- [`E02-r2-menu-aircraft-artifacts-unchanged.png`](../captures/curated/e02-single-queue/E02-r2-menu-aircraft-artifacts-unchanged.png),
+- `E02-r2-menu-aircraft-artifacts-unchanged.png` (local evidence, not published),
   SHA-256 `9853f57985ef0f18e69612b9ee074996841c9c77e9648d392d8cdafcd309fe8d`.
-- [`E02-r2-terrain-unchanged-missing-pages-magenta-seams.png`](../captures/curated/e02-single-queue/E02-r2-terrain-unchanged-missing-pages-magenta-seams.png),
+- `E02-r2-terrain-unchanged-missing-pages-magenta-seams.png` (local evidence, not published),
   SHA-256 `1fb07820ca53abf572a00a8a1e58c91a57ffa7dd2e7c315ab387a924dfa0a6cf`.
 
 ## Control verification
