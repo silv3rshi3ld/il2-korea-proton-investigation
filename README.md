@@ -50,10 +50,8 @@ executable mapping had accidentally been removed, so its allocator quirk never
 activated. The remaining fine sandy or film-grain lighting is also present on
 native Windows and is not treated as a Proton defect.
 
-The clean lighting patch and review-only issue/PR drafts remain local pending
-the publication sequence described in the drafts. See
-[`docs/evidence-d47-allocator-only-wired-result.md`](docs/evidence-d47-allocator-only-wired-result.md)
-and [`docs/tiled-light-upstream-drafts.md`](docs/tiled-light-upstream-drafts.md).
+The clean lighting patch remains local pending upstream review. See
+[`docs/evidence-d47-allocator-only-wired-result.md`](docs/evidence-d47-allocator-only-wired-result.md).
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
@@ -380,7 +378,6 @@ Compare collected runs with:
 - [`docs/evidence-u00-game-update.md`](docs/evidence-u00-game-update.md): updated
   game-build baseline result
 - [`docs/findings.md`](docs/findings.md): evidence ledger and root-cause status
-- [`docs/upstream-drafts.md`](docs/upstream-drafts.md): review-only issue drafts
 - [`docs/upstream-submission-plan.md`](docs/upstream-submission-plan.md): correct
   repository, publication sequence, impact boundary, regression evidence, and
   narrower fallback order
