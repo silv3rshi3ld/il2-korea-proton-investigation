@@ -1,4 +1,9 @@
-# Upstream drafts (review only; do not post automatically)
+# Upstream drafts
+
+> The completed tiled-light allocator investigation has its own current
+> review-only issue and PR text in
+> [`tiled-light-upstream-drafts.md`](tiled-light-upstream-drafts.md). Nothing in
+> that file has been posted.
 
 > Superseded for current review by
 > [`community-update-draft-2026-08-06.md`](community-update-draft-2026-08-06.md),
@@ -12,7 +17,7 @@ game, prefix, credentials, or unfiltered large artifacts.
 
 ## 2026-08-07 result update for VKD3D-Proton #3134
 
-Review only; do not post automatically.
+Review draft.
 
 ```text
 I found a causal fix for the terrain corruption on my RX 7800 XT / RADV 26.1.6
@@ -55,7 +60,7 @@ Proposed small attachment set: one before/after screenshot pair, the bounded
 
 ## 2026-08-07 result update for Proton #9906
 
-Review only; do not post automatically.
+Review draft.
 
 ```text
 Rendering update: the terrain cause has been isolated to VKD3D-Proton's
@@ -114,7 +119,7 @@ same physical-block reinterpretation for image-to-image copies.
 
 ## Historical pre-D07 focused update — superseded
 
-Use this as a review draft only. Do not post automatically.
+Use this as a review draft.
 
 ```text
 I have isolated a concrete compressed-copy problem on the active terrain-cache

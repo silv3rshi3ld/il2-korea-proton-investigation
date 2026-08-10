@@ -64,5 +64,3 @@ every draw and dispatch. Slowness does not classify the visual result.
   focused typed-buffer/compiler A/B.
 - If the menu cannot render because the debug mode is prohibitively slow, mark
   the run inconclusive; do not interpret startup alone.
-
-Nothing from D17 will be uploaded without separate user confirmation.

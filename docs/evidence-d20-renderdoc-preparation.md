@@ -126,8 +126,6 @@ plausible values at the affected draw?
 - Plausible inputs select the consumer's tile-coordinate/value interpretation
   or later reflection/light-composition output.
 
-The `.rdc` may contain captured game resources. It stays local and ignored and
-must not be uploaded or attached to a public report without a separate content
-review and explicit user confirmation.
-
-Nothing from D20 will be uploaded or posted without explicit confirmation.
+The `.rdc` may contain captured game resources. It stays local and ignored.
+Public reports must exclude proprietary game assets and captured resource
+contents.

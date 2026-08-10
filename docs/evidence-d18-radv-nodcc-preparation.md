@@ -52,5 +52,3 @@ Protocol:
 - Unchanged strongly weakens compression metadata on the light-grid image and
   selects `ACO_DEBUG=force-waitcnt` as the last cheap compiler/hazard control.
 - A startup/device failure makes the run inconclusive.
-
-Nothing from D18 will be uploaded without separate user confirmation.

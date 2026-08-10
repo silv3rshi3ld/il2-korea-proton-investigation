@@ -1,0 +1,132 @@
+From 1800206168f9d43f6e0bc82a6b714e785bd6a9f8 Mon Sep 17 00:00:00 2001
+From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+Date: Sat, 8 Aug 2026 14:24:26 +0200
+Subject: [PATCH] vkd3d: Trace IL-2 t7 and t8 descriptor contracts
+
+---
+ libs/vkd3d/command.c |  4 ++-
+ libs/vkd3d/state.c   | 71 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 74 insertions(+), 1 deletion(-)
+
+diff --git a/libs/vkd3d/command.c b/libs/vkd3d/command.c
+index 83ab6d52..f81ab181 100644
+--- a/libs/vkd3d/command.c
++++ b/libs/vkd3d/command.c
+@@ -660,7 +660,7 @@ static const struct vkd3d_shader_resource_binding *vkd3d_il2_descriptor_trace_fi
+     uint32_t expected_flag;
+     unsigned int i, pass;
+ 
+-    expected_flag = shader_register == 9 ?
++    expected_flag = shader_register == 8 || shader_register == 9 ?
+             VKD3D_SHADER_BINDING_FLAG_IMAGE : VKD3D_SHADER_BINDING_FLAG_BUFFER;
+ 
+     for (pass = 0; pass < 2; pass++)
+@@ -801,6 +801,8 @@ static void vkd3d_il2_descriptor_trace_draw(struct d3d12_command_list *list, con
+             ps_hash != VKD3D_IL2_DESCRIPTOR_PIXEL_MSS_HASH)
+         return;
+ 
++    vkd3d_il2_descriptor_trace_register(list, op, ps_hash, 7);
++    vkd3d_il2_descriptor_trace_register(list, op, ps_hash, 8);
+     vkd3d_il2_descriptor_trace_register(list, op, ps_hash, 9);
+     vkd3d_il2_descriptor_trace_register(list, op, ps_hash, 10);
+ }
+diff --git a/libs/vkd3d/state.c b/libs/vkd3d/state.c
+index 6dde6140..5031caac 100644
+--- a/libs/vkd3d/state.c
++++ b/libs/vkd3d/state.c
+@@ -2121,6 +2121,70 @@ HRESULT d3d12_root_signature_create_empty(struct d3d12_device *device,
+     return S_OK;
+ }
+ 
++static uint32_t vkd3d_il2_descriptor_trace_source_root_signature_version(
++        const struct vkd3d_shader_code *dxbc, bool raw_payload)
++{
++    struct vkd3d_versioned_root_signature_desc desc;
++    uint32_t version = 0;
++    int ret;
++
++    if (!vkd3d_il2_descriptor_trace_enabled())
++        return 0;
++
++    if (raw_payload)
++        ret = vkd3d_shader_parse_root_signature_raw(dxbc->code, dxbc->size, &desc, NULL);
++    else
++        ret = vkd3d_shader_parse_root_signature(dxbc, &desc, NULL);
++
++    if (ret >= 0)
++    {
++        version = desc.version;
++        vkd3d_shader_free_root_signature(&desc);
++    }
++    else
++    {
++        INFO("IL2ROOT status=source_parse_failed result=%d raw_payload=%u.\n", ret, raw_payload);
++    }
++
++    return version;
++}
++
++static void vkd3d_il2_descriptor_trace_root_signature(
++        const struct d3d12_root_signature *root_signature,
++        const D3D12_ROOT_SIGNATURE_DESC2 *desc, uint32_t source_version)
++{
++    const D3D12_ROOT_PARAMETER1 *parameter;
++    const D3D12_DESCRIPTOR_RANGE1 *range;
++    unsigned int i, j;
++
++    if (!vkd3d_il2_descriptor_trace_enabled())
++        return;
++
++    INFO("IL2ROOT root_signature=%016"PRIx64" pso_compatibility=%016"PRIx64
++            " source_version=%#x effective_version=%#x flags=%#x parameter_count=%u.\n",
++            root_signature->layout_compatibility_hash, root_signature->pso_compatibility_hash,
++            source_version, VKD3D_ROOT_SIGNATURE_VERSION_1_2, desc->Flags, desc->NumParameters);
++
++    for (i = 0; i < desc->NumParameters; i++)
++    {
++        parameter = &desc->pParameters[i];
++        if (parameter->ParameterType != D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
++            continue;
++
++        for (j = 0; j < parameter->DescriptorTable.NumDescriptorRanges; j++)
++        {
++            range = &parameter->DescriptorTable.pDescriptorRanges[j];
++            INFO("IL2ROOT root_signature=%016"PRIx64
++                    " root_parameter=%u table=%u range_index=%u type=%u base_register=%u "
++                    "register_space=%u descriptor_count=%u range_flags=%#x table_offset=%u.\n",
++                    root_signature->layout_compatibility_hash, i,
++                    root_signature->parameters[i].descriptor_table.table_index, j,
++                    range->RangeType, range->BaseShaderRegister, range->RegisterSpace,
++                    range->NumDescriptors, range->Flags, range->OffsetInDescriptorsFromTableStart);
++        }
++    }
++}
++
+ static HRESULT d3d12_root_signature_create_from_blob(struct d3d12_device *device,
+         const void *bytecode, size_t bytecode_length, bool raw_payload,
+         struct d3d12_root_signature **root_signature)
+@@ -2132,10 +2196,13 @@ static HRESULT d3d12_root_signature_create_from_blob(struct d3d12_device *device
+         struct vkd3d_versioned_root_signature_desc vkd3d;
+     } root_signature_desc;
+     vkd3d_shader_hash_t compatibility_hash;
++    uint32_t il2_source_version;
+     struct d3d12_root_signature *object;
+     HRESULT hr;
+     int ret;
+ 
++    il2_source_version = vkd3d_il2_descriptor_trace_source_root_signature_version(&dxbc, raw_payload);
++
+     if (raw_payload)
+     {
+         if ((ret = vkd3d_shader_parse_root_signature_v_1_2_from_raw_payload(&dxbc, &root_signature_desc.vkd3d,
+@@ -2178,6 +2245,10 @@ static HRESULT d3d12_root_signature_create_from_blob(struct d3d12_device *device
+                 &root_signature_desc.vkd3d.v_1_2);
+     }
+ 
++    if (SUCCEEDED(hr))
++        vkd3d_il2_descriptor_trace_root_signature(object,
++                &root_signature_desc.d3d12.Desc_1_2, il2_source_version);
++
+     /* Inline the root signature blob inside the SPIR-V. */
+     if (SUCCEEDED(hr) && !raw_payload &&
+             !(root_signature_desc.d3d12.Desc_1_2.Flags & D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE) &&

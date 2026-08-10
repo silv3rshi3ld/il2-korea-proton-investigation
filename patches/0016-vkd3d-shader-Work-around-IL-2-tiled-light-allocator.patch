@@ -1,0 +1,100 @@
+From 9b6e15be29fc1ebb1c26796477009152cb1c760d Mon Sep 17 00:00:00 2001
+From: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+Date: Mon, 10 Aug 2026 10:08:56 +0200
+Subject: [PATCH] vkd3d-shader: Work around IL-2 tiled-light allocator
+
+IL-2 performs a 32-bit atomic through an R16_UINT typed UAV in its tiled-light reference allocator. Native drivers tolerate this invalid combination, but translating it as a typed texel-buffer access makes each workgroup reuse the same allocation prefix.
+
+For the exact affected shader, lower typed UAV accesses as SSBO operations and select the raw descriptor sibling already emitted by VKD3D-Proton. Scope the behavior to IL2Series.exe and the allocator shader hash.
+
+Signed-off-by: Silv3rShi3ld <silv3rshi3ld@users.noreply.github.com>
+---
+ include/vkd3d_shader.h                |  5 +++++
+ libs/vkd3d-shader/dxil.c              | 11 +++++++++++
+ libs/vkd3d-shader/vkd3d_shader_main.c |  1 +
+ libs/vkd3d/device.c                   | 12 ++++++++++++
+ 4 files changed, 29 insertions(+)
+
+diff --git a/include/vkd3d_shader.h b/include/vkd3d_shader.h
+index 45fb41b7..04b78d75 100644
+--- a/include/vkd3d_shader.h
++++ b/include/vkd3d_shader.h
+@@ -579,6 +579,11 @@ enum vkd3d_shader_target_extension
+  * which is highly illegal and only way out of it is to use filthy trickery. */
+ #define VKD3D_SHADER_QUIRK_FORCE_FEEDBACK_LOOP (1ull << 38)
+ 
++/* Treat typed buffer UAVs as raw SSBOs. This is intended for surgical shader
++ * workarounds where an application performs operations which require a wider
++ * element type than the typed view it binds. */
++#define VKD3D_SHADER_QUIRK_FORCE_TYPED_UAV_AS_SSBO (1ull << 39)
++
+ typedef uint64_t vkd3d_shader_quirks_t;
+ 
+ struct vkd3d_shader_quirk_hash
+diff --git a/libs/vkd3d-shader/dxil.c b/libs/vkd3d-shader/dxil.c
+index b28b9a65..e17270f7 100644
+--- a/libs/vkd3d-shader/dxil.c
++++ b/libs/vkd3d-shader/dxil.c
+@@ -510,6 +510,17 @@ static dxil_spv_bool dxil_uav_remap(void *userdata, const dxil_spv_uav_d3d_bindi
+     resource_flags = dxil_resource_flags_from_kind(d3d_binding->d3d_binding.kind, false);
+     use_ssbo = resource_flags != resource_flags_ssbo;
+ 
++    if ((remap->quirks & VKD3D_SHADER_QUIRK_FORCE_TYPED_UAV_AS_SSBO) &&
++            d3d_binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_TYPED_BUFFER)
++    {
++        use_ssbo = true;
++        /* A typed binding normally maps to the texel-buffer descriptor set even
++         * when dxil-spirv is asked to emit SSBO accesses. Select the raw sibling
++         * explicitly so that the resulting StorageBuffer variable consumes the
++         * storage-buffer descriptor emitted alongside the typed view. */
++        resource_flags_ssbo |= VKD3D_SHADER_BINDING_FLAG_RAW_SSBO;
++    }
++
+     /* For heap, we have the option to dynamically fall back to texel buffers. */
+     if ((shader_interface_info->flags & VKD3D_SHADER_INTERFACE_HEAP_LOWERING) &&
+         d3d_binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER &&
+diff --git a/libs/vkd3d-shader/vkd3d_shader_main.c b/libs/vkd3d-shader/vkd3d_shader_main.c
+index 39971d79..d466769a 100644
+--- a/libs/vkd3d-shader/vkd3d_shader_main.c
++++ b/libs/vkd3d-shader/vkd3d_shader_main.c
+@@ -419,6 +419,7 @@ static const struct vkd3d_shader_quirk_mapping
+     ENTRY(CLAMP_WAVE_SIZE_TO_THREAD_GROUP32),
+     ENTRY(ENABLE_FAIR_SCHEDULING),
+     ENTRY(FORCE_GRAPHICS_BARRIER_BEFORE_DRAW),
++    ENTRY(FORCE_TYPED_UAV_AS_SSBO),
+ };
+ #undef ENTRY
+ 
+diff --git a/libs/vkd3d/device.c b/libs/vkd3d/device.c
+index ff9a03f1..49c9c189 100644
+--- a/libs/vkd3d/device.c
++++ b/libs/vkd3d/device.c
+@@ -1113,6 +1113,16 @@ static const struct vkd3d_shader_quirk_info empire_of_the_ants_quirks = {
+     NULL, 0, VKD3D_SHADER_QUIRK_CLAMP_WAVE_SIZE_TO_THREAD_GROUP32,
+ };
+ 
++static const struct vkd3d_shader_quirk_hash il2_korea_hashes[] = {
++    /* ComputeLightsFirstRef performs a 32-bit atomic through an R16_UINT UAV.
++     * Native D3D12 drivers tolerate this invalid typed-UAV combination. */
++    { NULL, 0x7cefa1bc80bb4c70, VKD3D_SHADER_QUIRK_FORCE_TYPED_UAV_AS_SSBO },
++};
++
++static const struct vkd3d_shader_quirk_info il2_korea_quirks = {
++    il2_korea_hashes, ARRAY_SIZE(il2_korea_hashes), 0,
++};
++
+ static const struct vkd3d_shader_quirk_meta application_shader_quirks[] = {
+     /* F1 2020 (1080110) */
+     { VKD3D_STRING_COMPARE_EXACT, "F1_2020_dx12.exe", &f1_2019_2020_quirks },
+@@ -1207,6 +1217,8 @@ static const struct vkd3d_shader_quirk_meta application_shader_quirks[] = {
+     /* Empire of the Ants (2287330). With Terrain Tessellation on, some shaders
+      * seem to assume Wave32 by mistake leading to GPU timeout. */
+     { VKD3D_STRING_COMPARE_EXACT, "Empire-Win64-Shipping.exe", &empire_of_the_ants_quirks },
++    /* IL-2 Sturmovik: Korea (247970). */
++    { VKD3D_STRING_COMPARE_EXACT, "IL2Series.exe", &il2_korea_quirks },
+     /* Unreal Engine 4 */
+     { VKD3D_STRING_COMPARE_ENDS_WITH, "-Shipping.exe", &ue4_quirks },
+     { VKD3D_STRING_COMPARE_NEVER, NULL, NULL },
+-- 
+2.55.0
+

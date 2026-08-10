@@ -1,8 +1,10 @@
 # IL-2 Korea Proton compatibility investigation
 
 This repository tracks a controlled investigation of **Korea. IL-2 Series**
-(Steam AppID 247970). It deliberately separates the startup/NUMA failure from
-the D3D12 rendering corruption. No application override has been added.
+(Steam AppID 247970). It deliberately separates the startup/NUMA failure, the
+terrain corruption, and the tiled-light corruption. The terrain remedy is a
+general copy fix; the lighting remedy is a narrowly scoped VKD3D-Proton shader
+quirk. Neither requires launch parameters or game modification.
 
 ## Public handoff
 
@@ -18,62 +20,40 @@ shader cache, or unfiltered large trace.
 
 ## Current status
 
-The terrain root cause and general remedy are now validated. D07 corrected all
-522 observed block-compatible terrain-page copies and repaired the terrain
-near 5,500 m; a second D07 run repeated the result. D08 then loaded clean
-general commit `cf11ba76` without the diagnostic gate and produced continuous,
-detailed terrain from 4,813 m down to 742 m. Its focused regression test fails
-on the old helper and passes with the fix. No application override has been
-added. The separate menu-aircraft/shimmering and startup/NUMA symptoms remain
-separate. The startup cause is now isolated to missing Wine NUMA API behavior.
-The exact six-commit series from upstream Wine MR !11604 passes both the exact
-OpenMP component test and a full-game Proton 11 startup test on the reporting
-host. The D10 tool starts the game with Steam launch options empty and no
-OpenMP/topology override in the live process. The shimmering remains visible,
-confirming that it is not caused by this NUMA/OpenMP defect. Validation on
-other physical CPU/NUMA layouts and completion of upstream review are still
-pending.
+All three compatibility problems now have isolated outcomes:
 
-The menu/cockpit square artifact now has a narrower lead. E05 proves that VRS
-is not required. D11 identifies the game's named reflection resources, and
-D12 proves they are actively rendered in about 2,003 stable cycles with
-explicit, non-split transitions and stable shader hashes. The artifact remains,
-so a simple missing transition on those named SSR targets is weakened. The
-same run visually confirms the squares in the cockpit and outside around a
-burning aircraft, although D12 reached its bounded event cap before those later
-frames.
+- Startup without parameters is fixed by the Wine NUMA API work from upstream
+  MR !11604. It uses the processor topology reported at runtime and contains no
+  hard-coded thread count.
+- Terrain-page corruption is fixed by general VKD3D-Proton copy-unit commit
+  `64ec55e7`, proposed as PR #3202. It has no IL-2 application override.
+- Menu, cockpit, external-view, and fire-lit blocks/flicker are fixed by the
+  allocator-only D47 behavior. The local clean upstream candidate is commit
+  `9b6e15be` on branch `fix-il2-tiled-light-allocator`: 29 added lines, scoped
+  to `IL2Series.exe` and exact shader `7cefa1bc80bb4c70`.
 
-D13 follows the `80x34x2 R32_UINT` `rtLightRefs*` grid and full-resolution
-`rtSelfLight` target for more than 1,500 stable final-generation cycles. D14
-then captures and inspects the exact DXIL and translated SPIR-V. It identifies
-six tiled-light compute stages, including two final light-list stages outside
-D13's original four-dispatch window. The correlated pixel shaders statically
-read both the 3D light-reference grid and a separate uint light-index buffer;
-bad data can therefore affect a complete approximately 32x32-pixel screen
-tile. The translation preserves the relevant resource shapes, bounds, integer
-packing, and atomics and passes SPIR-V validation. D15 then records 1,593
-complete final light-list cycles while the artifact remains visible. Both the
-3D tile grid and separate index buffer receive explicit UAV dependencies and
-final shader-read transitions. The producer atomics also use Device scope.
-Missing synchronization is therefore excluded for this sequence; adding a
-forced VKD3D-Proton barrier would duplicate the application's dependencies.
-D16 resolves the exact `t9` light-list and `t10` light-index descriptor-table
-slots on the normal RDNA3 descriptor path. All 13,236 lookups are stable and
-correct: `t9` is the expected `80x34x2 R32_UINT` grid and `t10` is the expected
-87,040-byte buffer, viewed as 43,520 `R16_UINT` elements (sixteen indices per
-tile). This excludes wrong selection, propagation, type, and shape for those
-two inputs. D17 then enables RADV `fullsync`, waiting after every draw/dispatch
-and flushing all caches. The same grid remains at about 10 FPS while another
-8,304 descriptor resolutions stay identical. Ordinary cross-dispatch cache
-visibility is therefore strongly excluded. D18 disables DCC image compression
-and the artifact remains; the user thought it might be more pronounced but was
-not certain, so severity is inconclusive rather than a causal DCC result. D19
-then forces ACO wait states and freshly recompiles the shaders; the same grid
-remains while all 9,404 descriptor lookups stay correct. Its close-up shows the
-grid mainly where bright, specular, or reflected light contributes. That does
-not prove reflection is causal, because the covered reflection-output shaders
-also consume the tiled-light lists. Produced values are now the primary lead;
-no application override is proposed.
+The lighting root cause is a 32-bit global atomic issued through an `R16_UINT`
+typed UAV. Native Windows drivers tolerate that application mismatch, while a
+literal Vulkan typed-buffer path makes all 50 workgroups reuse offsets 0–320
+for a frame requesting 12,126 references. Adjacent affected frames overwrite
+69–107 light IDs differently, producing both stable screen-tile boundaries and
+temporal flicker. VKD3D-Proton already provides a raw storage-buffer sibling
+for the descriptor. The fix lowers this exact shader's access as an SSBO and
+selects that raw descriptor sibling.
+
+D47 retains the game's original tiled-light depth predicates. With empty Steam
+launch options, its verified package removes the blocks and broad flicker while
+real lighting and shadows remain. This proves that the earlier D38 depth-gate
+bypass only hid the presentation of malformed membership data and is not part
+of the fix. D46 is not a contrary result: source review found that its
+executable mapping had accidentally been removed, so its allocator quirk never
+activated. The remaining fine sandy or film-grain lighting is also present on
+native Windows and is not treated as a Proton defect.
+
+The clean lighting patch and review-only issue/PR drafts remain local pending
+the publication sequence described in the drafts. See
+[`docs/evidence-d47-allocator-only-wired-result.md`](docs/evidence-d47-allocator-only-wired-result.md)
+and [`docs/tiled-light-upstream-drafts.md`](docs/tiled-light-upstream-drafts.md).
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
@@ -85,12 +65,16 @@ The verified environment is:
 - Prefix: `/home/USER/.local/share/Steam/steamapps/compatdata/247970`
 - Game build ID: `24615759` (Steam auto-update on 2026-08-07; the immediately
   preceding controlled build was `24596901`)
-- Selected compatibility tool: `IL2-Korea-D10-WineMR11604-Proton11`
-  (`experimental-11.0-20260724c-wine-mr11604-d10`, `11.0-100` prefix)
+- Selected compatibility tool: `IL2-Korea-D47-AllocatorOnly-f3e06d0b`
+  (allocator-only lighting fix on the same NUMA-capable D42 Wine base,
+  `11.0-100` prefix)
 - N05 upstream-series validation tool:
   `IL2-Korea-D10-WineMR11604-Proton11`, based on the same Proton 11 family and
   D08 terrain tool with the 64-bit Wine components affected by MR !11604
-- VKD3D-Proton commit: `cf11ba76a1cdbee` (D08 terrain fix carried by D10)
+- Tested VKD3D-Proton lighting commit: `f3e06d0b` (D47 diagnostic branch,
+  including the D08 terrain behavior)
+- Clean standalone lighting candidate: `9b6e15be` (current upstream master
+  base `84c87c83`)
 - DXVK commit: `1a5919b7edd111887648d1e8bf0c32733e2e00d3`
 - Mesa/RADV: `26.1.6` (`Mesa 26.1.6-arch3.1`)
 
@@ -142,7 +126,8 @@ The user reports that below roughly 1,500 m some low-fidelity assets
 begin to load; around 5,000 m the failure is much more severe. Current logs do
 not expose the relevant altitude, mip, tile-mapping, or residency state.
 
-The menu defect is not yet isolated. During a valid corrupted run, 2,355 multi-mip compressed textures received
+Before the tiled-light allocator was isolated, a valid corrupted run found
+that 2,355 multi-mip compressed textures received
 geometrically complete buffer uploads, no partial mip chain was found, every
 logged SRV used a zero minimum-LOD clamp, and no logged operation followed
 resource destruction. Corrected cap-aware analysis leaves 405 pre-cap placed

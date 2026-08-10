@@ -50,5 +50,3 @@ Protocol:
 - Unchanged closes the last cheap driver-hazard control and selects produced
   tiled-grid/index values or a focused shader/compiler bisection.
 - Startup/device failure makes the run inconclusive.
-
-Nothing from D19 will be uploaded without separate user confirmation.

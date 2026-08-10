@@ -87,7 +87,32 @@ unless their private telemetry environment variables are enabled and are not
 proposed as a compatibility fix. The series is retained only for
 reproducibility and possible later review.
 
-## Why there is no application override
+`0015-vkd3d-Trace-IL-2-t7-and-t8-descriptor-contracts.patch` is the final
+trace-only increment used to resolve the allocator shader's descriptor
+contract. It is diagnostic evidence, not a compatibility candidate.
+
+`0016-vkd3d-shader-Work-around-IL-2-tiled-light-allocator.patch` is the clean
+lighting candidate. It is commit `9b6e15be` on local branch
+`fix-il2-tiled-light-allocator`, based directly on upstream `84c87c83`. The
+29-line change applies only to `IL2Series.exe` and exact shader
+`7cefa1bc80bb4c70`: it lowers the shader's typed-UAV access as an SSBO and
+selects VKD3D-Proton's raw SSBO descriptor sibling. It contains no depth-gate
+bypass, producer-shader overrides, launch option, processor value, or game
+modification. Allocator-only D47 validates this behavior with the original
+lighting and depth predicates: the blocks and broad flicker are gone while
+real lighting and shadows remain. The patch SHA-256 is
+`4d43ac526b47d07b9694633de42cacc284e961d9fc84050df5d166c650a7216a`.
+
+The clean package builds successfully for x86-64 and x86:
+
+| Architecture | File | SHA-256 |
+| --- | --- | --- |
+| x86-64 | `d3d12.dll` | `2d0c06072a7badf0f95bc78e7a971ab32662c1bcf60ee0be944b3f712d67ce85` |
+| x86-64 | `d3d12core.dll` | `f4cfd361669b31ec4429db946f47034ac4032d955a4bcee89a40c31964f181a4` |
+| x86 | `d3d12.dll` | `8fe5c7718fbbb778182411dda6db34f7e573f575c04a7424d799e853d0d9d629` |
+| x86 | `d3d12core.dll` | `bddc608b61a8f2fb1dcd7851133367968cc87a94c585b644ed6536d3d930ebe5` |
+
+## Why the terrain candidate has no application override
 
 - The repeatable E00 baseline and successful D07 causal run identify a format-
   unit conversion, not a game configuration flag.
