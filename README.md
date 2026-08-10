@@ -8,9 +8,10 @@ quirk. Neither requires launch parameters or game modification.
 
 ## Public handoff
 
-- [ValveSoftware/Proton #9906](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5216217531)
-- [VKD3D-Proton #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5216216401)
-- [VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202)
+- [Proton #9906 — Wine/NUMA startup validation](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5218434565)
+- [VKD3D-Proton #3134 — tiled-light root-cause update](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5238151028)
+- [VKD3D-Proton terrain PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202)
+- [VKD3D-Proton tiled-light PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207)
 - [Sanitized logs and focused evidence bundle](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/handoff-2026-08-06)
 
 The release bundle is intentionally small. It contains filtered/redacted logs,
@@ -22,8 +23,9 @@ shader cache, or unfiltered large trace.
 
 All three compatibility problems now have isolated outcomes:
 
-- Startup without parameters is fixed by the Wine NUMA API work from upstream
-  MR !11604. It uses the processor topology reported at runtime and contains no
+- Startup without parameters is fixed by the NUMA API work from upstream
+  [Wine MR !11604](https://gitlab.winehq.org/wine/wine/-/merge_requests/11604).
+  It uses the processor topology reported at runtime and contains no
   hard-coded thread count. The custom Proton build in this repository was only
   used to validate the exact upstream series; no duplicate Wine or Proton patch
   is proposed here. The intended long-term path is MR !11604 flowing from Wine
@@ -31,9 +33,9 @@ All three compatibility problems now have isolated outcomes:
 - Terrain-page corruption is fixed by general VKD3D-Proton copy-unit commit
   `64ec55e7`, proposed as PR #3202. It has no IL-2 application override.
 - Menu, cockpit, external-view, and fire-lit blocks/flicker are fixed by the
-  allocator-only D47 behavior. The local clean upstream candidate is commit
-  `9b6e15be` on branch `fix-il2-tiled-light-allocator`: 29 added lines, scoped
-  to `IL2Series.exe` and exact shader `7cefa1bc80bb4c70`.
+  allocator-only D47 behavior. The clean upstream candidate is commit
+  `9b6e15be`, proposed as PR #3207: 29 added lines, scoped to `IL2Series.exe`
+  and exact shader `7cefa1bc80bb4c70`.
 
 ## Terrain corruption
 
@@ -68,7 +70,8 @@ The same result is now reproduced in a fresh matched A/B between unmodified
 upstream master `84c87c83` and the clean candidate `9b6e15be`. The static
 Before screenshot understates the severity because the blocks were flashing
 during runtime; the candidate removes both the blocks and broad flashing. The
-clean lighting patch remains local pending upstream review. See
+clean lighting patch is under upstream review in
+[PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207). See
 [`docs/evidence-d47-allocator-only-wired-result.md`](docs/evidence-d47-allocator-only-wired-result.md)
 and
 [`docs/evidence-u01-upstream-candidate-ab.md`](docs/evidence-u01-upstream-candidate-ab.md).

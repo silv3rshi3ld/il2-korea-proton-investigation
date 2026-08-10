@@ -83,4 +83,5 @@ The clean one-commit candidate reproduces D47's allocator-only correction on
 top of current upstream master. No depth workaround, launch parameter,
 hard-coded processor value, or game customization is required. The appropriate
 upstream form is one narrowly application- and shader-hash-scoped
-VKD3D-Proton compatibility quirk.
+VKD3D-Proton compatibility quirk, proposed as
+[VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207).
