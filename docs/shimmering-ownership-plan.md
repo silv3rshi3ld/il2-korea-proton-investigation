@@ -7,7 +7,10 @@ Date: 2026-08-10
 > [VKD3D-Proton issue #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5238151028)
 > and the allocator-only quirk was published as
 > [VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207).
-> See [`final-report.md`](final-report.md) for the current combined status.
+> That direct implementation is now historical evidence. D49 supersedes it
+> with a two-repository, compiler-aware design. The published PR #3207 head is
+> not a mergeable final change and should become a dependent draft. See
+> [`final-report.md`](final-report.md) for the current combined status.
 
 ## Final technical conclusion
 
@@ -47,6 +50,27 @@ clean with the original depth predicates, lighting, and shadows.
 Therefore the depth-gate bypass is not part of the final fix. It only hid how
 the malformed light list was presented.
 
+## D49 implementation refinement
+
+D47 proves the minimal behavior that must change, but `9b6e15be` and patch
+`0016` no longer represent the intended upstream implementation. D49 places
+the generic typed-UAV atomic legalization in dxil-spirv:
+
+1. Only a scalar 32-bit `I32` or `U32` atomic on a typed UAV is eligible.
+2. The compiler temporarily presents the resource remapper with a raw-buffer
+   kind.
+3. Lowering is accepted only if the remapper returns an SSBO descriptor.
+4. Failure or another descriptor class restores the original typed kind,
+   alignment, and range, then retries the normal typed path.
+
+No public C callback structure is extended. The path excludes 64-bit atomics,
+sparse operations, non-atomic typed UAVs, and the SM 6.6 heap path.
+
+VKD3D-Proton retains the compatibility policy and hardware-layout check. It
+selects exact executable `IL2Series.exe` and shader hash
+`0x7cefa1bc80bb4c70`, and enables the dxil-spirv quirk only when `RAW_SSBO` is
+available without `MUTABLE_TYPE_RAW_SSBO`.
+
 ## Ownership
 
 Principally, the game should not perform a 32-bit atomic through a 16-bit typed
@@ -63,9 +87,10 @@ native-driver allowances for shipped games. This case meets that bar:
 - the correctly wired game integration repairs the actual pixels;
 - the behavior is scoped to one executable and one shader hash.
 
-The proper practical owner is therefore VKD3D-Proton as a surgical
-native-compatibility quirk. This is not a Mesa workaround, Proton launch
-parameter, game mod, or custom lighting engine.
+The practical compatibility policy remains owned by VKD3D-Proton as a
+surgical application and shader selection. The reusable lowering mechanism
+belongs in dxil-spirv. This is not a Mesa workaround, Proton launch parameter,
+game mod, or custom lighting engine.
 
 ## Separate IL-2 tracks
 
@@ -92,7 +117,25 @@ Proton defect.
 6. After the PR exists, prepare short updates for Proton #9906, the original
    affected users, and this investigation repository.
 
-## Upstream scope gate
+## Current two-repository publication sequence
+
+The preceding sequence records how the D47 result reached PR #3207. D49 now
+requires this order:
+
+1. Submit the generic compiler mechanism and its shader/reference tests to
+   dxil-spirv as a draft PR.
+2. Convert VKD3D-Proton PR #3207 to a dependent draft and preserve its causal
+   and before/after evidence.
+3. Do not point VKD3D-Proton at a dxil-spirv commit available only from a
+   personal fork. Wait for an upstream-reachable merged or maintainer-landed
+   commit.
+4. Rebase the VKD3D-Proton integration, update its dxil-spirv gitlink if
+   needed, and rerun x86-64, x86, package, exact-shader, remapper, and game
+   checks.
+5. Mark PR #3207 ready only after that dependency and exact-head validation
+   are complete.
+
+## Historical D47 upstream scope gate
 
 The proposed code may contain only:
 
@@ -109,3 +152,23 @@ It must not contain:
 - captured shaders or RenderDoc files.
 
 The issue-comment and PR drafts live locally for review.
+
+## D49 upstream scope gate
+
+The dxil-spirv change may contain the additive quirk, generic typed-atomic
+analysis and lowering, safe remapper fallback, and focused positive and
+negative reference tests. It must not contain an IL-2 executable name, AppID,
+captured game shader, or game-specific hash.
+
+The VKD3D-Proton change may contain the interface capability bit, the
+`RAW_SSBO && !MUTABLE_TYPE_RAW_SSBO` gate, capability-gated compiler option,
+exact `IL2Series.exe` entry, exact allocator hash, and an upstream-reachable
+dxil-spirv gitlink. It must not contain callback-structure growth, either depth
+producer rewrite, a broad shader override, or unrelated terrain and Wine
+changes.
+
+D49 tool `IL2-Korea-D49-CompilerAware-ABISafe-731c4aae` passed the clean
+dxil-spirv resources suite, exact-shader and remapper checks, VKD3D-Proton
+x86-64 and x86 builds, packaging, and one verified-loaded reporting-host run.
+The only full translator-suite failure reproduces on the base at
+`control-flow/switch-continue.frag`. No cross-hardware D49 result is claimed.

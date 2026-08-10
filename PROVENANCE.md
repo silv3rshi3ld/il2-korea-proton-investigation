@@ -16,7 +16,7 @@ No broad reuse license is granted merely by publication of this repository.
 Anyone wishing to reuse a substantial original component should contact the
 repository owner or rely on the terms explicitly present in that component.
 
-## Wine and VKD3D-Proton patches
+## Wine, dxil-spirv, and VKD3D-Proton patches
 
 Files under `patches/` are formatted diffs against upstream source trees. Their
 headers record authorship where applicable, while the surrounding source and
@@ -24,14 +24,24 @@ context remain subject to the corresponding upstream project's licensing and
 contribution rules.
 
 - Wine: <https://gitlab.winehq.org/wine/wine>
+- dxil-spirv: <https://github.com/HansKristian-Work/dxil-spirv>
 - VKD3D-Proton: <https://github.com/HansKristian-Work/vkd3d-proton>
 
 The local Wine candidate is retained only as diagnostic history. The intended
-general startup implementation is upstream Wine MR !11604. The two final
-VKD3D-Proton candidates are also available in their upstream pull requests:
+general startup implementation is upstream Wine MR !11604. The terrain change
+was merged through VKD3D-Proton PR #3202. The first lighting implementation in
+PR #3207 remains useful causal and runtime evidence, but it is superseded by a
+locally validated two-repository design: generic lowering belongs in
+dxil-spirv, while executable and shader selection plus backend capability
+gating belong in VKD3D-Proton.
 
 - Terrain: <https://github.com/HansKristian-Work/vkd3d-proton/pull/3202>
-- Lighting: <https://github.com/HansKristian-Work/vkd3d-proton/pull/3207>
+- Lighting discussion and first implementation:
+  <https://github.com/HansKristian-Work/vkd3d-proton/pull/3207>
+
+The paired lighting implementation has not yet been submitted upstream. Its
+local validation does not grant redistribution rights beyond those of the two
+upstream source trees.
 
 For reuse or redistribution of a patch, consult the license of the source tree
 to which it applies and the applicable upstream contribution policy.

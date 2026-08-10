@@ -71,6 +71,46 @@ clean with the original depth predicates, proving the allocator correction is
 sufficient. The fine sandy/film-grain lighting is also present on Windows and
 is normal game rendering, not a Proton defect.
 
+## D49 implementation supersession
+
+D47 and candidate `9b6e15be` remain the causal and runtime proof that correcting
+the allocator access removes the blocks and broad flicker. They no longer
+describe the proposed upstream implementation. The direct VKD3D-Proton quirk
+and patch `0016` are superseded by D49.
+
+The D49 design assigns generic translation to dxil-spirv. For an eligible
+scalar 32-bit `I32` or `U32` atomic on a typed UAV, the compiler temporarily
+presents the binding to the existing resource remapper as a raw buffer. It
+enables raw lowering only when that remap succeeds with an SSBO descriptor. If
+the remap fails or returns another descriptor class, the compiler restores the
+original typed kind, alignment, and range and retries the normal typed path.
+No public C callback structure grows.
+
+The lowering excludes 64-bit atomics, sparse operations, non-atomic typed
+UAVs, and the SM 6.6 heap path. VKD3D-Proton remains responsible for policy:
+it selects exact executable `IL2Series.exe` and exact shader hash
+`0x7cefa1bc80bb4c70`, and requests the compiler quirk only when `RAW_SSBO` is
+available without the mutable single-descriptor `MUTABLE_TYPE_RAW_SSBO`
+layout.
+
+D49 uses VKD3D-Proton base
+`731c4aae5991b33f2ddab45d3cb1b4779159bf4b`, dxil-spirv base
+`edd8fdf702c3445eb659f2652d04436ed86e4206`, and retained tool
+`IL2-Korea-D49-CompilerAware-ABISafe-731c4aae`. The dxil-spirv resources suite
+passes cleanly. The only full-suite failure is the baseline-reproduced
+`control-flow/switch-continue.frag` validator failure. Candidate, fallback, and
+baseline outputs for the exact captured shader validate. VKD3D-Proton x86-64,
+x86, and package builds pass. The exact remapper harness emits
+`StorageBuffer` plus `OpAtomicIAdd` with capability ON, while capability OFF is
+byte-identical to the typed baseline.
+
+Runtime provenance verifies that D49 loaded. One reporting-host run covering
+the menu, a short flight, and the map retained correct terrain, real lighting,
+and shadows while the blocks and broad flicker were absent. This is not a
+cross-hardware validation claim. The published PR #3207 head still contains
+the superseded implementation. It should become a dependent draft, not be
+treated as a mergeable final implementation.
+
 ## Ranked graphics assessment
 
 | Rank | Mechanism | Evidence | Confidence |
@@ -168,8 +208,9 @@ under the exact allocator quirk, retains the two exact depth-gate bypasses, and
 passes twice with empty Steam launch options. D46 was meant to remove only
 those depth bypasses, but source review proves its executable-to-quirk mapping
 was absent. Correctly wired D47 is clean with the original depth predicates,
-proving the allocator translation is the final minimal fix. Accept the native
-sandy/film-grain lighting and reject either large square blocks or broad
-non-native flicker. See
+proving the allocator correction is the final minimal behavioral requirement.
+D49 supersedes the direct implementation with generic dxil-spirv lowering and
+capability-gated VKD3D-Proton policy. Accept the native sandy/film-grain
+lighting and reject either large square blocks or broad non-native flicker. See
 [`evidence-d45-correct-ssbo-binding-result.md`](evidence-d45-correct-ssbo-binding-result.md)
 and [`evidence-d47-allocator-only-wired-result.md`](evidence-d47-allocator-only-wired-result.md).

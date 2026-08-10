@@ -15,8 +15,10 @@ document control quality and prevent accidental repetition.
   NUMA series and empty-launch-options Steam validation
 - [`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md): final
   terrain PR scope, regression results, and evidence boundary
+- [`evidence-d49-compiler-aware-result.md`](evidence-d49-compiler-aware-result.md):
+  current ABI-safe paired dxil-spirv and VKD3D-Proton lighting result
 - [`evidence-u01-upstream-candidate-ab.md`](evidence-u01-upstream-candidate-ab.md):
-  clean matched lighting A/B against upstream master
+  historical matched lighting A/B for the superseded first implementation
 - [`../patches/README.md`](../patches/README.md): final and diagnostic patch
   identities
 
@@ -71,8 +73,12 @@ document control quality and prevent accidental repetition.
   invalid inactive-quirk result
 - [`evidence-d47-allocator-only-wired-result.md`](evidence-d47-allocator-only-wired-result.md):
   clean allocator-only in-game result
+- [`evidence-d49-compiler-aware-result.md`](evidence-d49-compiler-aware-result.md):
+  compiler-aware ABI-safe result with backend capability gating and typed
+  fallback
 - [`evidence-u01-upstream-candidate-ab.md`](evidence-u01-upstream-candidate-ab.md):
-  final one-commit upstream candidate and matched A/B
+  historically valid one-commit runtime/mechanism A/B, superseded as an
+  upstream architecture by D49
 
 > [!NOTE]
 > D25 originally appeared to reject the allocator as the visual cause. Later
@@ -121,7 +127,8 @@ instructions:
 - [`upstream-submission-plan.md`](upstream-submission-plan.md): terrain
   submission plan completed by PR #3202
 - [`shimmering-ownership-plan.md`](shimmering-ownership-plan.md): lighting
-  ownership and publication plan completed by issue update and PR #3207
+  ownership and initial publication plan; PR #3207 later received architectural
+  feedback and the current paired implementation is recorded by D49
 
 All other `evidence-*-preparation.md` and `evidence-*-result.md` files form the
 full dated experiment trail. Their exact order and validity classification are

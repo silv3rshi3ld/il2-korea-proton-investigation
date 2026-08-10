@@ -435,3 +435,82 @@ passes 22/22 assertions, and `VKD3D_TEST_FILTER=copy` passes 6,429,713 checks
 with zero failures. The D08 DLL hashes above remain historical identities for
 the `cf11ba76` runtime build and are not relabeled as `64ec55e7` artifacts. See
 [`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md).
+
+## D49 compiler-aware ABI-safe lighting candidate
+
+D49 supersedes the direct tiled-light implementation at `9b6e15be` and patch
+`0016`. Those earlier artifacts remain the causal and runtime proof that the
+allocator must use a legal raw storage-buffer access. They are not the current
+upstream implementation.
+
+The retained custom Proton tool is:
+
+```text
+IL2-Korea-D49-CompilerAware-ABISafe-731c4aae
+```
+
+Its component bases are:
+
+| Component | Base commit |
+| --- | --- |
+| VKD3D-Proton | `731c4aae5991b33f2ddab45d3cb1b4779159bf4b` |
+| dxil-spirv | `edd8fdf702c3445eb659f2652d04436ed86e4206` |
+
+The tested source is now represented by local dxil-spirv candidate commit
+`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`. It has not been pushed. The
+VKD3D-Proton integration remains an uncommitted dependent working change until
+the dxil-spirv dependency has an upstream-reachable identity.
+
+### Component boundary
+
+dxil-spirv implements the generic opt-in lowering. An eligible scalar 32-bit
+`I32` or `U32` atomic on a typed UAV is temporarily presented to the existing
+resource remapper as a raw buffer. The compiler commits to raw lowering only
+when the remapper returns an SSBO descriptor. If remapping fails or returns
+another descriptor class, it restores the original typed kind, alignment, and
+range and retries the normal typed path.
+
+The compiler path excludes:
+
+- 64-bit atomics;
+- sparse operations;
+- typed UAVs without atomics;
+- the SM 6.6 heap path.
+
+No public C callback structure is extended.
+
+VKD3D-Proton supplies policy and capability. It selects only exact executable
+`IL2Series.exe` and shader hash `0x7cefa1bc80bb4c70`. It requests the
+dxil-spirv quirk only when `RAW_SSBO` is available and
+`MUTABLE_TYPE_RAW_SSBO` is not active. The latter exclusion prevents use with
+the mutable single-descriptor layout.
+
+### Build and translator validation
+
+- The dxil-spirv resources reference suite passes cleanly.
+- The full dxil-spirv suite has one validator failure at
+  `control-flow/switch-continue.frag`. The same failure reproduces on the
+  unmodified base, so it is not a D49 regression.
+- Candidate, capability-fallback, and no-quirk baseline outputs for captured
+  shader `7cefa1bc80bb4c70` all pass SPIR-V validation.
+- VKD3D-Proton builds successfully for x86-64 and x86.
+- The complete custom Proton package build passes.
+- The exact VKD3D remapper harness emits a `StorageBuffer` access with
+  `OpAtomicIAdd` when the capability is ON. With capability OFF, the SPIR-V is
+  byte-identical to the typed no-quirk baseline.
+
+### Runtime result and evidence boundary
+
+Runtime provenance verifies that the D49 tool loaded. One run covered the
+menu, a short flight, and the map. Terrain, real lighting, and shadows rendered
+correctly. The square blocks and broad non-native flicker were absent.
+
+Fine sandy or film-grain lighting remains visible and is excluded because the
+same effect is present on native Windows. The D49 runtime result covers the
+reporting host only and must not be presented as cross-hardware validation.
+
+The published head of VKD3D-Proton PR #3207 still contains the superseded
+first implementation. It should be converted to a dependent draft before its
+next update and cannot become a mergeable final form until the generic
+dxil-spirv change is reviewed and available through an upstream-reachable
+commit.

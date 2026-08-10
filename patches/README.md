@@ -11,10 +11,11 @@ branch, while the Wine MR itself remained open.
 D07 demonstrates the terrain root cause: its complete page-family conversion
 adjusted 522/522 copies with zero rejects and repaired terrain near 5,500 m.
 `0009-vkd3d-Convert-buffer-image-copies-between-block-formats.patch` is the
-general upstream candidate. It contains a focused regression test and no
-IL-2-specific override. D08 loaded the clean general package without the
+original general upstream submission. It contains a focused regression test
+and no IL-2-specific override. D08 loaded the clean general package without the
 diagnostic gate and repaired the terrain while leaving the separate menu
-artifact unchanged.
+artifact unchanged. The reviewed form was merged through VKD3D-Proton PR
+#3202 as upstream commit `731c4aae`.
 
 `0001-il2-korea-sparse-resource-diagnostics.patch` is a temporary, gated
 instrumentation patch, not a candidate fix. It records the D3D12 reserved and
@@ -75,7 +76,7 @@ fails four assertions on the old helper and passes all 22 with the fix. The
 complete native copy-test subset passes 6,429,713 checks with zero failures.
 The patch SHA-256 is
 `ca20fb05e712f2ae8216e65843990720a67d49c81b506245a17bb82fc0b58d2a`.
-It is proposed upstream as
+Its reviewed successor was merged upstream through
 [VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202).
 
 `0010-vkd3d-Add-focused-menu-resource-and-pass-telemetry.patch` through
@@ -95,19 +96,23 @@ reproducibility and possible later review.
 trace-only increment used to resolve the allocator shader's descriptor
 contract. It is diagnostic evidence, not a compatibility candidate.
 
-`0016-vkd3d-shader-Work-around-IL-2-tiled-light-allocator.patch` is the clean
-lighting candidate. It is commit `9b6e15be` on local branch
+`0016-vkd3d-shader-Work-around-IL-2-tiled-light-allocator.patch` is the
+historical first lighting candidate. It is commit `9b6e15be` on local branch
 `fix-il2-tiled-light-allocator`, based directly on upstream `84c87c83`. The
 29-line change applies only to `IL2Series.exe` and exact shader
 `7cefa1bc80bb4c70`: it lowers the shader's typed-UAV access as an SSBO and
 selects VKD3D-Proton's raw SSBO descriptor sibling. It contains no depth-gate
 bypass, producer-shader overrides, launch option, processor value, or game
-modification. Allocator-only D47 validates this behavior with the original
-lighting and depth predicates: the blocks and broad flicker are gone while
-real lighting and shadows remain. The patch SHA-256 is
+modification. Allocator-only D47 validates the required runtime behavior with
+the original lighting and depth predicates: the blocks and broad flicker are
+gone while real lighting and shadows remain. The patch SHA-256 is
 `4d43ac526b47d07b9694633de42cacc284e961d9fc84050df5d166c650a7216a`.
-It is proposed upstream as
+It was published in
 [VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207).
+Maintainer review correctly identified that dxil-spirv cannot generally treat
+a texel buffer as an SSBO solely because VKD3D-Proton selects a different
+descriptor. The patch remains valid causal and single-system runtime evidence,
+but it is not a portable upstream implementation and is superseded by D49.
 
 The clean package builds successfully for x86-64 and x86. A fresh matched A/B
 on 2026-08-10 used the following exact candidate binaries; see
@@ -119,6 +124,49 @@ on 2026-08-10 used the following exact candidate binaries; see
 | x86-64 | `d3d12core.dll` | `164847d8ad795d308fa076f91567a3a9320b8c6eb24b1bad5b2f92527d90e72b` |
 | x86 | `d3d12.dll` | `17de6a419afe8c1dd90e8af25bb9e6d95a58ddbf2edfb0ed935bec9ea23c6e72` |
 | x86 | `d3d12core.dll` | `73a77a5c27bc73c584a8a8ec7b226558d6528bef1f0387468eb074439b2beeca` |
+
+## Current D49 compiler-aware implementation
+
+D49 moves the generic legalization into dxil-spirv and leaves only policy and
+backend safety in VKD3D-Proton. For eligible scalar 32-bit signed or unsigned
+typed-UAV atomics, dxil-spirv temporarily presents the resource to the binding
+remapper as a raw buffer. Lowering is enabled only if the remapper returns an
+SSBO. On rejection or a non-SSBO result, the original typed resource is
+restored and remapped again through the normal typed path. The public C
+callback structures are unchanged.
+
+VKD3D-Proton enables that compiler quirk only for `IL2Series.exe`, shader
+`7cefa1bc80bb4c70`, and layouts where a raw SSBO descriptor is available and
+`VKD3D_BINDLESS_MUTABLE_TYPE_RAW_SSBO` is not active. Unsupported layouts keep
+the existing typed fallback. The dxil-spirv side excludes 64-bit atomics,
+sparse resources, non-atomic resources, and SM 6.6 heap resources.
+
+The exact local bases are dxil-spirv
+`edd8fdf702c3445eb659f2652d04436ed86e4206` and VKD3D-Proton
+`731c4aae5991b33f2ddab45d3cb1b4779159bf4b`. Clean shader tests, exact shader
+fallback checks, x86-64 and x86 package builds, and capability-on/off harnesses
+pass. The only full-suite validator failure reproduces unchanged on the exact
+dxil-spirv base. A verified D49 Steam run with empty launch options showed a
+clean menu and short flight, retained the terrain repair, and showed neither
+the large blocks nor broad flicker. This validation is currently limited to
+the investigation system and is not a cross-vendor claim.
+
+The current local dxil-spirv candidate commit is
+`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`. It is not published. The
+dependent VKD3D-Proton integration remains uncommitted until that compiler
+dependency can be represented by an upstream-reachable gitlink.
+
+| Architecture | File | D49 SHA-256 |
+| --- | --- | --- |
+| x86-64 | `d3d12.dll` | `ae0436e5a8c8b9bb597288ac9846de3c01214f06a10f745918ac41ce4770e84a` |
+| x86-64 | `d3d12core.dll` | `8d31d58966183707b7f73d05e763cb79fa27707f1eee3965be72a87a6a2a01af` |
+| x86 | `d3d12.dll` | `1285974667c4b974baf82aea0a903d8bc7eeba8992a41a4bfc6c36d07f2d7993` |
+| x86 | `d3d12core.dll` | `9cdd2eb9d326eea278dc0449d069cf2442001210874bb72a2c3c98a5aeef1024` |
+
+No D49 patch export is added yet. The dxil-spirv change must be published and
+become reachable from upstream before the dependent VKD3D-Proton submodule
+update can be presented cleanly. This avoids recording a gitlink to a private
+or fork-only commit.
 
 ## Why the terrain candidate has no application override
 

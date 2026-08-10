@@ -11,14 +11,16 @@ solution, and its own upstream delivery path.
 | Track | Final solution | Upstream state |
 | --- | --- | --- |
 | Startup | Implement the missing Windows NUMA topology queries in Wine | Wine MR [!11604](https://gitlab.winehq.org/wine/wine/-/merge_requests/11604) remains open. The same six commits are present in Valve's Wine fork and the Proton Bleeding Edge source branch |
-| Terrain | Convert placed-buffer copy geometry through equal-sized physical blocks when source and destination block dimensions differ | VKD3D-Proton PR [#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) is open and mergeable |
-| Lighting | Route one invalid typed-UAV atomic through the raw SSBO descriptor sibling | VKD3D-Proton PR [#3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207) is open and mergeable |
+| Terrain | Convert placed-buffer copy geometry through equal-sized physical blocks when source and destination block dimensions differ | Merged through VKD3D-Proton PR [#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) as upstream commit `731c4aae` |
+| Lighting | Lower eligible typed-UAV atomics generically in dxil-spirv, with exact application and shader selection plus a descriptor-capability gate in VKD3D-Proton | The published head of VKD3D-Proton PR [#3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207) contains the superseded first implementation. It should become a dependent draft and is not the mergeable final form until the dxil-spirv dependency is reviewed and available upstream |
 
-The three changes share no code and can be reviewed, merged, or released
-independently. None is a game mod. The tested combined behavior starts with an
-empty Steam launch-options field, restores complete terrain pages, and removes
-the rectangular lighting blocks and broad flicker while retaining real
-lighting and shadows.
+The three tracks do not depend on one another. The lighting track itself now
+has two coordinated component changes: a generic compiler mechanism in
+dxil-spirv and narrow policy and capability selection in VKD3D-Proton. None is
+a game mod. The tested combined behavior starts with an empty Steam
+launch-options field, restores complete terrain pages, and removes the
+rectangular lighting blocks and broad flicker while retaining real lighting
+and shadows.
 
 This report describes proven candidate behavior. It does not claim that all
 three changes are already included in standard Proton.
@@ -189,6 +191,13 @@ selection evidence and a clean allocator-only runtime result.
 
 ### Solution and validation
 
+The D47 candidate described immediately below is the historical
+causal and runtime proof. Its direct VKD3D-Proton implementation at
+`9b6e15be` and patch `0016` is superseded by the compiler-aware D49 design
+described in the next subsection. The old artifacts remain valid evidence for
+the identified allocator failure, but they are not the current upstream
+implementation.
+
 Candidate `9b6e15be29fc1ebb1c26796477009152cb1c760d` adds
 `VKD3D_SHADER_QUIRK_FORCE_TYPED_UAV_AS_SSBO`. It applies only to:
 
@@ -229,6 +238,53 @@ Primary evidence:
 - [VKD3D-Proton issue #3134 update](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5238151028)
 - [VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207)
 
+### D49 compiler-aware, ABI-safe supersession
+
+D49 moves the generic legalization into dxil-spirv and leaves application
+selection and Vulkan descriptor capability in VKD3D-Proton:
+
+- dxil-spirv recognizes only an eligible scalar 32-bit `I32` or `U32` atomic
+  on a typed UAV. It temporarily presents that binding to the resource
+  remapper as a raw buffer.
+- Lowering is accepted only when the remapper returns an SSBO descriptor. If
+  remapping fails or returns another descriptor class, dxil-spirv restores the
+  original typed binding and retries the normal typed path.
+- 64-bit atomics, sparse operations, resources without atomics, and the
+  SM 6.6 heap path are excluded from lowering.
+- No field was added to a public C callback structure. The mechanism uses the
+  existing remapper contract and an additive shader-quirk value.
+- VKD3D-Proton requests the compiler quirk only for exact executable
+  `IL2Series.exe` and exact shader hash `0x7cefa1bc80bb4c70`, and only when
+  `RAW_SSBO` is available without the mutable single-descriptor
+  `MUTABLE_TYPE_RAW_SSBO` layout.
+
+The retained test tool is
+`IL2-Korea-D49-CompilerAware-ABISafe-731c4aae`. Its source bases are
+VKD3D-Proton `731c4aae5991b33f2ddab45d3cb1b4779159bf4b` and dxil-spirv
+`edd8fdf702c3445eb659f2652d04436ed86e4206`.
+The current local dxil-spirv candidate is
+`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`; it has not been published. The
+dependent VKD3D-Proton integration has no final commit or gitlink identity yet.
+
+Validation includes:
+
+- a clean dxil-spirv resources reference suite;
+- a full dxil-spirv suite whose only failure is the independently reproduced
+  baseline validator failure in `control-flow/switch-continue.frag`;
+- valid SPIR-V for the exact captured IL-2 shader in candidate, fallback, and
+  no-quirk baseline modes;
+- clean VKD3D-Proton x86-64 and x86 builds plus the complete package build;
+- an exact VKD3D remapper harness in which capability ON emits a
+  `StorageBuffer` access with `OpAtomicIAdd`, while capability OFF is
+  byte-identical to the typed baseline;
+- verified loading of the D49 tool and one runtime covering the menu, a short
+  flight, and the map. Terrain, real lighting, and shadows rendered correctly,
+  while the square blocks and broad flicker were absent.
+
+The fine sandy or film-grain lighting remains excluded because it is also
+present on native Windows. D49 runtime evidence currently covers the reporting
+host only. No cross-hardware validation claim is made.
+
 ### Compatibility policy
 
 Principally, the game should bind a legal 32-bit UAV for a 32-bit atomic.
@@ -247,13 +303,19 @@ keeps the allowance away from conformant applications and unrelated shaders.
 | Matched lighting baseline | `8f88c75baaf51f595edd94362d5663554415082390e890076ba7d2209d3682be` |
 | Matched lighting candidate | `29df6e3346c79597135fe0f8dc833aed149e2e099308057bb497a18144ddc454` |
 
+The `0016` hash identifies the historical D47 artifact and is retained for
+reproducibility. It must not be presented as the D49 two-repository
+implementation artifact.
+
 ## Repository role and remaining work
 
-The technical investigation is complete. Remaining work belongs to upstream
-review, possible maintainer revisions, cross-hardware validation, component
-updates, and eventual Proton release integration. This repository remains open
-while the Wine MR and both VKD3D-Proton PRs are active so that review changes
-can be recorded without rewriting the original evidence.
+The causal investigation is complete. Remaining work includes dxil-spirv
+review, dependent VKD3D-Proton integration, possible maintainer revisions,
+cross-hardware validation, component updates, and eventual Proton release
+integration. The published PR #3207 head should be converted to a dependent
+draft rather than treated as a mergeable final implementation. This repository
+remains open so that review changes can be recorded without rewriting the
+original evidence.
 
 For the complete chronology, negative controls, and invalid test attempts, see
 [`README.md`](README.md), [`experiment-matrix.md`](experiment-matrix.md), and

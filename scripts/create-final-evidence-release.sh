@@ -117,8 +117,9 @@ manifest_path="$bundle_root/MANIFEST.md"
     printf -- '- Source commit date: %s\n' "$source_date"
     printf -- '- Investigation status date: 2026-08-10\n'
     printf -- '- Wine startup path: <https://gitlab.winehq.org/wine/wine/-/merge_requests/11604>\n'
-    printf -- '- Terrain path: <https://github.com/HansKristian-Work/vkd3d-proton/pull/3202>\n'
-    printf -- '- Lighting path: <https://github.com/HansKristian-Work/vkd3d-proton/pull/3207>\n\n'
+    printf -- '- Terrain merge: <https://github.com/HansKristian-Work/vkd3d-proton/pull/3202>\n'
+    printf -- '- Lighting discussion and superseded first implementation: <https://github.com/HansKristian-Work/vkd3d-proton/pull/3207>\n'
+    printf -- '- Current lighting implementation: paired dxil-spirv lowering and capability-gated VKD3D-Proton selection; upstream publication pending\n\n'
     printf 'This archive contains source, documentation, patches, and reviewed\n'
     printf 'screenshots only. It contains no game files, custom Proton binary,\n'
     printf 'prebuilt replacement DLL, prefix, credentials, shader binary, raw\n'
