@@ -103,14 +103,16 @@ lighting and depth predicates: the blocks and broad flicker are gone while
 real lighting and shadows remain. The patch SHA-256 is
 `4d43ac526b47d07b9694633de42cacc284e961d9fc84050df5d166c650a7216a`.
 
-The clean package builds successfully for x86-64 and x86:
+The clean package builds successfully for x86-64 and x86. A fresh matched A/B
+on 2026-08-10 used the following exact candidate binaries; see
+[`../docs/evidence-u01-upstream-candidate-ab.md`](../docs/evidence-u01-upstream-candidate-ab.md):
 
 | Architecture | File | SHA-256 |
 | --- | --- | --- |
-| x86-64 | `d3d12.dll` | `2d0c06072a7badf0f95bc78e7a971ab32662c1bcf60ee0be944b3f712d67ce85` |
-| x86-64 | `d3d12core.dll` | `f4cfd361669b31ec4429db946f47034ac4032d955a4bcee89a40c31964f181a4` |
-| x86 | `d3d12.dll` | `8fe5c7718fbbb778182411dda6db34f7e573f575c04a7424d799e853d0d9d629` |
-| x86 | `d3d12core.dll` | `bddc608b61a8f2fb1dcd7851133367968cc87a94c585b644ed6536d3d930ebe5` |
+| x86-64 | `d3d12.dll` | `effc65c16745831c276d5fdf2a50c26ad8b51e355356eb62c5b7ede940721a65` |
+| x86-64 | `d3d12core.dll` | `164847d8ad795d308fa076f91567a3a9320b8c6eb24b1bad5b2f92527d90e72b` |
+| x86 | `d3d12.dll` | `17de6a419afe8c1dd90e8af25bb9e6d95a58ddbf2edfb0ed935bec9ea23c6e72` |
+| x86 | `d3d12core.dll` | `73a77a5c27bc73c584a8a8ec7b226558d6528bef1f0387468eb074439b2beeca` |
 
 ## Why the terrain candidate has no application override
 

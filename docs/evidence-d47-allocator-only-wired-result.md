@@ -64,6 +64,12 @@ allocator/descriptor behavior as D47. `IL2Series.exe` is present in both clean
 `d3d12core.dll` architectures, and neither the depth quirk nor its producer
 hashes are present.
 
+A later fresh build of baseline `84c87c83` and this exact candidate completed a
+matched runtime A/B. The baseline reproduced the blocks and temporal flashing;
+the candidate removed both while preserving real lighting and shadows. Its
+exact tool and screenshot provenance is recorded in
+[`evidence-u01-upstream-candidate-ab.md`](evidence-u01-upstream-candidate-ab.md).
+
 ## Final graphics conclusion
 
 The game performs a 32-bit global atomic through an `R16_UINT` typed UAV. A

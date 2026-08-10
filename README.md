@@ -50,8 +50,14 @@ executable mapping had accidentally been removed, so its allocator quirk never
 activated. The remaining fine sandy or film-grain lighting is also present on
 native Windows and is not treated as a Proton defect.
 
-The clean lighting patch remains local pending upstream review. See
-[`docs/evidence-d47-allocator-only-wired-result.md`](docs/evidence-d47-allocator-only-wired-result.md).
+The same result is now reproduced in a fresh matched A/B between unmodified
+upstream master `84c87c83` and the clean candidate `9b6e15be`. The static
+Before screenshot understates the severity because the blocks were flashing
+during runtime; the candidate removes both the blocks and broad flashing. The
+clean lighting patch remains local pending upstream review. See
+[`docs/evidence-d47-allocator-only-wired-result.md`](docs/evidence-d47-allocator-only-wired-result.md)
+and
+[`docs/evidence-u01-upstream-candidate-ab.md`](docs/evidence-u01-upstream-candidate-ab.md).
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
@@ -63,9 +69,9 @@ The verified environment is:
 - Prefix: `/home/USER/.local/share/Steam/steamapps/compatdata/247970`
 - Game build ID: `24615759` (Steam auto-update on 2026-08-07; the immediately
   preceding controlled build was `24596901`)
-- Selected compatibility tool: `IL2-Korea-D47-AllocatorOnly-f3e06d0b`
-  (allocator-only lighting fix on the same NUMA-capable D42 Wine base,
-  `11.0-100` prefix)
+- Fresh A/B compatibility tools: `IL2-Korea-PR-Baseline-84c87c83` and
+  `IL2-Korea-PR-Candidate-9b6e15be`, built on the same NUMA-capable D42 Wine
+  base (`11.0-100` prefix) and differing only in their four VKD3D DLLs
 - N05 upstream-series validation tool:
   `IL2-Korea-D10-WineMR11604-Proton11`, based on the same Proton 11 family and
   D08 terrain tool with the 64-bit Wine components affected by MR !11604
