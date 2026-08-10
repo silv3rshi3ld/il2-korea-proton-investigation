@@ -24,7 +24,10 @@ All three compatibility problems now have isolated outcomes:
 
 - Startup without parameters is fixed by the Wine NUMA API work from upstream
   MR !11604. It uses the processor topology reported at runtime and contains no
-  hard-coded thread count.
+  hard-coded thread count. The custom Proton build in this repository was only
+  used to validate the exact upstream series; no duplicate Wine or Proton patch
+  is proposed here. The intended long-term path is MR !11604 flowing from Wine
+  into Proton through the normal update process.
 - Terrain-page corruption is fixed by general VKD3D-Proton copy-unit commit
   `64ec55e7`, proposed as PR #3202. It has no IL-2 application override.
 - Menu, cockpit, external-view, and fire-lit blocks/flicker are fixed by the
@@ -58,6 +61,28 @@ clean lighting patch remains local pending upstream review. See
 [`docs/evidence-d47-allocator-only-wired-result.md`](docs/evidence-d47-allocator-only-wired-result.md)
 and
 [`docs/evidence-u01-upstream-candidate-ab.md`](docs/evidence-u01-upstream-candidate-ab.md).
+
+In principle the game should use a legal 32-bit UAV for this atomic. In
+practice, compatibility layers also need to reproduce Windows driver tolerance
+for already shipped software. The proposed compromise is therefore not a new
+lighting engine or a broad relaxation: it is one exact executable and shader
+compatibility quirk that routes the existing operation through the legal raw
+storage-buffer path.
+
+### Before — unmodified VKD3D-Proton master `84c87c83`
+
+![Flashing tiled-light blocks on unmodified VKD3D-Proton master](docs/images/lighting-before-upstream-84c87c83.png)
+
+The still image catches a relatively faint frame; during normal runtime these
+rectangular blocks flashed repeatedly and were more pronounced.
+
+### After — allocator-only candidate `9b6e15be`
+
+![Tiled-light blocks removed by the allocator-only candidate](docs/images/lighting-after-candidate-9b6e15be.png)
+
+The matched candidate view retains real lighting and shadows without the
+blocks or broad flashing. The fine sandy or film-grain lighting is normal on
+Windows and is not considered part of this defect.
 
 ![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
 
