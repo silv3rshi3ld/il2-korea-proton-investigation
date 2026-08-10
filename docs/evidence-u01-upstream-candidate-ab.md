@@ -68,15 +68,14 @@ D45 and allocator-only D47 controls provide the independent clean restarts.
 The fine sandy or film-grain lighting is excluded because it is also present
 on native Windows.
 
-| Role | Local source file | SHA-256 |
+| Role | Repository evidence file | SHA-256 |
 | --- | --- | --- |
-| Before, upstream master | `/home/USER/Pictures/Screenshots/Screenshot_20260810_104625.png` | `8f88c75baaf51f595edd94362d5663554415082390e890076ba7d2209d3682be` |
-| After, allocator-only candidate | `/home/USER/Pictures/Screenshots/Screenshot_20260810_104811.png` | `29df6e3346c79597135fe0f8dc833aed149e2e099308057bb497a18144ddc454` |
+| Before, upstream master | [`images/lighting-before-upstream-84c87c83.png`](images/lighting-before-upstream-84c87c83.png) | `8f88c75baaf51f595edd94362d5663554415082390e890076ba7d2209d3682be` |
+| After, allocator-only candidate | [`images/lighting-after-candidate-9b6e15be.png`](images/lighting-after-candidate-9b6e15be.png) | `29df6e3346c79597135fe0f8dc833aed149e2e099308057bb497a18144ddc454` |
 
-Both files are unmodified 2560x1080 PNG screenshots. They are deliberately not
-committed to this repository. If publication is authorized, they should be
-uploaded as GitHub user attachments and the resulting URLs reused in the issue
-comment and pull-request description.
+Both files are unmodified 2560x1080 PNG screenshots. Their repository paths
+provide stable image URLs for the issue comment and pull-request description;
+no crop, recompression, or annotation was applied.
 
 ## Conclusion
 
