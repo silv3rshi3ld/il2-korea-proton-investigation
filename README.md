@@ -35,6 +35,17 @@ All three compatibility problems now have isolated outcomes:
   `9b6e15be` on branch `fix-il2-tiled-light-allocator`: 29 added lines, scoped
   to `IL2Series.exe` and exact shader `7cefa1bc80bb4c70`.
 
+## Terrain corruption
+
+The terrain result is the separate general copy-unit fix proposed in
+VKD3D-Proton PR #3202. It converts equal-sized physical elements through their
+block geometry, restoring complete BC3 terrain pages without an IL-2-specific
+override.
+
+![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
+
+## Tiled-light blocks and flashing
+
 The lighting root cause is a 32-bit global atomic issued through an `R16_UINT`
 typed UAV. Native Windows drivers tolerate that application mismatch, while a
 literal Vulkan typed-buffer path makes all 50 workgroups reuse offsets 0–320
@@ -84,9 +95,7 @@ The matched candidate view retains real lighting and shadows without the
 blocks or broad flashing. The fine sandy or film-grain lighting is normal on
 Windows and is not considered part of this defect.
 
-![Repaired IL-2 Korea terrain with the D08 general fix](docs/images/terrain-repaired-d08-742m.png)
-
-The verified environment is:
+## Verified environment
 
 - Launch executable: `bin/game/IL2Series.exe`
 - Steam library: `/home/USER/.local/share/Steam`
