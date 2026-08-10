@@ -24,6 +24,7 @@ captures/curated/d08-general-fix/*
 # Local source/build trees are intentionally kept out of the evidence repository.
 build/
 src/
+dist/
 
 # Python and editor noise.
 __pycache__/

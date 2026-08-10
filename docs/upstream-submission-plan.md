@@ -1,5 +1,12 @@
 # Upstream submission plan
 
+> [!NOTE]
+> Historical completed plan. The terrain branch was published as
+> [VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202).
+> The separate startup and tiled-light outcomes were later published through
+> Wine MR !11604 and VKD3D-Proton PR #3207. Current status is maintained in
+> [`final-report.md`](final-report.md).
+
 The user approved publication on 2026-08-07. The investigation repository is
 public, VKD3D-Proton PR
 [#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) is open,

@@ -60,4 +60,8 @@ make -C probes/d21-vulkan-atomic run-all DEVICE=1
 `EXACT_R16_SSBO_SPV` defaults to the local ignored D24 shader. It can be
 overridden when that generated artifact is stored elsewhere. See
 `docs/evidence-d21-d25-atomic-result.md` for the results and the later D25
-in-game negative.
+in-game negative. That negative was subsequently shown to be incomplete: D25
+emitted an SSBO atomic but still selected the typed descriptor. D45 and D47
+paired the SSBO operation with the raw descriptor sibling and established the
+allocator as the visual cause. See `docs/final-report.md` for the final
+interpretation.

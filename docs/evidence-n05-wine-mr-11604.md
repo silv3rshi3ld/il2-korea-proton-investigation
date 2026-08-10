@@ -2,6 +2,20 @@
 
 Date: 2026-08-07
 
+## Post-validation upstream status
+
+At the final repository check on 2026-08-10, Wine MR !11604 remained open and
+mergeable. Its six commits had also been applied to
+[Valve's Wine fork](https://github.com/ValveSoftware/wine/compare/c3007e6f2a36914cc55301eb5efd067707bf8bb1...99166a7e25b08ccef0168217540542260eaed76f).
+The
+[Proton Bleeding Edge source branch](https://github.com/ValveSoftware/Proton/commit/d28e7f2c40da279452db93897c5b9c2c84356fac)
+then pinned Wine revision `99166a7e25b08ccef0168217540542260eaed76f`.
+
+The standard `experimental_11.0` and `proton_11.0` source branches were still
+pinned before this series at that check. This section records source
+integration status only; the runtime results below remain the controlled test
+of the exact MR series in the custom D10 Proton tool.
+
 ## Question
 
 Does the existing upstream Wine NUMA series in

@@ -18,8 +18,8 @@ useful correction to the earlier altitude observation: altitude makes the
 failure more severe, but lowering the aircraft to approximately 1,500 m does
 not fix it.
 
-Curated capture:
-[`D02-r1-cockpit-missing-terrain-pages-1385m.png`](../captures/curated/d02-ordinary-texture-trace/D02-r1-cockpit-missing-terrain-pages-1385m.png)
+Local capture, retained by hash but not published:
+`D02-r1-cockpit-missing-terrain-pages-1385m.png`
 
 ```text
 986f717b638a476cc260aeb4a14cd3762f8e2b12df50a7f5bc834ddb1d83fdc7

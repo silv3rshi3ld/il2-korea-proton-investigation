@@ -4,7 +4,9 @@ The separate Wine startup work is documented in
 [`wine/README.md`](wine/README.md). The local one-patch draft is superseded for
 testing/submission by upstream Wine MR !11604, whose exact series has now been
 validated through Proton. This NUMA work is unrelated to the VKD3D-Proton
-graphics series below.
+graphics series below. At the final 2026-08-10 status check, the same six
+commits were present in Valve's Wine fork and the Proton Bleeding Edge source
+branch, while the Wine MR itself remained open.
 
 D07 demonstrates the terrain root cause: its complete page-family conversion
 adjusted 522/522 copies with zero rejects and repaired terrain near 5,500 m.
@@ -73,6 +75,8 @@ fails four assertions on the old helper and passes all 22 with the fix. The
 complete native copy-test subset passes 6,429,713 checks with zero failures.
 The patch SHA-256 is
 `ca20fb05e712f2ae8216e65843990720a67d49c81b506245a17bb82fc0b58d2a`.
+It is proposed upstream as
+[VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202).
 
 `0010-vkd3d-Add-focused-menu-resource-and-pass-telemetry.patch` through
 `0014-vkd3d-Trace-IL-2-tiled-light-descriptors.patch` are a cumulative,
@@ -102,6 +106,8 @@ modification. Allocator-only D47 validates this behavior with the original
 lighting and depth predicates: the blocks and broad flicker are gone while
 real lighting and shadows remain. The patch SHA-256 is
 `4d43ac526b47d07b9694633de42cacc284e961d9fc84050df5d166c650a7216a`.
+It is proposed upstream as
+[VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207).
 
 The clean package builds successfully for x86-64 and x86. A fresh matched A/B
 on 2026-08-10 used the following exact candidate binaries; see

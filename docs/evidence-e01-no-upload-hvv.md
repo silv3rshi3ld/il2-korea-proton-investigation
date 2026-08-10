@@ -33,9 +33,9 @@ The local copies are ignored by Git and retained under
 
 | File | SHA-256 | Evidence |
 |---|---|---|
-| [`E01-r1-menu-aircraft-artifacts.png`](../captures/curated/e01-no-upload-hvv/E01-r1-menu-aircraft-artifacts.png) | `8f522d38633a520a882519ef194b9c49a19c9043796a379710c0c0d4f9c49f7f` | Menu aircraft still; temporal change not classified |
-| [`E01-r1-terrain-more-vegetation-missing-pages-remain.png`](../captures/curated/e01-no-upload-hvv/E01-r1-terrain-more-vegetation-missing-pages-remain.png) | `98582afcab78b9864446c8ed4f3cc4ea0f58de088ff472c95f320463be0e3af4` | More vegetation reported; missing pages and magenta borders remain |
-| [`E01-r2-terrain-more-vegetation-missing-pages-remain-singo-dong.png`](../captures/curated/e01-no-upload-hvv/E01-r2-terrain-more-vegetation-missing-pages-remain-singo-dong.png) | `8e8962a52073e3c8b2654e9325702622db6d51e92edb5a3a4eae73b6b0167391` | Repeat near Singo-dong; vegetation remains denser, ground corruption remains severe |
+| `E01-r1-menu-aircraft-artifacts.png` (local evidence, not published) | `8f522d38633a520a882519ef194b9c49a19c9043796a379710c0c0d4f9c49f7f` | Menu aircraft still; temporal change not classified |
+| `E01-r1-terrain-more-vegetation-missing-pages-remain.png` (local evidence, not published) | `98582afcab78b9864446c8ed4f3cc4ea0f58de088ff472c95f320463be0e3af4` | More vegetation reported; missing pages and magenta borders remain |
+| `E01-r2-terrain-more-vegetation-missing-pages-remain-singo-dong.png` (local evidence, not published) | `8e8962a52073e3c8b2654e9325702622db6d51e92edb5a3a4eae73b6b0167391` | Repeat near Singo-dong; vegetation remains denser, ground corruption remains severe |
 
 ## Configuration verification
 

@@ -2,6 +2,13 @@
 
 Date: 2026-08-10
 
+> [!NOTE]
+> Historical completed plan. The root-cause update was posted to
+> [VKD3D-Proton issue #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5238151028)
+> and the allocator-only quirk was published as
+> [VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207).
+> See [`final-report.md`](final-report.md) for the current combined status.
+
 ## Final technical conclusion
 
 The main-menu, cockpit, and fire-lit square blocks and broad light flicker are

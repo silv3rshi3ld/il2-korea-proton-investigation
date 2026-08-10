@@ -1,4 +1,11 @@
-# Findings and evidence ledger
+# Chronological findings and evidence ledger
+
+> [!IMPORTANT]
+> This is an append-only investigation record, not the current executive
+> summary. Individual numbered findings state what was verified at that point
+> in the chronology and may be narrowed or superseded by later entries. Use
+> [`final-report.md`](final-report.md) for the final conclusions and
+> [`README.md`](README.md) for the curated evidence order.
 
 ## Verified findings
 
