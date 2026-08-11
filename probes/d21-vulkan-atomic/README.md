@@ -59,9 +59,30 @@ make -C probes/d21-vulkan-atomic run-all DEVICE=1
 
 `EXACT_R16_SSBO_SPV` defaults to the local ignored D24 shader. It can be
 overridden when that generated artifact is stored elsewhere. See
-`docs/evidence-d21-d25-atomic-result.md` for the results and the later D25
+[the D21-D25 evidence](../../docs/evidence-d21-d25-atomic-result.md) for the results and the later D25
 in-game negative. That negative was subsequently shown to be incomplete: D25
 emitted an SSBO atomic but still selected the typed descriptor. D45 and D47
 paired the SSBO operation with the raw descriptor sibling and established the
-allocator as the visual cause. See `docs/final-report.md` for the final
-interpretation.
+allocator as the visual cause. See the
+[final report](../../docs/final-report.md) for the final interpretation.
+
+The later D50 and D51 controls are available through:
+
+```text
+make -C probes/d21-vulkan-atomic run-offset-zero-ab DEVICE=0
+make -C probes/d21-vulkan-atomic run-offset-zero-ab DEVICE=1
+```
+
+This adds `--format-ab` to the existing matrix. D50 reuses one 87,040-byte
+buffer, one minimal coordinate-zero atomic shader, one pipeline, and one
+dispatch shape for an `R32_UINT`, `R16_UINT`, `R32_UINT` view sequence. Correct
+output is expected for both R32 runs; corrupt per-workgroup allocation is the
+expected R16 observation. D51 runs the exact captured shader through a full-size
+R32 alias using both descriptor backends. It must complete all 8,160 allocations
+with no overlaps, missing intervals, or nonzero bytes after the first counter
+word.
+
+These controls showed that the existing texel-buffer shader works with the R32
+view and that alternate dxil-spirv SSBO lowering is not required. The canonical
+result and upstream disposition are in
+[the D50-D52 evidence](../../docs/evidence-d50-d52-r32-alias-result.md).

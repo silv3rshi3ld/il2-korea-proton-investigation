@@ -4,9 +4,13 @@
 > Historical interim result. D25 emitted a StorageBuffer atomic but still
 > selected the typed texel-buffer descriptor, so it did not execute the complete
 > compatibility translation. D44-D47 later identified that missing descriptor
-> half and established the allocator as the visual root cause. See
+> half and established the allocator as the visual root cause. D50-D52 then
+> proved that an R32 texel-buffer view repairs the exact path without changing
+> dxil-spirv. The still-open Mesa MR !43672 became the preferred upstream
+> direction, but was not locally game-tested here. See
 > [`evidence-d45-correct-ssbo-binding-result.md`](evidence-d45-correct-ssbo-binding-result.md),
 > [`evidence-d47-allocator-only-wired-result.md`](evidence-d47-allocator-only-wired-result.md),
+> [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md),
 > and [`final-report.md`](final-report.md). The text below is preserved as the
 > accurate conclusion from the evidence available at D25.
 
@@ -160,3 +164,23 @@ the defect is still in the light-list consumer chain but is downstream of the
 D25 counter. If they remain, the investigation should move to the reflection
 target write/blend or a later composition pass. This is a diagnostic gate, not
 a proposed game modification or final workaround.
+
+## D50-D52 final refinement
+
+The D25 visual negative was later explained by its mismatched operation and
+descriptor selection. D50 removed a remaining control gap by using the same
+minimal shader, pipeline, dispatch, and 87,040-byte buffer for an
+`R32_UINT`, `R16_UINT`, `R32_UINT` sequence. On both tested RADV devices, both
+R32 runs were globally correct and only R16 reproduced the workgroup restart.
+
+D51 used the exact captured shader with the full-size R32 view. All four
+device/backend combinations completed 8,160 allocations with zero overlaps,
+missing entries, out-of-range intervals, or writes beyond the first counter
+word. D52 carried only that descriptor choice into VKD3D-Proton, left
+dxil-spirv unchanged at `cc75a0c9`, and removed the square blocks in two runs.
+
+This establishes the allocator as the visual root cause and the texel-buffer
+view/OOB behavior as the decisive implementation boundary. The SSBO path was a
+useful diagnostic but is not necessary. Mesa MR !43672 now addresses that
+behavior at the RADV driver level and supersedes both the SSBO and R32-alias
+quirks as upstream proposals.

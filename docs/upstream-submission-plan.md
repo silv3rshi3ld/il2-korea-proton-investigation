@@ -5,15 +5,21 @@
 > [VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202).
 > The separate startup and tiled-light outcomes were later published through
 > Wine MR !11604 and VKD3D-Proton PR #3207. The direct lighting
-> implementation was subsequently superseded by D49. The published PR #3207
-> head is not a mergeable final implementation and should be converted to a
-> dependent draft before its next update. Current status is maintained in
+> implementation was subsequently superseded by D49, then D49 was superseded
+> by D50-D52 and Mesa MR !43672. Wine MR !11604 and terrain PR #3202 merged.
+> dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed unmerged as
+> superseded. Mesa MR !43672 remains open and is the preferred lighting path.
+> Current status is maintained in
 > [`final-report.md`](final-report.md).
 
 The user approved publication on 2026-08-07. The investigation repository is
 public, VKD3D-Proton PR
-[#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) is open,
+[#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) is merged,
 and updates were posted to VKD3D-Proton #3134 and Proton #9906.
+
+Wine MR !11604 merged on 2026-08-10 at final head `663fd7cc`. This
+investigation tested the earlier `e8319c0e` revision and Valve's equivalent
+integrated series, not that final MR head.
 
 ## Correct repository
 
@@ -23,7 +29,7 @@ copy geometry. It should not be submitted as a duplicate patch to Valve
 Proton. Proton consumes VKD3D-Proton as a component and will receive an accepted
 fix through a later component update.
 
-Recommended sequence:
+Sequence used:
 
 1. Review the local commit, patch, test evidence, and selected screenshots.
 2. Fork `HansKristian-Work/vkd3d-proton` under the user's GitHub account.
@@ -40,7 +46,7 @@ Recommended sequence:
 
 VKD3D-Proton already converts compressed/uncompressed **image-to-image** copy
 geometry through physical blocks and tests `R32G32B32A32_UINT` to/from BC3.
-The candidate supplies the corresponding conversion for the demonstrated
+The candidate supplied the corresponding conversion for the demonstrated
 placed-buffer-to-image upload direction. The defect is in a shared translation
 helper, not in an IL-2 configuration flag, and the candidate contains no
 executable name, AppID, resource dimensions, or environment-variable gate.
@@ -55,7 +61,7 @@ unambiguously valid D3D12.
 
 ## Impact boundary and regression risk
 
-Current candidate `64ec55e7` changes only placed-buffer-to-image copies for
+Historical candidate `64ec55e7` changes only placed-buffer-to-image copies for
 which the source and destination physical elements have the same byte size
 **and** their block width or height differs. The IL-2 case is 16 bytes on each
 side: one uncompressed `R32G32B32A32_UINT` texel maps to one 4x4 BC3 block.
@@ -67,10 +73,10 @@ geometry reinterpretation can therefore be affected. The expected effect is
 to make those copies match the physical data represented by the footprint,
 but a claim of zero cross-game risk would be unjustified.
 
-Evidence currently limiting that risk:
+Evidence that limited that risk during review:
 
 - focused regression: four deterministic failures with the old helper and
-  22/22 assertions passing with current candidate `64ec55e7`;
+  22/22 assertions passing with candidate `64ec55e7`;
 - all native tests selected by `VKD3D_TEST_FILTER=copy`: 6,429,713 executed,
   zero failures, 14 successful todo, one skipped, eight todo, zero bugs;
 - existing neighboring compressed-copy tests: 147/147 and 50/50 passing;
@@ -78,7 +84,7 @@ Evidence currently limiting that risk:
 - two gated D07 runs and one clean D08 run repair the terrain;
 - D08 reports no device loss, GPU reset/hang, OOM, or new fatal error.
 
-The retained local current-candidate transcripts are
+The retained local candidate transcripts are
 `captures/validation/64ec55e7-focused-copy-test.log` and
 `captures/validation/64ec55e7-copy-tests.log`, with SHA-256 values recorded in
 [`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md). They are
@@ -91,13 +97,15 @@ Known limitations:
 - the runtime validation covers RADV on one RDNA3 system;
 - the inverse image-to-placed-buffer helper was not changed because IL-2 does
   not demonstrate that direction;
-- startup/NUMA and menu shimmering are unrelated and remain unresolved.
+- at the time of this terrain submission, startup/NUMA and menu shimmering
+  were unrelated unresolved tracks. Wine MR !11604 later merged, while the
+  lighting track moved to Mesa MR !43672.
 
 ## If maintainers request narrower scope
 
 Do not begin with an executable override while the general translation fix has
-both a regression test and matching upstream precedent. The first narrowing—
-requiring different block geometry with equal physical element size—was
+both a regression test and matching upstream precedent. The first narrowing,
+requiring different block geometry with equal physical element size, was
 implemented in `64ec55e7`. If reviewers still consider the native-Windows
 behavior too application-specific, narrow in this order:
 
@@ -105,8 +113,9 @@ behavior too application-specific, narrow in this order:
    `R32G32B32A32_UINT -> BC3_UNORM` upload pair;
 2. use an exact `IL2Series.exe` application quirk only as the final fallback.
 
-Each narrower revision must be rebuilt and retested. No format-pair or
-application-specific fallback has been implemented in the current candidate.
+Each narrower revision would have required another build and test. No
+format-pair or application-specific fallback was implemented in that
+candidate.
 
 ## Minimal initial pull-request evidence
 
@@ -122,7 +131,7 @@ Large Proton logs, all diagnostic patches, duplicate screenshots, game files,
 prefix data, and unrelated menu/NUMA investigation material should not be
 attached to the initial pull request.
 
-## D49 lighting supersession
+## Historical D49 lighting supersession
 
 This section supersedes only the tiled-light submission path. The terrain plan
 above remains its historical record, and the startup work remains independent
@@ -148,7 +157,9 @@ another descriptor type restores the original typed binding and retries. No
 public C callback structure grows. The path excludes 64-bit atomics, sparse
 operations, non-atomic resources, and the SM 6.6 heap path.
 
-### Draft PR order and dependency
+### Historical draft PR order and dependency
+
+The following records the publication order used at that stage:
 
 1. Clean and validate the dxil-spirv change first, then open it as a draft PR.
 2. Convert existing VKD3D-Proton PR #3207 to a dependent draft. Do not open a
@@ -188,3 +199,45 @@ The retained tool is
 The sandy or film-grain lighting also occurs on native Windows and is excluded
 from acceptance criteria. D49 has not received cross-hardware runtime
 validation, so neither PR should claim it.
+
+## D50-D52 lighting resolution and revised upstream path
+
+This section supersedes the D49 submission path above. The terrain PR and Wine
+startup MR remain independent.
+
+D50 held the minimal shader, pipeline, dispatch, and 87,040-byte buffer fixed
+and changed only the view in an R32, R16, R32 sequence. Both R32 runs passed
+and only R16 reproduced the workgroup restart on both tested RADV devices. D51
+then passed the exact captured shader with a full-size R32 view through both
+descriptor backends on both devices.
+
+D52 applied that discriminator in VKD3D-Proton without changing dxil-spirv. It
+kept `R32ui`, `OpImageTexelPointer`, and `OpAtomicIAdd`, changed only the exact
+resource's descriptor set/binding from `1/1` to `2/0`, and removed the blocks
+in two game runs. This proves compiler-side SSBO lowering is unnecessary, but
+the D52 application-specific alias and sibling-layout assumptions are not a
+merge-ready upstream design.
+
+Maintainer reproduction produced
+[Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672).
+It changes RADV's GFX10+ texel-buffer OOB selection from
+`STRUCTURED_WITH_OFFSET` to `STRUCTURED`, matching the native AMD D3D12 driver
+and pre-GFX10 behavior. NVIDIA also passes the maintainer's descriptor-heap
+test. This is the preferred upstream direction.
+
+Current sequence:
+
+1. dxil-spirv PR #296 and VKD3D-Proton PR #3207 are closed unmerged as
+   superseded. Preserve their discussion as historical evidence.
+2. Do not publish D52 as another PR. Retain it as causal evidence only.
+3. Follow the still-open Mesa MR !43672 and build its accepted revision
+   locally.
+4. Test that Mesa revision with stock dxil-spirv and unmodified VKD3D-Proton,
+   using the separate OpenMP workaround only if the Wine startup MR is absent.
+5. Record the runtime provenance and repeat the visual check. If it passes,
+   update the existing VKD3D-Proton and Proton discussions instead of opening
+   another graphics issue or PR.
+
+The D49 and D52 work was not merged, so the change in direction caused no
+lasting upstream impact. Their tests remain useful because they isolate why
+the driver-level Mesa change is the cleaner general solution.

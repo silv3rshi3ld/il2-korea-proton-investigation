@@ -1,0 +1,265 @@
+diff --git a/include/vkd3d_shader.h b/include/vkd3d_shader.h
+index 45fb41b76920f8b1c8a00f4acd5130e4294f2c91..12a1dbecdc1eabc5b67194cc115a4bcd014aae0c 100644
+--- a/include/vkd3d_shader.h
++++ b/include/vkd3d_shader.h
+@@ -148,6 +148,7 @@ enum vkd3d_shader_binding_flag
+     VKD3D_SHADER_BINDING_FLAG_BINDLESS   = 0x00000008,
+     VKD3D_SHADER_BINDING_FLAG_RAW_VA     = 0x00000010,
+     VKD3D_SHADER_BINDING_FLAG_RAW_SSBO   = 0x00000020,
++    VKD3D_SHADER_BINDING_FLAG_TYPED_UAV_R32_UINT_ALIAS = 0x00000040,
+ 
+     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_BINDING_FLAG),
+ };
+@@ -579,6 +580,9 @@ enum vkd3d_shader_target_extension
+  * which is highly illegal and only way out of it is to use filthy trickery. */
+ #define VKD3D_SHADER_QUIRK_FORCE_FEEDBACK_LOOP (1ull << 38)
+ 
++/* Select an R32_UINT texel-buffer alias for typed UAV access. */
++#define VKD3D_SHADER_QUIRK_TYPED_UAV_R32_UINT_ALIAS (1ull << 39)
++
+ typedef uint64_t vkd3d_shader_quirks_t;
+ 
+ struct vkd3d_shader_quirk_hash
+diff --git a/libs/vkd3d-shader/dxil.c b/libs/vkd3d-shader/dxil.c
+index b28b9a65194af9e1cdbeab444d839fac61ae0103..2a6ad3238ac13958de96759483f51ebaca9ebe02 100644
+--- a/libs/vkd3d-shader/dxil.c
++++ b/libs/vkd3d-shader/dxil.c
+@@ -510,6 +510,14 @@ static dxil_spv_bool dxil_uav_remap(void *userdata, const dxil_spv_uav_d3d_bindi
+     resource_flags = dxil_resource_flags_from_kind(d3d_binding->d3d_binding.kind, false);
+     use_ssbo = resource_flags != resource_flags_ssbo;
+ 
++    if ((remap->quirks & VKD3D_SHADER_QUIRK_TYPED_UAV_R32_UINT_ALIAS) &&
++            d3d_binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_TYPED_BUFFER &&
++            d3d_binding->d3d_binding.register_space == 0 &&
++            d3d_binding->d3d_binding.register_index == 1)
++    {
++        resource_flags |= VKD3D_SHADER_BINDING_FLAG_TYPED_UAV_R32_UINT_ALIAS;
++    }
++
+     /* For heap, we have the option to dynamically fall back to texel buffers. */
+     if ((shader_interface_info->flags & VKD3D_SHADER_INTERFACE_HEAP_LOWERING) &&
+         d3d_binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER &&
+@@ -563,7 +571,11 @@ static dxil_spv_bool dxil_uav_remap(void *userdata, const dxil_spv_uav_d3d_bindi
+     {
+         vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_TEXEL_BUFFER;
+         if (!dxil_remap(remap, VKD3D_SHADER_DESCRIPTOR_TYPE_UAV, &d3d_binding->d3d_binding,
+-                &vk_binding->buffer_binding, resource_flags))
++                &vk_binding->buffer_binding, resource_flags) &&
++                (!(resource_flags & VKD3D_SHADER_BINDING_FLAG_TYPED_UAV_R32_UINT_ALIAS) ||
++                !dxil_remap(remap, VKD3D_SHADER_DESCRIPTOR_TYPE_UAV, &d3d_binding->d3d_binding,
++                        &vk_binding->buffer_binding,
++                        resource_flags & ~VKD3D_SHADER_BINDING_FLAG_TYPED_UAV_R32_UINT_ALIAS)))
+         {
+             return DXIL_SPV_FALSE;
+         }
+diff --git a/libs/vkd3d-shader/vkd3d_shader_main.c b/libs/vkd3d-shader/vkd3d_shader_main.c
+index 39971d79e541480a023edbcbde1c7247c118c9ae..1afc460a67557da6129794193d96cefaf26ae2e3 100644
+--- a/libs/vkd3d-shader/vkd3d_shader_main.c
++++ b/libs/vkd3d-shader/vkd3d_shader_main.c
+@@ -419,6 +419,7 @@ static const struct vkd3d_shader_quirk_mapping
+     ENTRY(CLAMP_WAVE_SIZE_TO_THREAD_GROUP32),
+     ENTRY(ENABLE_FAIR_SCHEDULING),
+     ENTRY(FORCE_GRAPHICS_BARRIER_BEFORE_DRAW),
++    ENTRY(TYPED_UAV_R32_UINT_ALIAS),
+ };
+ #undef ENTRY
+ 
+diff --git a/libs/vkd3d/device.c b/libs/vkd3d/device.c
+index ff9a03f1eb1245135b0f606aade022c79955d782..5306adf4dd0b521eabefb646e0a3220d8076127d 100644
+--- a/libs/vkd3d/device.c
++++ b/libs/vkd3d/device.c
+@@ -1113,6 +1113,15 @@ static const struct vkd3d_shader_quirk_info empire_of_the_ants_quirks = {
+     NULL, 0, VKD3D_SHADER_QUIRK_CLAMP_WAVE_SIZE_TO_THREAD_GROUP32,
+ };
+ 
++static const struct vkd3d_shader_quirk_hash il2_korea_hashes[] = {
++    /* ComputeLightsFirstRef performs a 32-bit atomic through an R16_UINT UAV. */
++    { NULL, 0x7cefa1bc80bb4c70, VKD3D_SHADER_QUIRK_TYPED_UAV_R32_UINT_ALIAS },
++};
++
++static const struct vkd3d_shader_quirk_info il2_korea_quirks = {
++    il2_korea_hashes, ARRAY_SIZE(il2_korea_hashes), 0,
++};
++
+ static const struct vkd3d_shader_quirk_meta application_shader_quirks[] = {
+     /* F1 2020 (1080110) */
+     { VKD3D_STRING_COMPARE_EXACT, "F1_2020_dx12.exe", &f1_2019_2020_quirks },
+@@ -1207,6 +1216,8 @@ static const struct vkd3d_shader_quirk_meta application_shader_quirks[] = {
+     /* Empire of the Ants (2287330). With Terrain Tessellation on, some shaders
+      * seem to assume Wave32 by mistake leading to GPU timeout. */
+     { VKD3D_STRING_COMPARE_EXACT, "Empire-Win64-Shipping.exe", &empire_of_the_ants_quirks },
++    /* Korea. IL-2 Series (247970). */
++    { VKD3D_STRING_COMPARE_EXACT, "IL2Series.exe", &il2_korea_quirks },
+     /* Unreal Engine 4 */
+     { VKD3D_STRING_COMPARE_ENDS_WITH, "-Shipping.exe", &ue4_quirks },
+     { VKD3D_STRING_COMPARE_NEVER, NULL, NULL },
+@@ -3949,11 +3960,19 @@ VKD3D_DEBUG_CONTROL_BEHAVIOR_FLAGS vkd3d_debug_control_get_behavior_flags(void);
+ 
+ static void d3d12_device_init_workarounds(struct d3d12_device *device)
+ {
++    vkd3d_shader_quirks_t quirks;
++    unsigned int i;
+     uint32_t major, minor, patch;
+ 
+     /* Have a local copy of this since we may need to apply per-device workarounds in shader compiler. */
+     device->workarounds.quirks = vkd3d_shader_quirk_info_template;
+ 
++    quirks = device->workarounds.quirks.default_quirks | device->workarounds.quirks.global_quirks;
++    for (i = 0; i < device->workarounds.quirks.num_entry_points; i++)
++        quirks |= device->workarounds.quirks.entry_points[i].quirks;
++    device->workarounds.typed_uav_r32_uint_alias =
++            !!(quirks & VKD3D_SHADER_QUIRK_TYPED_UAV_R32_UINT_ALIAS);
++
+     /* If we're faking VRS tier 1, we need to just nop out everything about primitive shading rate. */
+     if ((vkd3d_application_feature_override & VKD3D_APPLICATION_FEATURE_RDNA1_COMPATIBILITY) &&
+         device->device_info.properties2.properties.vendorID == VKD3D_VENDOR_ID_AMD &&
+@@ -11227,6 +11246,7 @@ static void vkd3d_compute_shader_interface_key(struct d3d12_device *device)
+     key = hash_fnv1_iterate_u32(key, device->device_info.vulkan_1_3_properties.minSubgroupSize);
+     key = hash_fnv1_iterate_u32(key, device->device_info.vulkan_1_3_properties.maxSubgroupSize);
+     key = hash_fnv1_iterate_u32(key, device->bindless_state.flags);
++    key = hash_fnv1_iterate_u32(key, d3d12_device_supports_typed_uav_r32_uint_alias(device));
+ 
+     if (d3d12_device_use_descriptor_heap(device))
+     {
+diff --git a/libs/vkd3d/resource.c b/libs/vkd3d/resource.c
+index 78db89c099b0db065f0b85647e7c7a6faf248aa6..db7ac9fc962506b6df64e5f823d20c4e07945568 100644
+--- a/libs/vkd3d/resource.c
++++ b/libs/vkd3d/resource.c
+@@ -7585,6 +7585,33 @@ static void vkd3d_create_buffer_uav_heap(vkd3d_cpu_descriptor_va_t desc_va, stru
+     memcpy(d.payload, stack_payload, bindless->cbv_srv_uav_size);
+ }
+ 
++static bool vkd3d_buffer_uav_needs_r32_uint_alias(const struct d3d12_device *device,
++        const struct d3d12_resource *resource, const struct d3d12_resource *counter_resource,
++        const D3D12_UNORDERED_ACCESS_VIEW_DESC *desc,
++        const struct vkd3d_descriptor_metadata_buffer_view *view)
++{
++    const struct vkd3d_format *format;
++    VkDeviceSize alignment;
++
++    alignment = device->device_info.vulkan_1_3_properties.storageTexelBufferOffsetAlignmentBytes;
++    if (device->device_info.vulkan_1_3_properties.storageTexelBufferOffsetSingleTexelAlignment)
++        alignment = min(alignment, sizeof(uint32_t));
++    alignment = max(alignment, 1);
++
++    if (!device->workarounds.typed_uav_r32_uint_alias || resource->desc.Width != 87040 || counter_resource ||
++            desc->ViewDimension != D3D12_UAV_DIMENSION_BUFFER || desc->Format != DXGI_FORMAT_R16_UINT ||
++            desc->Buffer.FirstElement != 0 || desc->Buffer.NumElements != 43520 ||
++            desc->Buffer.StructureByteStride || desc->Buffer.CounterOffsetInBytes ||
++            desc->Buffer.Flags != D3D12_BUFFER_UAV_FLAG_NONE || view->range != 87040 || view->va % alignment)
++        return false;
++
++    format = vkd3d_get_format(device, DXGI_FORMAT_R32_UINT, false);
++    return d3d12_device_supports_typed_uav_r32_uint_alias(device) &&
++            view->range / sizeof(uint32_t) <=
++                    device->device_info.properties2.properties.limits.maxTexelBufferElements &&
++            (format->vk_format_features_buffer & VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT);
++}
++
+ static void vkd3d_create_buffer_uav_embedded(vkd3d_cpu_descriptor_va_t desc_va, struct d3d12_device *device,
+         struct d3d12_resource *resource, struct d3d12_resource *counter_resource,
+         const D3D12_UNORDERED_ACCESS_VIEW_DESC *desc)
+@@ -7596,6 +7623,7 @@ static void vkd3d_create_buffer_uav_embedded(vkd3d_cpu_descriptor_va_t desc_va,
+     struct d3d12_desc_split_metadata m;
+     VkDescriptorGetInfoEXT get_info;
+     uint32_t counter_offset;
++    bool emit_r32_uint_alias;
+     bool is_byte_address;
+     uint32_t stride;
+ 
+@@ -7640,18 +7668,36 @@ static void vkd3d_create_buffer_uav_embedded(vkd3d_cpu_descriptor_va_t desc_va,
+     if (m.view)
+         m.view->info.buffer = view;
+ 
++    emit_r32_uint_alias = vkd3d_buffer_uav_needs_r32_uint_alias(device, resource, counter_resource, desc, &view);
++
+     get_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+     get_info.pNext = NULL;
+-    get_info.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+-    get_info.data.pStorageBuffer = &addr_info;
+     addr_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
+     addr_info.pNext = NULL;
+     addr_info.address = view.va;
+     addr_info.range = view.range;
+-    addr_info.format = VK_FORMAT_UNDEFINED;
+-    VK_CALL(vkGetDescriptorEXT(device->vk_device, &get_info,
+-            device->device_info.descriptor_buffer_properties.robustStorageBufferDescriptorSize,
+-            d.payload + device->bindless_state.packed_raw_buffer_offset));
++
++    if (emit_r32_uint_alias)
++    {
++        if (!vkd3d_atomic_uint32_exchange_explicit(&device->workarounds.typed_uav_r32_uint_alias_logged,
++                1, vkd3d_memory_order_relaxed))
++            INFO("Creating R32_UINT texel-buffer alias for IL-2 tiled-light allocator UAV.\n");
++        get_info.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
++        get_info.data.pStorageTexelBuffer = &addr_info;
++        addr_info.format = VK_FORMAT_R32_UINT;
++        VK_CALL(vkGetDescriptorEXT(device->vk_device, &get_info,
++                device->device_info.descriptor_buffer_properties.robustStorageTexelBufferDescriptorSize,
++                d.payload + device->bindless_state.packed_raw_buffer_offset));
++    }
++    else
++    {
++        get_info.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
++        get_info.data.pStorageBuffer = &addr_info;
++        addr_info.format = VK_FORMAT_UNDEFINED;
++        VK_CALL(vkGetDescriptorEXT(device->vk_device, &get_info,
++                device->device_info.descriptor_buffer_properties.robustStorageBufferDescriptorSize,
++                d.payload + device->bindless_state.packed_raw_buffer_offset));
++    }
+ 
+     /* UAV counter and texel buffers alias. This is fine. We don't expect having to work around
+      * scenarios where this happens.
+diff --git a/libs/vkd3d/state.c b/libs/vkd3d/state.c
+index 6dde61402d8677622ac7c1f64ef1b4553592ff10..1c31ad1b9e60f08bc7c61c3bb837605a4a642a30 100644
+--- a/libs/vkd3d/state.c
++++ b/libs/vkd3d/state.c
+@@ -816,6 +816,9 @@ static void d3d12_root_signature_init_srv_uav_binding(struct d3d12_root_signatur
+     if (vkd3d_bindless_state_find_binding(bindless_state, range_flag | VKD3D_BINDLESS_SET_RAW_SSBO, &binding->binding))
+     {
+         binding->flags = VKD3D_SHADER_BINDING_FLAG_BINDLESS | VKD3D_SHADER_BINDING_FLAG_BUFFER | VKD3D_SHADER_BINDING_FLAG_RAW_SSBO;
++        if (range_type == D3D12_DESCRIPTOR_RANGE_TYPE_UAV &&
++                d3d12_device_supports_typed_uav_r32_uint_alias(root_signature->device))
++            binding->flags |= VKD3D_SHADER_BINDING_FLAG_TYPED_UAV_R32_UINT_ALIAS;
+         out_bindings_base[(*out_index)++] = *binding;
+     }
+ 
+diff --git a/libs/vkd3d/vkd3d_private.h b/libs/vkd3d/vkd3d_private.h
+index 03262ed7b0619754f4d0abac08c0a7df0283c9dc..d2e5786ec006c41a826a713d472647eb33adef2e 100644
+--- a/libs/vkd3d/vkd3d_private.h
++++ b/libs/vkd3d/vkd3d_private.h
+@@ -5852,6 +5852,8 @@ struct d3d12_device
+         struct vkd3d_shader_quirk_info quirks;
+         bool amdgpu_broken_clearvram;
+         bool amdgpu_broken_null_tile_mapping;
++        bool typed_uav_r32_uint_alias;
++        uint32_t typed_uav_r32_uint_alias_logged;
+         bool tiler_renderpass_barriers;
+         bool tiler_suspend_resume;
+         bool tiler_suspend_resume_relax_load_store_op;
+@@ -6061,6 +6063,25 @@ static inline bool d3d12_device_use_embedded_mutable_descriptors(const struct d3
+     return (device->bindless_state.flags & VKD3D_BINDLESS_MUTABLE_EMBEDDED) != 0;
+ }
+ 
++static inline bool d3d12_device_supports_typed_uav_r32_uint_alias(const struct d3d12_device *device)
++{
++    const VkPhysicalDeviceDescriptorBufferPropertiesEXT *properties =
++            &device->device_info.descriptor_buffer_properties;
++    uint32_t payload_limit;
++
++    payload_limit = device->bindless_state.flags & VKD3D_BINDLESS_MUTABLE_EMBEDDED_PACKED_METADATA
++            ? device->bindless_state.packed_metadata_offset
++            : device->bindless_state.cbv_srv_uav_size;
++
++    return d3d12_device_use_embedded_mutable_descriptors(device) &&
++            !d3d12_device_use_descriptor_heap(device) &&
++            (device->bindless_state.flags & VKD3D_BINDLESS_RAW_SSBO) &&
++            device->bindless_state.packed_raw_buffer_offset &&
++            device->bindless_state.packed_raw_buffer_offset +
++                    properties->robustStorageTexelBufferDescriptorSize <=
++                    payload_limit;
++}
++
+ struct d3d12_desc_split_metadata
+ {
+     struct vkd3d_descriptor_metadata_view *view;

@@ -66,4 +66,4 @@ Protocol:
 - Visual persistence is expected and does not invalidate the trace.
 
 Nothing from D15 is an application override or a proposed upstream fix. The
-diagnostic commit remains local until the user separately approves publication.
+diagnostic commit was kept local and is not distributed in this archive.

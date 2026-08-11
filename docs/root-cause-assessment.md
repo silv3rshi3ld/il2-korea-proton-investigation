@@ -24,12 +24,15 @@ VKD3D-Proton's existing image-to-image path nevertheless support the same
 physical-block interpretation. The safest ownership statement is therefore a
 VKD3D-Proton native-compatibility gap, not a demonstrated RADV defect. The
 general `cf11ba76` predecessor passes its regression tests and D08 validates it
-in game without any IL-2-specific filter or diagnostic gate. Current PR
-candidate `64ec55e7` further restricts activation to equal-sized physical
-elements with different block dimensions, leaving same-geometry copies on the
-original path while selecting unchanged conversion arithmetic for IL-2.
+in game without any IL-2-specific filter or diagnostic gate. The narrowed
+change was merged through PR #3202 as `731c4aae`. It restricts activation to
+equal-sized physical elements with different block dimensions, leaving
+same-geometry copies on the original path while selecting unchanged conversion
+arithmetic for IL-2.
 
-The startup/OpenMP problem remains an independent Wine/NUMA investigation.
+The startup/OpenMP problem is an independent Wine/NUMA track. Wine MR !11604
+merged on 2026-08-10; this investigation validated an earlier six-commit head
+and Valve's equivalent integration rather than the final rebased Wine head.
 The menu/cockpit/fire-lit squares are also independent. D20 found overlapping
 tiled-light index ranges. D21-D24 traced that data pattern to the game's
 32-bit atomic through a live `R16_UINT` typed UAV, but D25 only changed the
@@ -69,14 +72,17 @@ but later source review proves its `IL2Series.exe` mapping was absent and the
 quirk never activated. D46 is invalid for minimality. Correctly wired D47 is
 clean with the original depth predicates, proving the allocator correction is
 sufficient. The fine sandy/film-grain lighting is also present on Windows and
-is normal game rendering, not a Proton defect.
+is normal game rendering, not a Proton defect. D50 through D52 later isolate
+the remaining cause more precisely: the decisive variable is the texel-buffer
+view and its out-of-bounds behavior, not SSBO lowering.
 
-## D49 implementation supersession
+## Historical D49 implementation
 
-D47 and candidate `9b6e15be` remain the causal and runtime proof that correcting
+D47 and candidate `9b6e15be` remain causal and runtime proof that correcting
 the allocator access removes the blocks and broad flicker. They no longer
-describe the proposed upstream implementation. The direct VKD3D-Proton quirk
-and patch `0016` are superseded by D49.
+describe the proposed upstream implementation. D49 in turn superseded the
+direct VKD3D-Proton quirk as an experiment, but D50 through D52 show that D49
+is not the required final architecture.
 
 The D49 design assigns generic translation to dxil-spirv. For an eligible
 scalar 32-bit `I32` or `U32` atomic on a typed UAV, the compiler temporarily
@@ -107,19 +113,60 @@ byte-identical to the typed baseline.
 Runtime provenance verifies that D49 loaded. One reporting-host run covering
 the menu, a short flight, and the map retained correct terrain, real lighting,
 and shadows while the blocks and broad flicker were absent. This is not a
-cross-hardware validation claim. The published PR #3207 head still contains
-the superseded implementation. It should become a dependent draft, not be
-treated as a mergeable final implementation.
+cross-hardware validation claim. This successful result established a useful
+control, but did not prove that dxil-spirv or SSBO lowering was necessary.
+
+## D50 through D52 root-cause refinement
+
+D50 removed the D49 confounder by keeping the same shader operation, buffer,
+87,040-byte range, dispatch, and coordinate-zero 32-bit atomic while switching
+only the storage texel-buffer view in the order `R32_UINT`, `R16_UINT`,
+`R32_UINT`. The first and second R32 runs were globally correct. The intervening
+R16 run reproduced the per-workgroup restart and corrupt allocation. The
+repeat rules out run ordering as the explanation.
+
+D51 used the exact captured shader and an 87,040-byte R32 alias. It passed on
+both the mutable descriptor-set and descriptor-buffer paths without
+out-of-range writes. D52 then applied that discriminator in VKD3D-Proton while
+leaving dxil-spirv at unmodified gitlink
+`cc75a0c98d34d7bcc03560527c799b52e48b4d1f`. The DXIL remained byte-identical,
+and the translated shader retained `R32ui`, `OpImageTexelPointer`, and
+`OpAtomicIAdd`. Only the selected sibling binding changed. A runtime marker
+confirmed creation of the exact R32 alias, and two D52-r2 game runs remained
+free of the square blocks.
+
+The causal conclusion is therefore narrower than the D49 hypothesis. IL-2
+performs a 32-bit atomic through an `R16_UINT` UAV, and the observed behavior
+depends on how the driver handles the resulting texel-buffer access beyond the
+16-bit element. An SSBO and a dxil-spirv change are not inherently required.
+D52 is an exact diagnostic quirk, not the preferred upstream implementation.
+
+Mesa MR [!43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672)
+is the current upstream direction. It makes GFX10 and later RADV prefer
+`STRUCTURED` rather than `STRUCTURED_WITH_OFFSET` out-of-bounds selection for
+texel-buffer descriptors. This matches AMD's native D3D12 driver and pre-GFX10
+behavior, and provides a general compatibility behavior without a per-game
+VKD3D-Proton quirk. D50 through D52 support its diagnosis, but the Mesa change
+has not yet been tested locally and remains subject to upstream review.
+
+The experimental dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed
+without merging on 2026-08-11. Their code and discussion remain archived as
+investigation evidence.
+
+Both D52 runs used `OMP_NUM_THREADS=16 KMP_AFFINITY=disabled` only for the
+independent Wine startup issue. D52 intentionally excluded terrain PR #3202,
+so it does not constitute a combined all-fixes build. See
+[`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).
 
 ## Ranked graphics assessment
 
 | Rank | Mechanism | Evidence | Confidence |
 |---:|---|---|---|
-| 1 | Missing block-unit conversion on buffer-to-BC3 terrain-page copies | D07 adjusted 522/522 exact-class copies in run 1 and 304/304 in run 2, with zero rejects, and repaired high-altitude terrain both times; clean general-build D08 repeats the repair; the focused synthetic test fails four assertions on the old path and passes 22/22 with the narrowed general fix | High; causal for terrain and addressed by current PR candidate `64ec55e7` |
-| 2 | IL-2's invalid typed-UAV atomic reaches the wrong live Vulkan descriptor class and makes every workgroup overwrite the same light-index prefix | D44 captures identical depth/grid metadata, a 12,126-entry request collapsed into offsets 0–320 in all 50 workgroups, and 69–107 changing IDs between adjacent affected frames. D25's captured shader is SSBO code still mapped to the typed descriptor set. Correctly wired allocator-only D47 is visually clean. | High; causal and sufficient for the blocks and broad flicker |
+| 1 | Missing block-unit conversion on buffer-to-BC3 terrain-page copies | D07 adjusted 522/522 exact-class copies in run 1 and 304/304 in run 2, with zero rejects, and repaired high-altitude terrain both times; clean general-build D08 repeats the repair; the focused synthetic test fails four assertions on the old path and passes 22/22 with the narrowed general fix | High; causal for terrain and merged through PR #3202 as `731c4aae` |
+| 2 | IL-2 performs a 32-bit atomic through an `R16_UINT` UAV, and RADV's GFX10+ texel-buffer out-of-bounds selection exposes a different result from native AMD | D44 captures the corrupted allocation. D50 changes only R32/R16/R32 view format and fails only for R16. D51 passes the exact shader through both descriptor backends with an R32 alias. D52 keeps stock dxil-spirv and is clean twice. | High for the root cause on the reporting host; Mesa MR !43672 is the preferred upstream direction but is not yet locally validated |
 | 3 | The producers' packed-mask/scalar tile-depth rejection changes presentation of the malformed light list | D38 can hide blocks while retaining lighting; D39/D40 restore them. D47 retains the original predicates but is clean once the allocator is corrected. | Diagnostic presentation factor only; rejected from the final fix |
 | 4 | Game texture-provider fallback contributes secondary missing inputs | The successful D07 run still logs missing summer/common inputs, proving they are not required for the rectangular terrain failure | Low as a remaining contributor |
-| 5 | RADV mishandles otherwise valid Vulkan terrain copies or global typed-buffer atomics | The same driver renders terrain correctly when VKD3D emits converted copy geometry; D21/D22 pass legal global atomic forms on both RADV GPUs | Very low for the terrain defect and rejected for the legal D21/D22 atomic forms |
+| 5 | RADV mishandles otherwise valid Vulkan terrain copies or legal global typed-buffer atomics | The same driver renders terrain correctly when VKD3D emits converted copy geometry; D21/D22 pass legal global atomic forms on both RADV GPUs. The remaining lighting behavior is reached only through the game's mismatched R16 view and is a native-compatibility choice, not a general failure of legal atomics. | Very low for terrain and rejected for legal atomics; Mesa MR !43672 addresses compatibility behavior for the invalid application access |
 
 ## Terrain model established by files and traces
 
@@ -176,9 +223,10 @@ matched Windows `tex.log`, they cannot be promoted to the Linux root cause.
 Do not add an application override or run more unrelated terrain flags. D08
 validates the general `vk_buffer_image_copy_from_d3d12()` conversion at
 predecessor `cf11ba76` without the IL-2 resource/shape filter or
-`VKD3D_IL2_BC3_PAGE_COPY`. Current PR commit `64ec55e7` preserves that IL-2
-branch while returning all same-block-geometry copies to the original path;
-its focused and full copy tests pass.
+`VKD3D_IL2_BC3_PAGE_COPY`. Historical review commit `64ec55e7` preserved that
+IL-2 branch while returning all same-block-geometry copies to the original
+path; its focused and full copy tests passed. The final revision merged through
+PR #3202 as `731c4aae`.
 
 For the separate shimmering defect, D44 invalidates D25 as a causal negative:
 its intended shader access translation is present, but the forced SSBO still
@@ -209,8 +257,16 @@ passes twice with empty Steam launch options. D46 was meant to remove only
 those depth bypasses, but source review proves its executable-to-quirk mapping
 was absent. Correctly wired D47 is clean with the original depth predicates,
 proving the allocator correction is the final minimal behavioral requirement.
-D49 supersedes the direct implementation with generic dxil-spirv lowering and
-capability-gated VKD3D-Proton policy. Accept the native sandy/film-grain
-lighting and reject either large square blocks or broad non-native flicker. See
+D49 was the next successful implementation experiment, but D50 and D51 prove
+that changing only the texel-buffer view to R32 is sufficient with the natural
+typed-buffer shader. D52 confirms this in game with unmodified dxil-spirv and
+two clean runs. The current upstream direction is Mesa MR !43672, which matches
+native AMD and pre-GFX10 texel-buffer out-of-bounds selection without either
+compiler lowering or an IL-2 VKD3D-Proton quirk. Accept the native
+sandy/film-grain lighting and reject either large square blocks or broad
+non-native flicker. The next decisive validation is an unmodified
+VKD3D-Proton/dxil-spirv run on a Mesa build containing MR !43672. See
 [`evidence-d45-correct-ssbo-binding-result.md`](evidence-d45-correct-ssbo-binding-result.md)
-and [`evidence-d47-allocator-only-wired-result.md`](evidence-d47-allocator-only-wired-result.md).
+[`evidence-d47-allocator-only-wired-result.md`](evidence-d47-allocator-only-wired-result.md),
+and
+[`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).

@@ -1,8 +1,11 @@
 # Captures
 
-This directory contains a curated public screenshot set and additional ignored
-local evidence. The published images document the broken baseline, the repaired
-terrain path, and the separate menu-aircraft corruption that remains unresolved.
+This directory contains the final curated public screenshot set and additional
+ignored local evidence. The published images document the broken baseline, the
+repaired terrain path, and historical lighting A/B observations. D50 through
+D52 later isolated the lighting defect, but no D52 screenshot was captured or
+published. No screenshot in this archive is presented as a test of Mesa MR
+!43672.
 
 ## Published evidence
 
@@ -25,11 +28,33 @@ terrain path, and the separate menu-aircraft corruption that remains unresolved.
 - [`D08-r1-terrain-repaired-low-altitude-742m.png`](curated/d08-general-fix/D08-r1-terrain-repaired-low-altitude-742m.png): repaired terrain at 742 m;
 - [`D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png`](curated/d08-general-fix/D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png): the independent menu-aircraft defect persists.
 
+### Lighting evidence boundary
+
+The repository's published lighting screenshots predate D52 and remain valid
+historical visual evidence. They must not be described as screenshots of the
+D52 VKD3D-Proton-only R32 alias. The D52 result consists of two observed clean
+game runs plus runtime and shader-path validation, recorded in
+[`../docs/evidence-d50-d52-r32-alias-result.md`](../docs/evidence-d50-d52-r32-alias-result.md).
+Those isolated runs used the OpenMP startup workaround and excluded both the
+Wine startup series and merged terrain fix.
+
+The dxil-spirv and VKD3D-Proton lighting PRs were later closed unmerged as
+superseded. Their screenshots remain valid historical visual evidence of the
+artifact and of the behavior required from a correct implementation. They are
+not evidence that those superseded implementations should be merged.
+
+The sanitized text evidence for the exact D52 tool, DLL hashes, runtime marker,
+and captured shader identities is retained at
+[`curated/d52-r32-alias/runtime-proof.txt`](curated/d52-r32-alias/runtime-proof.txt).
+It contains no game binary or custom Proton binary.
+
 ## Additional local evidence
 
-The working copy also contains the following intentionally ignored evidence:
+In addition to the published files above, the working copy contains the
+following intentionally ignored evidence:
 
-- `curated/e00-baseline/`: six descriptively named baseline screenshots;
+- `curated/e00-baseline/`: three additional baseline screenshots alongside the
+  three published selections;
 - `curated/e01-no-upload-hvv/`: three host-visible-upload test screenshots;
 - `curated/e02-single-queue/`: three single-queue test screenshots;
 - `curated/d01-sparse-trace/`: one high-altitude screenshot from the invalidated
@@ -48,24 +73,21 @@ The working copy also contains the following intentionally ignored evidence:
 - `curated/d05-bc3-normalization/`: D05a's unchanged 1,416 m screenshot. The
   visual artifact is retained, but the causal run is invalid because the gate
   adjusted zero copies; its hash is in `docs/evidence-d05-result.md`;
-- `curated/d07-page-copy/`: repaired-terrain and menu screenshots from two
-  valid gated causal runs; hashes are recorded in
+- `curated/d07-page-copy/`: one additional repaired-terrain screenshot
+  alongside the three published selections; its hash is recorded in
   `docs/evidence-d07-result.md`;
-- `curated/d08-general-fix/`: one unchanged menu-aircraft capture and three
-  repaired-terrain captures from the clean general `cf11ba76` build; hashes
-  are recorded in `docs/evidence-d08-result.md`;
 - `runs/`: exact compressed Proton logs, compact module/summary files,
   metadata, and observations;
 - `comparisons/`: generated log comparisons;
 - `validation/`: ignored full local test transcripts; the `cf11ba76` native
-  copy-test subset and the current `64ec55e7` focused/full results and hashes
+  copy-test subset and the historical `64ec55e7` focused/full results and hashes
   are recorded in `docs/upstream-submission-plan.md` and
   `docs/evidence-pr-scope-refinement.md`.
 
 Only the curated images listed above are committed. Other images and generated
 logs remain ignored; their filenames and SHA-256 checksums are recorded in the
-corresponding `docs/evidence-*.md` files. Review and redact any additional
-artifact before publishing it upstream.
+corresponding `docs/evidence-*.md` files. Any future addition must be reviewed
+and redacted before publication.
 
 `proton.log.gz` is the retained exact log for each completed run. Redundant raw
 logs and large generated `filtered.log` copies may be moved out after the gzip

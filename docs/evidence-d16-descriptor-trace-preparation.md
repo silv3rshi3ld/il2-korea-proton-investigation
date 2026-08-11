@@ -107,5 +107,5 @@ Protocol:
 - Visual persistence is expected because D16 changes no rendering command.
 
 Nothing from D16 is a game override or proposed upstream fix. The diagnostic
-commit and compatibility tool remain local until the user separately approves
-publication.
+commit and compatibility tool were kept local and are not distributed in this
+archive.

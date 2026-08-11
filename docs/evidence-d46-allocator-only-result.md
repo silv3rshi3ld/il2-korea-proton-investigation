@@ -29,11 +29,13 @@ changing overwritten light IDs. D46 accidentally tested neither behavior and
 therefore cannot decide whether the second remains necessary after the first
 is active.
 
-D45 remains the complete tested graphics candidate: it was clean on two
-independent starts, preserves real lighting and shadows, and requires no launch
-parameters or game modification. Corrected D47 must restore only the allocator
-quirk plus application wiring before minimal upstream scope is decided. The
-fine sandy or film-grain lighting is normal on native Windows and remains
-outside the defect.
-
-Nothing has been posted or uploaded.
+At this point in the chronology, D45 remained the complete tested graphics
+candidate and the next step was a corrected D47 control restoring only the
+allocator quirk plus application wiring. D47 was subsequently completed and
+was visually clean with real lighting and shadows. D50-D52 later isolated the
+decisive condition to the texel-buffer view and RADV OOB behavior, so neither
+D45 nor D47 is the current upstream implementation. The related dxil-spirv PR
+#296 and VKD3D-Proton PR #3207 were closed unmerged as superseded. Mesa MR
+!43672 remains the preferred upstream direction and has not yet been locally
+game-tested. The fine sandy or film-grain lighting is normal on native Windows
+and remains outside the defect.

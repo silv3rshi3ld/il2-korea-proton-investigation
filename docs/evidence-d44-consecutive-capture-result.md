@@ -1,5 +1,12 @@
 # D44 consecutive tiled-light capture: result
 
+> [!NOTE]
+> Historical capture interpretation. D44 correctly identifies the malformed
+> allocator and why D25 did not test a usable descriptor. D50-D52 later showed
+> that a full-size R32 texel-buffer alias also repairs the allocator without
+> SSBO lowering. The still-open Mesa MR !43672 is the preferred upstream
+> direction and was not locally game-tested here.
+
 ## Result
 
 D44 captures the square blocks and broad light flicker in three consecutive
@@ -80,11 +87,28 @@ it did not select the raw sibling. The standalone D24 test explicitly supplied
 a real storage-buffer descriptor and therefore did not cover this integration
 condition.
 
-## Next gate
+## Historical next gate
 
-D45 adds the missing raw-SSBO binding selection under the same exact
-`IL2Series.exe` and shader-hash quirk. Its first runtime test must use empty
-Steam launch options and judge both the square grid and broad flicker. Fine
-sandy or film-grain lighting remains accepted native Windows behaviour.
+At this point in the chronology, D45 was planned to add the missing raw-SSBO
+binding selection under the same exact `IL2Series.exe` and shader-hash quirk.
+D45 and the corrected allocator-only D47 control were subsequently completed.
+Their runtime results were visually clean, but D50-D52 later showed that an
+SSBO translation was sufficient rather than necessary. Fine sandy or
+film-grain lighting remains accepted native Windows behaviour.
 
-Nothing has been posted or uploaded.
+## D50-D52 refinement
+
+D44 established that changing operation class without changing descriptor
+selection was incomplete. It did not prove that the completed selection had to
+be an SSBO. D50 later changed only the view format on the same 87,040-byte
+buffer and reproduced the restart only with `R16_UINT`. D51 passed the exact
+shader through a full-size `R32_UINT` view, and D52 changed only that shader's
+descriptor set/binding from `1/1` to `2/0` while retaining `R32ui`,
+`OpImageTexelPointer`, and `OpAtomicIAdd`. Two D52 game runs were clean.
+
+The refined conclusion is that the allocator failure is causal and descriptor
+view/OOB behavior is the decisive boundary. The raw SSBO sibling was one
+successful diagnostic route, not a required final implementation. The related
+dxil-spirv PR #296 and VKD3D-Proton PR #3207 were later closed unmerged as
+superseded. Mesa MR !43672 remains open and is the preferred upstream path; its
+exact revision has not been game-tested in this investigation.

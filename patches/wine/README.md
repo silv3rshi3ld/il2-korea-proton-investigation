@@ -5,8 +5,9 @@ draft, not an application override. It has been superseded for submission and
 runtime testing by existing
 [Wine MR !11604](https://gitlab.winehq.org/wine/wine/-/merge_requests/11604),
 which implements the wider NUMA API path across ntdll, kernelbase, and
-kernel32. The local draft is retained only as investigation history. It is based
-on Wine master commit `a37867ddf8418439b37e062abe156a42accf4d32`
+kernel32 and merged on 2026-08-10. The local draft is retained only as
+investigation history. It is based on Wine master commit
+`a37867ddf8418439b37e062abe156a42accf4d32`
 (2026-08-06) and also builds on Valve's pinned Proton 11 Wine commit
 `81d78e4f3ea8ce868d775021fdc9f90122dc1a6b`.
 
@@ -44,8 +45,13 @@ Validation completed:
 
 This does not yet validate a different physical CPU or a multi-node topology.
 MR !11604 was open and mergeable, and its head pipeline 72369 was successful at
-the 2026-08-07 validation check. By 2026-08-10, the same six commits were also
-present in Valve's Wine fork and pinned by the Proton Bleeding Edge source
-branch, while the upstream Wine MR itself remained open. Maintainer review and
-physical cross-topology validation remain. Any future local submission still
-requires the real contributor's identity; this repository does not invent one.
+the 2026-08-07 validation check. By 2026-08-10, the equivalent six-commit
+series was also present in Valve's Wine fork and pinned by the Proton Bleeding
+Edge source branch. Wine merged the MR later that day with final head
+`663fd7cc06f042c81fa299fe799376ab70c4cfa5`.
+
+This investigation tested earlier MR head
+`e8319c0e6bfe7f94512218b48e3158e0c286b481`, not the final rebased head.
+Physical cross-topology validation and confirmation in a published standard
+Proton release remain. Any future local submission still requires the real
+contributor's identity; this repository does not invent one.

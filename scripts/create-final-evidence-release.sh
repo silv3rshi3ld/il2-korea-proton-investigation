@@ -5,8 +5,8 @@ usage() {
     cat <<'EOF'
 Usage: ./scripts/create-final-evidence-release.sh --output-dir DIRECTORY
 
-Build the deterministic, allowlisted final evidence archive from a clean Git
-checkout. The output directory must not already contain the release files.
+Build the deterministic, allowlisted concluded evidence archive from a clean
+Git checkout. The output directory must not already contain the release files.
 EOF
 }
 
@@ -39,7 +39,7 @@ if [[ -z "$output_dir" ]]; then
     exit 2
 fi
 
-for command_name in git install mktemp sha256sum tar gzip date; do
+for command_name in git install mktemp sha256sum tar gzip date find sort mkdir chmod touch rm; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
         printf 'error: required command not found: %s\n' "$command_name" >&2
         exit 1
@@ -62,7 +62,7 @@ source_commit=$(git rev-parse HEAD)
 source_epoch=$(git show -s --format=%ct HEAD)
 source_date=$(date --utc --date="@$source_epoch" '+%Y-%m-%d %H:%M:%S UTC')
 
-bundle_name="il2-korea-final-evidence-2026-08-10"
+bundle_name="il2-korea-final-evidence-2026-08-11"
 archive_name="$bundle_name.tar.gz"
 
 if [[ "$output_dir" != /* ]]; then
@@ -106,20 +106,28 @@ bundle_root="$temporary_root/$bundle_name"
 mkdir -p "$bundle_root"
 
 for source_path in "${release_files[@]}"; do
-    install -D -m 0644 "$source_path" "$bundle_root/$source_path"
+    source_mode=""
+    read -r source_mode _ < <(git ls-files -s -- "$source_path")
+    if [[ "$source_mode" == "100755" ]]; then
+        install -D -m 0755 "$source_path" "$bundle_root/$source_path"
+    else
+        install -D -m 0644 "$source_path" "$bundle_root/$source_path"
+    fi
 done
 
 manifest_path="$bundle_root/MANIFEST.md"
 {
-    printf '# Final evidence release manifest\n\n'
+    printf '# Concluded evidence archive manifest\n\n'
     printf -- '- Source repository: <https://github.com/silv3rshi3ld/il2-korea-proton-investigation>\n'
     printf -- '- Source commit: `%s`\n' "$source_commit"
     printf -- '- Source commit date: %s\n' "$source_date"
-    printf -- '- Investigation status date: 2026-08-10\n'
-    printf -- '- Wine startup path: <https://gitlab.winehq.org/wine/wine/-/merge_requests/11604>\n'
+    printf -- '- Investigation status date: 2026-08-11\n'
+    printf -- '- Wine startup path, merged upstream: <https://gitlab.winehq.org/wine/wine/-/merge_requests/11604>\n'
     printf -- '- Terrain merge: <https://github.com/HansKristian-Work/vkd3d-proton/pull/3202>\n'
-    printf -- '- Lighting discussion and superseded first implementation: <https://github.com/HansKristian-Work/vkd3d-proton/pull/3207>\n'
-    printf -- '- Current lighting implementation: paired dxil-spirv lowering and capability-gated VKD3D-Proton selection; upstream publication pending\n\n'
+    printf -- '- Lighting investigation and closed VKD3D-Proton experiment: <https://github.com/HansKristian-Work/vkd3d-proton/pull/3207>\n'
+    printf -- '- Closed dxil-spirv experiment: <https://github.com/HansKristian-Work/dxil-spirv/pull/296>\n'
+    printf -- '- Current lighting direction, not locally runtime-tested: <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672>\n'
+    printf -- '- Final Proton community update: <https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5257604136>\n\n'
     printf 'This archive contains source, documentation, patches, and reviewed\n'
     printf 'screenshots only. It contains no game files, custom Proton binary,\n'
     printf 'prebuilt replacement DLL, prefix, credentials, shader binary, raw\n'

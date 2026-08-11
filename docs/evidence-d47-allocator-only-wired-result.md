@@ -1,5 +1,11 @@
 # D47 correctly wired allocator-only control: result
 
+> [!IMPORTANT]
+> Historical runtime result. D47 proved that correcting the allocator removes
+> the pixels, but its SSBO/raw-sibling implementation is not the final upstream
+> architecture. D50-D52 later isolated the texel-buffer view/OOB boundary, and
+> Mesa MR !43672 is now the preferred upstream direction.
+
 ## Result
 
 D47 is visually clean. With empty Steam launch options, the user reports the
@@ -70,7 +76,7 @@ the candidate removed both while preserving real lighting and shadows. Its
 exact tool and screenshot provenance is recorded in
 [`evidence-u01-upstream-candidate-ab.md`](evidence-u01-upstream-candidate-ab.md).
 
-## Final graphics conclusion
+## D47 graphics conclusion
 
 The game performs a 32-bit global atomic through an `R16_UINT` typed UAV. A
 literal Vulkan typed-buffer translation is not a legal equivalent and makes
@@ -81,3 +87,24 @@ emit the atomic as an SSBO operation.
 
 This is app- and shader-hash-scoped, changes no unrelated game, and requires no
 hard-coded processor value, launch parameter, or game-file customization.
+
+That conclusion records the minimal successful D47 mechanism at the time. It
+does not describe the final upstream ownership after D50-D52.
+
+## Later interpretation
+
+D50 held the buffer size, shader, pipeline, and dispatch fixed while changing
+only an R32, R16, R32 view sequence. Only R16 reproduced the restart. D51 then
+passed the exact game shader with a full-size R32 alias on both tested RADV
+devices and both descriptor backends. D52 retained the normal texel-buffer
+lowering and unchanged dxil-spirv, changed only the exact resource's descriptor
+selection, and remained visually clean in two game runs.
+
+D47 therefore remains valid evidence that repairing the allocation repairs the
+visible artifact. It does not establish that SSBO lowering is necessary.
+[Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672)
+addresses the RADV GFX10+ texel-buffer OOB behavior directly and is cleaner
+than retaining the D47 per-game quirk. The experimental dxil-spirv PR #296 and
+VKD3D-Proton PR #3207 were closed unmerged as superseded. Mesa MR !43672
+remains open and is the preferred delivery path, but the exact MR revision has
+not been game-tested in this investigation.

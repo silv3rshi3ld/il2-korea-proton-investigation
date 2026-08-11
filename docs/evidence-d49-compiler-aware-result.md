@@ -1,5 +1,14 @@
 # D49 compiler-aware ABI-safe result
 
+> [!IMPORTANT]
+> Historical implementation result. D49's visual result remains valid, but
+> D50-D52 later proved that changing dxil-spirv's atomic lowering is not
+> required. The paired D49 design is superseded by the preferred direction in
+> the still-open Mesa MR !43672, which was not locally game-tested here. The
+> later dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed unmerged as
+> superseded. See
+> [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).
+
 ## Purpose
 
 D49 tests the tiled-light correction after replacing the first one-repository
@@ -12,11 +21,12 @@ The source bases are:
 - VKD3D-Proton: `731c4aae5991b33f2ddab45d3cb1b4779159bf4b`;
 - dxil-spirv: `edd8fdf702c3445eb659f2652d04436ed86e4206`.
 
-These identify the bases used for the D49 build. The current local dxil-spirv
-candidate is commit
-`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`. It is not published or upstream,
-and the dependent VKD3D-Proton integration deliberately has no final commit or
-gitlink identity yet.
+These identify the bases used for the D49 build. At test time, the local
+dxil-spirv candidate was commit
+`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`, and the dependent VKD3D-Proton
+integration deliberately had no final commit or gitlink identity. Later
+revisions were published as dxil-spirv PR #296 and VKD3D-Proton PR #3207.
+Both were closed unmerged after D50-D52 superseded this design.
 
 ## ABI-safe compiler and backend contract
 
@@ -112,3 +122,28 @@ This is one-system runtime validation, not cross-vendor proof. It does not
 claim that the paired changes are merged, accepted upstream, or safe to enable
 on descriptor layouts which cannot provide the raw SSBO sibling. Those layouts
 deliberately keep the existing typed path.
+
+## D50-D52 supersession
+
+The D49 detour was useful but is no longer the proposed architecture. D50
+changed only the view format on one 87,040-byte buffer in an R32, R16, R32
+sequence and reproduced corruption only with R16 on both tested RADV devices.
+D51 ran the exact captured shader with a full-size R32 alias and passed on both
+devices through both descriptor backends. D52 then reproduced the clean game
+result twice while leaving dxil-spirv unchanged at
+`cc75a0c98d34d7bcc03560527c799b52e48b4d1f`.
+
+The D52 shader retained its natural `R32ui` texel-buffer type,
+`OpImageTexelPointer`, and `OpAtomicIAdd`; only its descriptor set and binding
+changed. This shows that D49's SSBO lowering is sufficient but not necessary.
+
+Maintainer reproduction led to
+[Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672),
+which changes RADV's GFX10+ texel-buffer OOB selection to match native AMD
+D3D12 and pre-GFX10 behavior. NVIDIA also passes the maintainer's test with a
+descriptor heap. That driver-level behavior is cleaner and more general than
+either D49 or the per-game D52 alias. D49 remains historical validation and
+should not be described as merge-ready or current. dxil-spirv PR #296 and
+VKD3D-Proton PR #3207 are closed, neither was merged, and no lasting upstream
+change resulted. Mesa MR !43672 remains open and is the preferred upstream
+path. Its exact revision has not been locally game-tested.
