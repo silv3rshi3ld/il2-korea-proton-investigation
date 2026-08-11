@@ -3,9 +3,10 @@
 ## Result
 
 The upstream candidate was narrowed before formal review to reduce its effect
-on unrelated copies. VKD3D-Proton PR
-[#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) now points
-to commit `64ec55e7ab3d34012a74e5cbe8f096d4a199e272`.
+on unrelated copies. At that stage, VKD3D-Proton PR
+[#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) pointed to
+commit `64ec55e7ab3d34012a74e5cbe8f096d4a199e272`. The reviewed final revision
+later merged as `731c4aae5991b33f2ddab45d3cb1b4779159bf4b`.
 
 The conversion runs only when both conditions are true:
 
@@ -41,7 +42,7 @@ Ignored local transcripts:
 | `captures/validation/64ec55e7-focused-copy-test.log` | `7e22cddd79fc12e5a3c03d86ba40c304fb531c07cf209bf64a078f995cb70b19` |
 | `captures/validation/64ec55e7-copy-tests.log` | `697c3cf46dde73e55260c47ce85ebe984a9b6515df2acfd9df29235d708a391f` |
 
-The current exported patch is
+The archived candidate patch is
 `patches/0009-vkd3d-Convert-buffer-image-copies-between-block-formats.patch`, SHA-256
 `ca20fb05e712f2ae8216e65843990720a67d49c81b506245a17bb82fc0b58d2a`.
 
@@ -49,7 +50,8 @@ The current exported patch is
 
 D08 loaded and tested predecessor `cf11ba76` in game. That historical build
 identity and its DLL hashes remain unchanged in the D08 records. No claim is
-made that `64ec55e7` was a separately packaged game run. Instead, the narrowing
-adds a predicate while leaving the conversion selected by IL-2 and all values
-computed inside that branch unchanged. The focused GPU regression and complete
-copy-test subset were rerun against `64ec55e7`.
+made that `64ec55e7` or final merge `731c4aae` was a separately packaged game
+run in this specific record. Instead, the narrowing adds a predicate while
+leaving the conversion selected by IL-2 and all values computed inside that
+branch unchanged. The focused GPU regression and complete copy-test subset
+were rerun against `64ec55e7`.

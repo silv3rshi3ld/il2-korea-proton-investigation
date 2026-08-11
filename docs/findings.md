@@ -635,6 +635,19 @@
     texel-buffer descriptors, matching AMD's native D3D12 driver and pre-GFX10
     behavior. This is more general than the D52 game quirk and does not require
     dxil-spirv changes. It remains open and has not yet been locally validated.
+133. dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed without merging
+    on 2026-08-11. D49 and D52 remain archived as causal experiments, not
+    active upstream proposals.
+134. Wine MR !11604 merged upstream on 2026-08-10 with final head
+    `663fd7cc06f042c81fa299fe799376ab70c4cfa5`. This investigation validated
+    earlier six-commit head `e8319c0e6bfe7f94512218b48e3158e0c286b481`
+    and Valve's equivalent integration, not a separate runtime build of the
+    final rebased head.
+135. The current public community correction is
+    [Proton issue #9906 comment 5257604136](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5257604136).
+    It records the closed experimental lighting PRs, Mesa as the preferred but
+    unvalidated upstream direction, the merged terrain fix, and the merged Wine
+    NUMA work without claiming standard-release availability.
 
 The complete D50 through D52 record is
 [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).

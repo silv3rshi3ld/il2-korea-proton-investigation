@@ -5,14 +5,15 @@ Status date: 2026-08-11
 ## Executive conclusion
 
 Korea. IL-2 Series exposed three independent compatibility problems on the
-tested Linux/Proton path. Each problem now has a demonstrated cause, a focused
-solution, and its own upstream delivery path.
+tested Linux/Proton path. Each problem now has a demonstrated cause. The Wine
+and VKD3D-Proton fixes merged, while the preferred general lighting direction
+remains under Mesa review.
 
-| Track | Final solution | Upstream state |
+| Track | Resolution or preferred direction | Upstream state |
 | --- | --- | --- |
-| Startup | Implement the missing Windows NUMA topology queries in Wine | Wine MR [!11604](https://gitlab.winehq.org/wine/wine/-/merge_requests/11604) remains open. The same six commits are present in Valve's Wine fork and the Proton Bleeding Edge source branch |
+| Startup | Implement the missing Windows NUMA topology queries in Wine | Wine MR [!11604](https://gitlab.winehq.org/wine/wine/-/merge_requests/11604) merged on 2026-08-10 at final head `663fd7cc`. This investigation tested the earlier `e8319c0e` six-patch revision and Valve's equivalent integrated series, not the final MR head |
 | Terrain | Convert placed-buffer copy geometry through equal-sized physical blocks when source and destination block dimensions differ | Merged through VKD3D-Proton PR [#3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) as upstream commit `731c4aae` |
-| Lighting | Match the native AMD and pre-GFX10 texel-buffer out-of-bounds selection in RADV | Mesa MR [!43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672) is the current upstream direction. D52 independently isolates the view-format boundary without modifying dxil-spirv. The earlier dxil-spirv and VKD3D-Proton drafts are superseded experiments, not the intended final fix |
+| Lighting | Match the native AMD and pre-GFX10 texel-buffer out-of-bounds selection in RADV | Mesa MR [!43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672) remains open and is the preferred upstream direction, but it was not locally game-tested here. D52 independently isolates the view-format boundary without modifying dxil-spirv. The earlier dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed unmerged as superseded experiments |
 
 The three tracks do not depend on one another. None is a game mod. The latest
 lighting discriminator changes neither the game nor dxil-spirv: it keeps the
@@ -23,8 +24,9 @@ while retaining real lighting and shadows. Those D52 runs used
 startup problem, and intentionally excluded the terrain fix. They are not a
 combined, parameter-free Proton validation.
 
-This report describes proven candidate behavior. It does not claim that all
-three changes are already included in standard Proton.
+This report distinguishes locally proven behavior from current upstream and
+delivery status. It does not claim that all three changes are already included
+in standard Proton.
 
 ## 1. Startup and Wine NUMA topology
 
@@ -44,7 +46,7 @@ that failure as fatal.
 ### Solution and validation
 
 Wine MR !11604 implements `SystemNumaProcessorMap` and the associated
-kernelbase and kernel32 NUMA APIs. The exact six-commit MR head
+kernelbase and kernel32 NUMA APIs. The tested six-commit MR revision
 `e8319c0e6bfe7f94512218b48e3158e0c286b481` was backported without conflicts
 to Proton 11 Wine commit `81d78e4f3ea8ce868d775021fdc9f90122dc1a6b`.
 
@@ -58,14 +60,15 @@ Validation used the game's exact OpenMP DLL and a full Steam launch:
 - no CPU vendor, AppID, executable name, or processor count is encoded in the
   six commits.
 
-At the final status check, the Wine MR was still open and mergeable. The same
-six-patch series had since been applied to
+Wine MR !11604 subsequently merged on 2026-08-10 at final head
+`663fd7cc`. That final head was not rebuilt or game-tested here. The same
+behavioral series tested here had already been applied to
 [Valve's Wine fork](https://github.com/ValveSoftware/wine/compare/c3007e6f2a36914cc55301eb5efd067707bf8bb1...99166a7e25b08ccef0168217540542260eaed76f),
 and the
 [Proton Bleeding Edge source branch](https://github.com/ValveSoftware/Proton/commit/d28e7f2c40da279452db93897c5b9c2c84356fac)
-pinned that Wine revision. The ordinary `experimental_11.0` and `proton_11.0`
-source branches were still pinned before the series. No separate runtime claim
-is made here for a Steam-distributed Bleeding Edge package.
+pinned that Wine revision during the investigation. No separate runtime claim
+is made here for the final Wine MR head or a Steam-distributed Bleeding Edge
+package.
 
 The report from `@bwRavencl` is useful independent terrain evidence but is not
 an empty-launch-options startup validation: that run retained
@@ -105,8 +108,10 @@ one sixteenth of the intended `256x256` destination area, was populated.
 
 ### Solution and validation
 
-Candidate `64ec55e7ab3d34012a74e5cbe8f096d4a199e272` converts the row length,
-image height, and extent through physical block counts only when:
+Historical review candidate `64ec55e7ab3d34012a74e5cbe8f096d4a199e272`
+introduced the narrowed conversion that later merged through PR #3202 as
+`731c4aae5991b33f2ddab45d3cb1b4779159bf4b`. It converts the row length, image
+height, and extent through physical block counts only when:
 
 1. source and destination physical elements have equal byte size; and
 2. their block width or height differs.
@@ -128,8 +133,10 @@ Validation includes:
 - `@bwRavencl` independently confirmed that the PR artifact repairs terrain on
   another system.
 
-The exact PR patch is
+The archived `64ec55e7` PR candidate patch is
 [`../patches/0009-vkd3d-Convert-buffer-image-copies-between-block-formats.patch`](../patches/0009-vkd3d-Convert-buffer-image-copies-between-block-formats.patch).
+The reviewed successor merged as `731c4aae`; this archive does not present
+patch `0009` as a byte-exact export of that final merge.
 
 Primary evidence:
 
@@ -139,12 +146,13 @@ Primary evidence:
 
 ### Evidence boundary
 
-The in-game D08 run used predecessor `cf11ba76`. Candidate `64ec55e7` adds a
+The in-game D08 run used predecessor `cf11ba76`. Candidate `64ec55e7` added a
 narrower predicate while leaving the selected IL-2 conversion and computed
 values unchanged. The focused and complete copy tests were rerun on
-`64ec55e7`; it was not separately packaged for another in-game run. The public
-corrupted and repaired terrain images come from different controlled runs and
-viewpoints and are representative, not a frame-matched A/B.
+`64ec55e7`; neither that candidate nor final merge `731c4aae` was separately
+packaged for another in-game run in this specific record. The public corrupted
+and repaired terrain images come from different controlled runs and viewpoints
+and are representative, not a frame-matched A/B.
 
 ## 3. Tiled-light allocator corruption
 
@@ -239,6 +247,7 @@ Primary evidence:
 - [`evidence-u01-upstream-candidate-ab.md`](evidence-u01-upstream-candidate-ab.md)
 - [VKD3D-Proton issue #3134 update](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5238151028)
 - [VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207)
+- [dxil-spirv PR #296](https://github.com/HansKristian-Work/dxil-spirv/pull/296)
 - [D50-D52 conclusion posted on PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5256360847)
 
 ### D49 compiler-aware, ABI-safe experiment
@@ -265,9 +274,11 @@ The retained test tool is
 `IL2-Korea-D49-CompilerAware-ABISafe-731c4aae`. Its source bases are
 VKD3D-Proton `731c4aae5991b33f2ddab45d3cb1b4779159bf4b` and dxil-spirv
 `edd8fdf702c3445eb659f2652d04436ed86e4206`.
-The current local dxil-spirv candidate is
-`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`; it has not been published. The
-dependent VKD3D-Proton integration has no final commit or gitlink identity yet.
+At the time of the D49 runtime test, the local dxil-spirv candidate was
+`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa` and the dependent VKD3D-Proton
+integration had no final commit or gitlink identity. Later revisions were
+published as dxil-spirv PR #296 and VKD3D-Proton PR #3207. Both PRs have since
+been closed unmerged as superseded by the D50-D52 result and the Mesa path.
 
 Validation includes:
 
@@ -343,9 +354,10 @@ through an `R16_UINT` view. It is a cleaner and more general compatibility
 location than either a game-specific VKD3D-Proton alias or compiler lowering.
 
 The D50 through D52 evidence agrees with that direction, but it is not a local
-runtime validation of the Mesa MR itself. The MR was still open at this status
+runtime validation of the Mesa MR itself. The MR remains open at this status
 date. Review and a clean test using unmodified VKD3D-Proton and dxil-spirv
-remain necessary before calling the upstream fix complete.
+remain necessary before calling the upstream fix complete. The superseded
+dxil-spirv PR #296 and VKD3D-Proton PR #3207 are closed and were not merged.
 
 ### Compatibility policy
 
@@ -373,13 +385,15 @@ implementation artifact.
 
 ## Repository role and remaining work
 
-The causal investigation is complete. Remaining work is to test and review
-Mesa MR !43672, obtain cross-hardware confirmation, and follow its eventual
-Mesa and Proton delivery. The dxil-spirv and VKD3D-Proton lighting drafts are
-superseded and should not be treated as mergeable final implementations. This
-repository remains open so that upstream results can be recorded without
-rewriting the original evidence.
+The causal investigation is complete. Wine MR !11604 and terrain PR #3202 are
+merged. The superseded dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed
+unmerged and remain available as historical review records. Remaining work is
+to validate Mesa MR !43672 with stock dxil-spirv and VKD3D-Proton, obtain
+cross-hardware confirmation, and follow its eventual Mesa and Proton delivery.
+This repository is the durable archive of the investigation, including the
+negative controls and superseded implementation attempts.
 
 For the complete chronology, negative controls, and invalid test attempts, see
-[`README.md`](README.md), [`experiment-matrix.md`](experiment-matrix.md), and
+the [repository overview](../README.md),
+[`experiment-matrix.md`](experiment-matrix.md), and
 [`findings.md`](findings.md).

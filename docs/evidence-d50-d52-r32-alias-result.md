@@ -24,7 +24,11 @@ which changes RADV's GFX10+ texel-buffer OOB selection from
 driver and pre-GFX10 behavior. Hans also reported that NVIDIA passes the test
 with a descriptor heap. The Mesa direction is therefore cleaner and more
 general than either the D49 dxil-spirv lowering or the D52 per-game alias. It
-is the agreed upstream direction while the Mesa MR is reviewed.
+is the preferred upstream direction while the Mesa MR is reviewed.
+
+The superseded implementation drafts, dxil-spirv PR #296 and VKD3D-Proton PR
+#3207, were closed unmerged. Mesa MR !43672 remains open, and this
+investigation has not game-tested its exact revision.
 
 ## D50: same buffer, same shader, view-format A/B
 
@@ -153,4 +157,5 @@ draft implementation was merged.
 Mesa MR !43672 has not yet been independently runtime-tested in this
 investigation. Acceptance of the architectural direction is therefore distinct
 from local validation of that exact Mesa commit. The decisive final check is
-unmodified VKD3D-Proton and dxil-spirv on a Mesa build containing the MR.
+unmodified VKD3D-Proton and dxil-spirv on a Mesa build containing the MR,
+followed by upstream review and normal Mesa/Proton delivery.

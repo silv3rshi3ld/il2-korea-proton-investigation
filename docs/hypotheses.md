@@ -12,7 +12,7 @@ IL-2 application override on its own.
 | N2 | Wine exposes a topology that Intel OpenMP's affinity discovery rejects. | `RelationNumaNode` already exposes a coherent node/group/mask; returning the same data through the missing API lets the exact runtime initialize. | Rejected for the observed one-node topology |
 | N3 | The game's shipped OpenMP runtime makes an unsupported Windows affinity query. | The exact `libiomp5md.dll` imports both NUMA functions and reports Intel OpenMP Error #179 when MaskEx is unimplemented. | Confirmed as trigger; the query itself is a documented Windows API use |
 | N4 | `KMP_AFFINITY=disabled` bypasses the defective affinity path and `OMP_NUM_THREADS=16` is incidental. | Isolated matrix: affinity-disabled alone succeeds; thread-count-only still fails. | Confirmed for OpenMP initialization |
-| N5 | Existing upstream Wine MR !11604 is sufficient when backported to Proton 11. | Exact six-commit D10 build passes the component probe and full Steam startup with launch options empty; the live game maps the patched modules and has no OpenMP/topology override. | Confirmed on the reporting host; cross-topology review remains |
+| N5 | Existing upstream Wine MR !11604 is sufficient when backported to Proton 11. | Exact six-commit D10 build passes the component probe and full Steam startup with launch options empty; the live game maps the patched modules and has no OpenMP/topology override. Wine merged the MR on 2026-08-10. | Confirmed on the reporting host and merged upstream; final rebased head and physical cross-topology runtime coverage were not separately tested here |
 
 The host itself has a simple one-node, 16-logical-CPU Linux topology. The
 candidate does not encode that layout: it queries Wine's existing
@@ -36,7 +36,7 @@ outside this focused API implementation.
 | G10 | Shader translation produces incorrect code for a menu/terrain shader. | Artifact is invariant under memory, queue, and descriptor controls; shader debug/hash points to a stable stage. | Shader replacement/bisection and minimal shader test. |
 | G11 | The game texture-provider path fails to resolve, decode, or create required Korea terrain inputs under Wine and substitutes its default white texture. | D07 fixes terrain while the same summer/common fallbacks remain in `tex.log`. | Excluded as the primary rectangular terrain cause; possible secondary missing content only. |
 | G12 | The thin baked-terrain border reinterpret geometry alone is the visible cause. | D05c adjusted 202/202 exact thin candidates with zero rejects and visuals remained unchanged. | Excluded as a border-only explanation. |
-| G13 | The same missing 1:4 block-unit conversion affects complete `64x64` terrain pages. | D07 finds 178 square `R32G32B32A32_UINT` footprints, converts them to `256x256` BC3 regions, and repairs terrain near 5,500 m; clean general-build D08 repeats the repair. | Confirmed causal for terrain; D08-tested predecessor `cf11ba76` is narrowed without changing the IL-2 branch in current PR commit `64ec55e7`. |
+| G13 | The same missing 1:4 block-unit conversion affects complete `64x64` terrain pages. | D07 finds 178 square `R32G32B32A32_UINT` footprints, converts them to `256x256` BC3 regions, and repairs terrain near 5,500 m; clean general-build D08 repeats the repair. | Confirmed causal for terrain; D08-tested predecessor `cf11ba76` was narrowed without changing the IL-2 branch, and the final revision merged through PR #3202 as `731c4aae`. |
 | G14 | The 2048x2048 baked-cache page is otherwise never populated, not made visible, or sampled through the wrong descriptor/page index. | D07 repairs terrain without changing descriptors, synchronization, or shader selection. | Excluded as the primary terrain mechanism. |
 | G15 | The menu shimmer is produced by the game's tiled variable-rate-shading path or VKD3D/RADV translation of it. | E05 removes `VK_KHR_fragment_shading_rate`, makes VKD3D advertise no D3D12 VRS support, and leaves the same moving squares visible. | Weakened: VRS is not required for the reproduced artifact; do not pursue without contradictory runtime evidence. |
 | G16 | A screen-space or temporal reflection resource contains stale or is sampled/interpreted incorrectly. | D12 records about 2,003 stable render/resolve cycles with explicit flag-zero transitions and stable shaders. D14 proves the correlated pixel shaders are tiled-light consumers as well as reflection-target writers. The artifact remains. | Simple named-target transition failure weakened; reflection alone is too broad. Follow the tiled-light inputs to these passes. |
@@ -76,9 +76,9 @@ originally promoted G12 because it connected the engine's named
 the exact border-only mapping without visual change. D06 exposed the
 interior-page geometry, and D07 confirmed G13 by adjusting every encountered
 interior and border copy and repairing the high-altitude terrain. D08 validates
-the general `cf11ba76` implementation without the diagnostic gate. Current PR
-commit `64ec55e7` preserves that conversion only for equal-byte formats whose
-block dimensions differ.
+the general `cf11ba76` implementation without the diagnostic gate. Historical
+review commit `64ec55e7` preserved that conversion only for equal-byte formats
+whose block dimensions differ, and the final revision merged as `731c4aae`.
 Package inspection independently confirms the engine's 800 m baked-page
 geometry; see `evidence-map-package-inspection.md`.
 

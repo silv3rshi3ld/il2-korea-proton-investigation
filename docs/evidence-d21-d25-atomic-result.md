@@ -6,7 +6,8 @@
 > compatibility translation. D44-D47 later identified that missing descriptor
 > half and established the allocator as the visual root cause. D50-D52 then
 > proved that an R32 texel-buffer view repairs the exact path without changing
-> dxil-spirv, and Mesa MR !43672 became the agreed upstream direction. See
+> dxil-spirv. The still-open Mesa MR !43672 became the preferred upstream
+> direction, but was not locally game-tested here. See
 > [`evidence-d45-correct-ssbo-binding-result.md`](evidence-d45-correct-ssbo-binding-result.md),
 > [`evidence-d47-allocator-only-wired-result.md`](evidence-d47-allocator-only-wired-result.md),
 > [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md),

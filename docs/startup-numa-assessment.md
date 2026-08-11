@@ -2,11 +2,20 @@
 
 Date: 2026-08-07
 
+> [!IMPORTANT]
+> Upstream status update, 2026-08-11: Wine MR !11604 merged on 2026-08-10
+> with final head `663fd7cc06f042c81fa299fe799376ab70c4cfa5`. The runtime
+> validation below covers earlier six-commit head
+> `e8319c0e6bfe7f94512218b48e3158e0c286b481` and Valve's equivalent
+> integration, not a separate run of the final rebased Wine head. The general
+> implementation is now upstream; availability in a standard Proton release
+> still depends on its Wine revision.
+
 ## Outcome
 
 On the reporting system, the startup failure has a focused Wine-level cause.
-The game's Intel OpenMP runtime calls `GetNumaNodeProcessorMaskEx`; current
-Proton 11 Wine leaves that function as an unconditional stub returning
+The game's Intel OpenMP runtime calls `GetNumaNodeProcessorMaskEx`; the tested
+Proton 11 Wine baseline leaves that function as an unconditional stub returning
 `ERROR_CALL_NOT_IMPLEMENTED`. Intel OpenMP treats that as a fatal affinity
 initialization failure and aborts with Error #179.
 
@@ -128,25 +137,27 @@ Microsoft documents MaskEx as returning a `GROUP_AFFINITY` for a NUMA node and
 notes that current systems return the node's primary group. Returning Wine's
 existing `GroupMask` matches that data model.
 
-## Where it should land
+## Upstream and Proton delivery
 
-The source fix is already proposed to Wine as MR !11604. It is a Win32 topology
-API implementation, not a VKD3D-Proton, DXVK, Mesa, game-mod, or Proton
-AppID-quirk change.
+The source fix merged into Wine through MR !11604. It is a Win32 topology API
+implementation, not a VKD3D-Proton, DXVK, Mesa, game-mod, or Proton AppID-quirk
+change.
 
-For development and game validation, the appropriate base is Valve's current
-`proton_11.0` branch because issue #9906 reproduces there and the installed
-Proton Experimental tool uses that family. A complete custom compatibility
-tool should contain the Wine change and otherwise track the official branch.
-Proton Experimental or Bleeding Edge is the normal public validation channel;
-a Proton Hotfix release is a Valve prioritization decision, not a separate
-implementation target. After Wine review, Valve can pick the commit into its
-Wine fork and numbered Proton releases can inherit it.
+For the 2026-08-07 development and game validation, the appropriate base was
+Valve's then-current `proton_11.0` branch because issue #9906 reproduced there
+and the installed Proton Experimental tool used that family. The complete
+custom compatibility tool contained the Wine change and otherwise tracked the
+official branch. Proton Experimental or Bleeding Edge was the normal public
+validation channel; a Proton Hotfix release remained a Valve prioritization
+decision, not a separate implementation target. Valve's Wine fork and the
+Proton Bleeding Edge source branch already carried the equivalent six-commit
+series before the upstream merge. Numbered Proton releases can inherit the
+final upstream work when their Wine revision advances.
 
-## Remaining validation gates
+## Remaining delivery and validation gates
 
-- Follow MR !11604 through Wine review and any CI reruns; its current head
-  pipeline is successful.
+- Verify a published Proton build containing the final upstream revision or
+  Valve's equivalent series with an empty launch-options field.
 - Repeat the full-game no-options launch if startup repeatability is needed;
   complete D09 and exact-upstream D10 runs passed on the reporting host.
 - Run the API/OpenMP probe on different logical-processor counts and CPU

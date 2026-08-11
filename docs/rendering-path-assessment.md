@@ -44,9 +44,10 @@ therefore reflected how much of the under-populated baked cache was visible,
 not a separate mip-residency failure.
 
 The menu aircraft shows rectangular corruption in both D07-r2 and clean D08
-while the terrain remains repaired. The user also confirms that menu
-shimmering persists. The menu effect is therefore a separate open symptom,
-not another manifestation fixed by the baked-terrain copy conversion.
+while the terrain remains repaired. The user also confirmed that menu
+shimmering persisted. This established a separate symptom, not another
+manifestation fixed by the baked-terrain copy conversion. D50 through D52
+later isolated that separate track at the texel-buffer view boundary.
 
 ## Proven exclusions and weakened explanations
 
@@ -85,15 +86,15 @@ The D02 no-incoming-copy SRV class is relevant but not yet identified as the
 visible terrain. An SRV creation event does not prove that a draw bound or
 sampled it, and a later copy after telemetry suppression cannot be excluded.
 
-## Next discriminator
+## Historical next discriminator
 
 D08 validates the general block-compatible buffer-to-image conversion at
-predecessor commit `cf11ba76` without the D07 gate. Current PR commit
-`64ec55e7` narrows activation while preserving the selected IL-2 conversion.
-The terrain track no longer needs more
-configuration-flag testing. The next graphics discriminator should be focused
-instrumentation of resources, descriptors, passes, and synchronization used by
-the menu aircraft/shadow effect while it visibly shimmers.
+predecessor commit `cf11ba76` without the D07 gate. Historical review commit
+`64ec55e7` narrowed activation while preserving the selected IL-2 conversion;
+the final revision merged through PR #3202 as `731c4aae`. The terrain track no
+longer needs more configuration-flag testing. The subsequent lighting work is
+preserved in [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md),
+which supersedes the earlier open-ended discriminator described here.
 
 No game-specific application override is justified because the failing
 behavior is in the general buffer-image conversion helper.

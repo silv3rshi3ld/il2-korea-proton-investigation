@@ -55,13 +55,13 @@ destination texels.
 
 ## Screenshots
 
-The local evidence copies are intentionally ignored by Git until a small,
-reviewed public bundle is prepared:
+The two reviewed D07-r1 captures below are published under
+[`captures/curated/d07-page-copy/`](../captures/curated/d07-page-copy/):
 
 | File | Altitude | SHA-256 |
 |---|---:|---|
-| `D07-r1-terrain-repaired-forward-view-5491m.png` | 5,491 m | `657b9fd35f094441d7c5f28a266adc41d5cb4580c8b909607aeea5f3330e2202` |
-| `D07-r1-terrain-repaired-right-view-5501m.png` | 5,501 m | `65b7ea14fdbaf6d3249eb42c022d487a119742d9539835a7dffc0bb6d63aaaa3` |
+| [`D07-r1-terrain-repaired-forward-view-5491m.png`](../captures/curated/d07-page-copy/D07-r1-terrain-repaired-forward-view-5491m.png) | 5,491 m | `657b9fd35f094441d7c5f28a266adc41d5cb4580c8b909607aeea5f3330e2202` |
+| [`D07-r1-terrain-repaired-right-view-5501m.png`](../captures/curated/d07-page-copy/D07-r1-terrain-repaired-right-view-5501m.png) | 5,501 m | `65b7ea14fdbaf6d3249eb42c022d487a119742d9539835a7dffc0bb6d63aaaa3` |
 
 ## Repeat run
 
@@ -74,8 +74,8 @@ inconclusive because FSR may be enabled.
 
 | File | Classification | SHA-256 |
 |---|---|---|
-| `D07-r2-terrain-repaired-cockpit-5483m.png` | terrain fixed at 5,483 m | `07b8cc0f4940314391c6f4e2e8366fa5dade8aafe9b9c6120f99078864eb002d` |
-| `D07-r2-menu-aircraft-blocks-shimmering-persists.png` | menu unchanged | `27682dee6c3eb14d367f041421e9d8d2a2f2efff79f3ce63f7bfcf6c8d9517b7` |
+| `D07-r2-terrain-repaired-cockpit-5483m.png` (local evidence, not published) | terrain fixed at 5,483 m | `07b8cc0f4940314391c6f4e2e8366fa5dade8aafe9b9c6120f99078864eb002d` |
+| [`D07-r2-menu-aircraft-blocks-shimmering-persists.png`](../captures/curated/d07-page-copy/D07-r2-menu-aircraft-blocks-shimmering-persists.png) | menu unchanged | `27682dee6c3eb14d367f041421e9d8d2a2f2efff79f3ce63f7bfcf6c8d9517b7` |
 
 The D07-r2 raw log was accidentally written to the D07-r1 short path. It was
 moved intact and collected under `captures/runs/D07-page-copy-r2`; the original

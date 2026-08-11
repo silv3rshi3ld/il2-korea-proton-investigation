@@ -4,17 +4,19 @@ Date: 2026-08-07
 
 ## Post-validation upstream status
 
-At the final repository check on 2026-08-10, Wine MR !11604 remained open and
-mergeable. Its six commits had also been applied to
+Wine MR !11604 merged on 2026-08-10 at final head
+`663fd7cc`. The controlled tests in this document cover the earlier
+`e8319c0e` six-patch revision and Valve's equivalent integrated series, not the
+final merge-request head. Before the merge, the tested series had also been
+applied to
 [Valve's Wine fork](https://github.com/ValveSoftware/wine/compare/c3007e6f2a36914cc55301eb5efd067707bf8bb1...99166a7e25b08ccef0168217540542260eaed76f).
 The
 [Proton Bleeding Edge source branch](https://github.com/ValveSoftware/Proton/commit/d28e7f2c40da279452db93897c5b9c2c84356fac)
 then pinned Wine revision `99166a7e25b08ccef0168217540542260eaed76f`.
 
-The standard `experimental_11.0` and `proton_11.0` source branches were still
-pinned before this series at that check. This section records source
-integration status only; the runtime results below remain the controlled test
-of the exact MR series in the custom D10 Proton tool.
+This section records source integration status only. The runtime results below
+remain the controlled test of the earlier MR revision in the custom D10 Proton
+tool. They must not be relabeled as a test of final head `663fd7cc`.
 
 ## Question
 
@@ -25,15 +27,15 @@ a hard-coded processor count, or Steam launch parameters?
 
 ## Source and packaging
 
-The tested merge-request head is
+The tested merge-request revision is
 `e8319c0e6bfe7f94512218b48e3158e0c286b481`. Its six commits implement
 `SystemNumaProcessorMap` in ntdll and the associated kernelbase/kernel32 NUMA
 APIs. The series was applied without conflicts to Valve's Proton 11 Wine commit
 `81d78e4f3ea8ce868d775021fdc9f90122dc1a6b`.
 
-At the final status check on 2026-08-07, the Wine merge request is open,
-non-draft, conflict-free and marked mergeable. Its head pipeline 72369 is
-successful. It is not merged or maintainer-approved yet.
+At the historical status check on 2026-08-07, the Wine merge request was open,
+non-draft, conflict-free and marked mergeable. Its then-current pipeline 72369
+was successful. The MR later merged on 2026-08-10 at final head `663fd7cc`.
 
 The isolated Steam compatibility tool is
 `IL2-Korea-D10-WineMR11604-Proton11`. It retains D08's previously validated

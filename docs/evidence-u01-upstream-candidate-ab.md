@@ -5,8 +5,9 @@
 > removed the blocks and broad flicker while preserving real lighting. The
 > implementation architecture was later superseded after maintainer review.
 > D49 tested the subsequent paired dxil-spirv design, but D50-D52 later showed
-> that compiler lowering is unnecessary. The agreed upstream direction is now
-> Mesa MR !43672; see
+> that compiler lowering is unnecessary. The preferred upstream direction is
+> now Mesa MR !43672. dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed
+> unmerged as superseded; see
 > [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).
 > This evidence file remains at its original path so existing references and
 > image provenance stay stable.
@@ -112,4 +113,5 @@ with an R32 view, and the VKD3D-Proton-only D52 alias preserves the existing
 `R32ui` texel-buffer atomic while removing the blocks in two runs. Maintainer
 reproduction then produced Mesa MR !43672, which matches RADV's texel-buffer
 OOB behavior to native AMD D3D12 and pre-GFX10 hardware. That Mesa change, not
-the U01, D49, or D52 implementation, is the agreed upstream direction.
+the U01, D49, or D52 implementation, is the preferred upstream direction. Mesa MR
+!43672 remains open and its exact revision has not been locally game-tested.

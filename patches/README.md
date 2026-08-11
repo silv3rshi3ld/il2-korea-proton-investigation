@@ -2,11 +2,11 @@
 
 The separate Wine startup work is documented in
 [`wine/README.md`](wine/README.md). The local one-patch draft is superseded for
-testing/submission by upstream Wine MR !11604, whose exact series has now been
+testing/submission by upstream Wine MR !11604, whose six-commit behavior was
 validated through Proton. This NUMA work is unrelated to the VKD3D-Proton
-graphics series below. At the final 2026-08-10 status check, the same six
-commits were present in Valve's Wine fork and the Proton Bleeding Edge source
-branch, while the Wine MR itself remained open.
+graphics series below. Wine merged MR !11604 on 2026-08-10 at final rebased
+head `663fd7cc`. The investigation validated the earlier `e8319c0e` MR head and
+Valve's equivalent series, not the final rebased head.
 
 D07 demonstrates the terrain root cause: its complete page-family conversion
 adjusted 522/522 copies with zero rejects and repaired terrain near 5,500 m.
@@ -108,7 +108,8 @@ the original lighting and depth predicates: the blocks and broad flicker are
 gone while real lighting and shadows remain. The patch SHA-256 is
 `4d43ac526b47d07b9694633de42cacc284e961d9fc84050df5d166c650a7216a`.
 It was published in
-[VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207).
+[VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207),
+which was later closed unmerged as superseded.
 Maintainer review correctly identified that dxil-spirv cannot generally treat
 a texel buffer as an SSBO solely because VKD3D-Proton selects a different
 descriptor. The patch remains valid causal and single-system runtime evidence,
@@ -154,9 +155,12 @@ the large blocks nor broad flicker. This validation is currently limited to
 the investigation system and is not a cross-vendor claim.
 
 The historical local dxil-spirv candidate commit is
-`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`. It is not published. The
-dependent VKD3D-Proton integration remained local. D50 through D52 later
-showed that this compiler dependency is unnecessary.
+`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`. The compiler direction was
+published for review through
+[dxil-spirv PR #296](https://github.com/HansKristian-Work/dxil-spirv/pull/296),
+with its VKD3D-Proton integration discussed through PR #3207. Both PRs were
+closed unmerged as superseded after D50 through D52 showed that this compiler
+dependency is unnecessary.
 
 | Architecture | File | D49 SHA-256 |
 | --- | --- | --- |
@@ -191,14 +195,20 @@ is the cleaner and more general direction: it aligns RADV's out-of-bounds
 component selection with native AMD D3D12 and pre-GFX10 behavior. NVIDIA
 already passes the relevant descriptor-heap test. This investigation agrees
 with resolving the behavior there rather than carrying a per-game alias or the
-earlier dxil-spirv lowering. The Mesa change still needs review and an otherwise
-unmodified-stack runtime validation.
+earlier dxil-spirv lowering. Mesa MR !43672 remains open, and the investigation
+did not perform an otherwise unmodified-stack game test of that change.
 
 `0017-vkd3d-proton-Add-diagnostic-R32-texel-alias-for-IL2.patch` preserves the
 reviewed D52 source diff for reproducibility. It is explicitly a diagnostic
 artifact, not an upstream candidate. No D52 binary is published. See
 [`../docs/evidence-d50-d52-r32-alias-result.md`](../docs/evidence-d50-d52-r32-alias-result.md)
 for the canonical evidence and scope limits.
+
+The patch series is now archival. `0009` records historical terrain candidate
+`64ec55e7`; the reviewed successor merged as `731c4aae`. `0016`, the D49 build
+details, and `0017` record the lighting investigation's successive diagnostic
+steps. They are preserved to explain the result, not as a combined Proton
+patch set or as a recommendation to reopen the closed lighting PRs.
 
 ## Why the terrain candidate has no application override
 

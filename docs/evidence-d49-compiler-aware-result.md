@@ -3,8 +3,10 @@
 > [!IMPORTANT]
 > Historical implementation result. D49's visual result remains valid, but
 > D50-D52 later proved that changing dxil-spirv's atomic lowering is not
-> required. The paired D49 design is superseded by the agreed Mesa MR !43672
-> direction. See
+> required. The paired D49 design is superseded by the preferred direction in
+> the still-open Mesa MR !43672, which was not locally game-tested here. The
+> later dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed unmerged as
+> superseded. See
 > [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).
 
 ## Purpose
@@ -19,11 +21,12 @@ The source bases are:
 - VKD3D-Proton: `731c4aae5991b33f2ddab45d3cb1b4779159bf4b`;
 - dxil-spirv: `edd8fdf702c3445eb659f2652d04436ed86e4206`.
 
-These identify the bases used for the D49 build. The current local dxil-spirv
-candidate is commit
-`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`. It is not published or upstream,
-and the dependent VKD3D-Proton integration deliberately has no final commit or
-gitlink identity yet.
+These identify the bases used for the D49 build. At test time, the local
+dxil-spirv candidate was commit
+`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`, and the dependent VKD3D-Proton
+integration deliberately had no final commit or gitlink identity. Later
+revisions were published as dxil-spirv PR #296 and VKD3D-Proton PR #3207.
+Both were closed unmerged after D50-D52 superseded this design.
 
 ## ABI-safe compiler and backend contract
 
@@ -140,5 +143,7 @@ which changes RADV's GFX10+ texel-buffer OOB selection to match native AMD
 D3D12 and pre-GFX10 behavior. NVIDIA also passes the maintainer's test with a
 descriptor heap. That driver-level behavior is cleaner and more general than
 either D49 or the per-game D52 alias. D49 remains historical validation and
-should not be described as merge-ready or current. Neither draft detour was
-merged, so no lasting upstream change resulted.
+should not be described as merge-ready or current. dxil-spirv PR #296 and
+VKD3D-Proton PR #3207 are closed, neither was merged, and no lasting upstream
+change resulted. Mesa MR !43672 remains open and is the preferred upstream
+path. Its exact revision has not been locally game-tested.

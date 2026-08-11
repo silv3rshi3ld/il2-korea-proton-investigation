@@ -26,9 +26,9 @@ treated as a first-launch or cold-cache anomaly.
 
 ## Screenshot provenance
 
-Curated copies are stored under `captures/curated/e00-baseline/` with descriptive
-names. That directory is intentionally ignored by Git to avoid adding large
-binary captures to repository history. Each image is 2560x1080.
+Curated copies are stored under `captures/curated/e00-baseline/` with
+descriptive names. Three reviewed selections are published and linked below;
+the other three remain ignored local evidence. Each image is 2560x1080.
 
 | Run | Curated file | SHA-256 | Evidence |
 |---|---|---|---|

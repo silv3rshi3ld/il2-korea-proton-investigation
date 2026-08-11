@@ -63,29 +63,30 @@ impact boundary and narrower fallback order are documented in
 ## Later PR scope refinement
 
 D08 remains the exact runtime record for predecessor `cf11ba76`. Before formal
-review, current PR commit `64ec55e7` restricted the conversion to equal-sized
-physical elements with different block dimensions. Same-geometry copies now
-use the original path. IL-2's 16-byte 1x1 RGBA32 element to 16-byte 4x4 BC3
-block still selects the same conversion, whose calculations are unchanged.
-The focused and full copy tests were rerun against the amended commit. See
+review, historical PR candidate `64ec55e7` restricted the conversion to
+equal-sized physical elements with different block dimensions. Same-geometry
+copies use the original path. IL-2's 16-byte 1x1 RGBA32 element to 16-byte 4x4
+BC3 block still selects the same conversion, whose calculations are unchanged.
+The focused and full copy tests were rerun against that amended candidate. The
+final change later merged through PR #3202 as `731c4aae`. See
 [`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md).
 
 ## Screenshots
 
-The local evidence copies remain ignored by Git until the user selects what to
-publish:
+All four reviewed D08 evidence copies are published under
+[`captures/curated/d08-general-fix/`](../captures/curated/d08-general-fix/):
 
 | File | Observation | SHA-256 |
 |---|---|---|
-| `D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png` | menu defect unchanged | `b48424b508b1a481d305fbc74a73b01cc63794d8c9d0f75ee588541b9b345c32` |
-| `D08-r1-terrain-repaired-cockpit-4813m.png` | distant terrain fixed at 4,813 m | `4f2c221c7b3bfb9bc25b69beca3ae0446dd67024743e870f1c53f9537207a789` |
-| `D08-r1-terrain-repaired-dive-2427m.png` | terrain fixed at 2,427 m | `78217f416f0262903f8c5aa1e22ea74c529d0b6212fd6a13e830f9e0c05fcbf1` |
-| `D08-r1-terrain-repaired-low-altitude-742m.png` | terrain fixed at 742 m | `2c0b1e25bd394c192ba9b33e7e387ae7d521afcf0386ee629fda5d4a7d711900` |
+| [`D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png`](../captures/curated/d08-general-fix/D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png) | menu defect unchanged | `b48424b508b1a481d305fbc74a73b01cc63794d8c9d0f75ee588541b9b345c32` |
+| [`D08-r1-terrain-repaired-cockpit-4813m.png`](../captures/curated/d08-general-fix/D08-r1-terrain-repaired-cockpit-4813m.png) | distant terrain fixed at 4,813 m | `4f2c221c7b3bfb9bc25b69beca3ae0446dd67024743e870f1c53f9537207a789` |
+| [`D08-r1-terrain-repaired-dive-2427m.png`](../captures/curated/d08-general-fix/D08-r1-terrain-repaired-dive-2427m.png) | terrain fixed at 2,427 m | `78217f416f0262903f8c5aa1e22ea74c529d0b6212fd6a13e830f9e0c05fcbf1` |
+| [`D08-r1-terrain-repaired-low-altitude-742m.png`](../captures/curated/d08-general-fix/D08-r1-terrain-repaired-low-altitude-742m.png) | terrain fixed at 742 m | `2c0b1e25bd394c192ba9b33e7e387ae7d521afcf0386ee629fda5d4a7d711900` |
 
-The 742 m capture is the single reviewed public copy at
-[`docs/images/terrain-repaired-d08-742m.png`](images/terrain-repaired-d08-742m.png).
-The other captures remain ignored local evidence.
+The 742 m capture is also retained at
+[`docs/images/terrain-repaired-d08-742m.png`](images/terrain-repaired-d08-742m.png)
+for use in the repository overview.
 
-The collected run is retained locally under
-`captures/runs/D08-general-fix-r1/`. The remaining local captures and full logs
-are not part of the public repository.
+The collected raw run is retained locally under
+`captures/runs/D08-general-fix-r1/`; its full logs are not part of the public
+repository.

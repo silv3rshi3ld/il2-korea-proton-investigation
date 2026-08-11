@@ -422,9 +422,9 @@ mitigation and Proton logging. Runtime build identity is `cf11ba76`, no
 [`evidence-d08-result.md`](evidence-d08-result.md). Rollback remains selecting
 Proton Experimental or the retained D07 tool.
 
-## PR scope refinement
+## Historical PR scope refinement
 
-Current upstream candidate `64ec55e7` adds a second activation requirement:
+Candidate `64ec55e7` added a second activation requirement:
 the equal-sized physical elements must also use different block dimensions.
 Same-block-geometry copies therefore execute the original helper code exactly.
 The IL-2 `R32G32B32A32_UINT` 1x1 to BC3 4x4 case still executes the same
@@ -436,13 +436,16 @@ with zero failures. The D08 DLL hashes above remain historical identities for
 the `cf11ba76` runtime build and are not relabeled as `64ec55e7` artifacts. See
 [`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md).
 
+Its reviewed successor later merged through VKD3D-Proton PR #3202 as upstream
+commit `731c4aae`.
+
 ## D49 compiler-aware ABI-safe lighting candidate
 
 > [!IMPORTANT]
 > Historical implementation record. D50-D52 later proved that the existing
 > texel-buffer lowering works when the exact resource is bound through an
 > `R32_UINT` view. D49 is therefore superseded as an upstream design. The
-> agreed direction is Mesa MR !43672, not a dxil-spirv change or a per-game
+> preferred direction is Mesa MR !43672, not a dxil-spirv change or a per-game
 > VKD3D-Proton alias. See
 > [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).
 
@@ -464,10 +467,11 @@ Its component bases are:
 | VKD3D-Proton | `731c4aae5991b33f2ddab45d3cb1b4779159bf4b` |
 | dxil-spirv | `edd8fdf702c3445eb659f2652d04436ed86e4206` |
 
-The tested source is now represented by local dxil-spirv candidate commit
-`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`. It has not been pushed. The
-VKD3D-Proton integration remains an uncommitted dependent working change until
-the dxil-spirv dependency has an upstream-reachable identity.
+At test time, the source was represented by local dxil-spirv candidate commit
+`afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`, and the VKD3D-Proton integration
+remained an uncommitted dependent working change. Later revisions were
+published as dxil-spirv PR #296 and VKD3D-Proton PR #3207. Both PRs were
+subsequently closed unmerged as superseded by D50-D52 and the Mesa path.
 
 ### Component boundary
 
@@ -517,15 +521,10 @@ Fine sandy or film-grain lighting remains visible and is excluded because the
 same effect is present on native Windows. The D49 runtime result covers the
 reporting host only and must not be presented as cross-hardware validation.
 
-The published head of VKD3D-Proton PR #3207 still contains the superseded
-first implementation. It should be converted to a dependent draft before its
-next update and cannot become a mergeable final form until the generic
-dxil-spirv change is reviewed and available through an upstream-reachable
-commit.
-
-Status update: PR #3207 was subsequently converted to draft and updated to the
-paired D49 design. Maintainer reproduction and D50-D52 then superseded that
-design before either draft was merged.
+Historical status: VKD3D-Proton PR #3207 was converted to draft and updated to
+the paired D49 design. Maintainer reproduction and D50-D52 then superseded that
+design. dxil-spirv PR #296 and VKD3D-Proton PR #3207 were both closed without
+merging.
 
 ## D50-D52 R32 texel-buffer alias discriminator
 
@@ -577,5 +576,7 @@ PR #3202.
 D52 is not a release or merge candidate. It proved that descriptor/view
 behavior, rather than compiler lowering, is the decisive boundary. Mesa MR
 !43672 changes RADV's GFX10+ texel-buffer OOB selection to match native AMD
-D3D12 and pre-GFX10 behavior and is the agreed upstream direction. This
-investigation has not yet runtime-tested that exact Mesa commit.
+D3D12 and pre-GFX10 behavior and is the preferred upstream direction. This
+investigation has not yet runtime-tested that exact Mesa commit. The MR remains
+open. Remaining work is to test an accepted Mesa revision with stock
+dxil-spirv and VKD3D-Proton and follow its normal Mesa/Proton delivery.

@@ -1,9 +1,18 @@
 # External evidence: VKD3D-Proton issue #3134
 
+> [!IMPORTANT]
+> Final status update, 2026-08-11: the terrain defect was fixed by merged
+> VKD3D-Proton PR #3202. Later D50-D52 work isolated the separate lighting
+> blocks to RADV texel-buffer view behavior, and Mesa MR !43672 is the preferred
+> upstream direction. The local dxil-spirv and VKD3D-Proton lighting PRs were
+> closed without merging. The original external artifact analysis below is
+> preserved as the investigation starting point.
+
 [VKD3D-Proton issue #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134),
 “IL-2 Korea - Textures not loading in-game,” is the closest known public
-report. It was opened on 2026-06-29 and remains open with no maintainer comments
-as of 2026-08-06. It directly reports the same menu squares and absent ground
+report. It was opened on 2026-06-29 and remained open with no maintainer
+comments at the original 2026-08-06 evidence snapshot. It directly reports the
+same menu squares and absent ground
 textures; it is not merely an analogous defect from another game.
 
 ## Artifact handling
@@ -76,10 +85,11 @@ The warning volume shows heavy use of split barriers, but does not establish
 that VKD3D omits them. Correlation with a resource, queue, or visible failure is
 still required.
 
-## Consequences for this investigation
+## Historical consequences for this investigation
 
 1. Treat issue #3134 as the direct external report and update it with controlled
-   results instead of opening a duplicate issue.
+   results instead of opening a duplicate issue. This was followed during the
+   investigation.
 2. Preserve E01 (`no_upload_hvv`), E02 (`single_queue`), and, if testing
    resumes, E03 (descriptor buffer disabled) as separate tests. The issue log
    exercised all three normal paths together and therefore cannot isolate one.

@@ -5,25 +5,39 @@ to reach it. Start with the final material below. Preparation notes, failed
 experiments, and superseded interpretations remain available because they
 document control quality and prevent accidental repetition.
 
+## Archive state
+
+The active investigation is concluded. Wine MR !11604 merged on 2026-08-10,
+and the terrain correction merged through VKD3D-Proton PR #3202. The
+dxil-spirv #296 and VKD3D-Proton #3207 lighting PRs were closed unmerged after
+D50 through D52 isolated the behavior at the RADV descriptor/view boundary.
+Mesa MR !43672 is the preferred general direction and remains open, but this
+archive does not contain a local game test of that Mesa change.
+
+The Wine evidence covers the earlier MR head `e8319c0e` and Valve's equivalent
+series. The final rebased Wine head `663fd7cc` was not rerun here. These scope
+distinctions are intentional and apply throughout the archive.
+
 ## Final conclusions
 
 - [`final-report.md`](final-report.md): final technical report for all three
   compatibility tracks
 - [`final-release-notes.md`](final-release-notes.md): reviewed description for
-  the final evidence snapshot
+  the concluded evidence archive
 - [`evidence-n05-wine-mr-11604.md`](evidence-n05-wine-mr-11604.md): exact Wine
-  NUMA series and empty-launch-options Steam validation
+  NUMA series and empty-launch-options Steam validation of the tested pre-merge
+  head
 - [`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md): final
   terrain PR scope, regression results, and evidence boundary
 - [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md):
   current R16-versus-R32 descriptor-boundary proof, VKD3D-Proton-only D52
-  discriminator, and disposition in favor of Mesa MR !43672
+  discriminator, and disposition in favor of the still-open Mesa MR !43672
 - [`evidence-d49-compiler-aware-result.md`](evidence-d49-compiler-aware-result.md):
   superseded paired dxil-spirv and VKD3D-Proton lighting experiment
 - [`evidence-u01-upstream-candidate-ab.md`](evidence-u01-upstream-candidate-ab.md):
   historical matched lighting A/B for the superseded first implementation
-- [`../patches/README.md`](../patches/README.md): final and diagnostic patch
-  identities
+- [`../patches/README.md`](../patches/README.md): historical
+  upstream-submission and diagnostic patch identities
 
 ## Startup and processor topology
 
@@ -137,7 +151,8 @@ instructions:
 - [`shimmering-ownership-plan.md`](shimmering-ownership-plan.md): lighting
   ownership and initial publication plan; PR #3207 later received architectural
   feedback, D49 explored a paired implementation, and D50 through D52 isolated
-  the driver boundary more precisely
+  the driver boundary more precisely. The experimental PRs were subsequently
+  closed unmerged
 
 All other `evidence-*-preparation.md` and `evidence-*-result.md` files form the
 full dated experiment trail. Their exact order and validity classification are

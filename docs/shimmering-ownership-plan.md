@@ -9,8 +9,9 @@ Date: 2026-08-10
 > [VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207).
 > That direct implementation and the later D49 two-repository design are now
 > historical evidence. D50-D52 isolated the texel-buffer view/OOB behavior
-> without changing dxil-spirv. Mesa MR !43672 is the agreed upstream direction,
-> and PR #3207 remains a non-mergeable draft. See
+> without changing dxil-spirv. dxil-spirv PR #296 and VKD3D-Proton PR #3207
+> were closed unmerged as superseded. Mesa MR !43672 remains open and is the
+> preferred upstream direction. See
 > [`final-report.md`](final-report.md) for the current combined status.
 
 ## Final technical conclusion
@@ -30,11 +31,11 @@ Three consecutive affected frames prove the visible mechanism:
 This produces stable screen-tile boundaries with unstable light membership,
 which explains both the square blocks and their broad flicker.
 
-## Minimal compatibility fix
+## Historical minimal compatibility fix
 
 VKD3D-Proton already emits a raw storage-buffer descriptor sibling for the D3D
-descriptor. For executable `IL2Series.exe` and exact shader hash
-`7cefa1bc80bb4c70`, the fix must do both:
+descriptor. D47 showed that, for executable `IL2Series.exe` and exact shader
+hash `7cefa1bc80bb4c70`, its successful diagnostic route had to do both:
 
 1. lower the typed UAV access as an SSBO operation;
 2. select `VKD3D_SHADER_BINDING_FLAG_RAW_SSBO` so that operation addresses the
@@ -51,7 +52,7 @@ clean with the original depth predicates, lighting, and shadows.
 Therefore the depth-gate bypass is not part of the final fix. It only hid how
 the malformed light list was presented.
 
-## D49 implementation refinement
+## Historical D49 implementation refinement
 
 D47 proves the minimal behavior that must change, but `9b6e15be` and patch
 `0016` no longer represent the intended upstream implementation. D49 places
@@ -88,10 +89,10 @@ native-driver allowances for shipped games. This case meets that bar:
 - the correctly wired game integration repairs the actual pixels;
 - the behavior is scoped to one executable and one shader hash.
 
-The practical compatibility policy remains owned by VKD3D-Proton as a
-surgical application and shader selection. The reusable lowering mechanism
-belongs in dxil-spirv. This is not a Mesa workaround, Proton launch parameter,
-game mod, or custom lighting engine.
+At the D49 stage, the practical compatibility policy was assigned to
+VKD3D-Proton as a surgical application and shader selection, while the
+reusable lowering mechanism belonged in dxil-spirv. That design was not a
+Proton launch parameter, game mod, or custom lighting engine.
 
 That paragraph records the D49 ownership decision before maintainer
 reproduction. D50-D52 and Mesa MR !43672 supersede it. The exact shader works
@@ -105,14 +106,14 @@ per-game VKD3D-Proton quirk if MR !43672 is accepted.
 
 | Track | Mechanism | Upstream path |
 | --- | --- | --- |
-| Startup without parameters | Wine lacked `GetNumaNodeProcessorMaskEx`; the shipped Intel OpenMP runtime aborts | Existing Wine MR !11604; validated locally without a hard-coded thread count |
-| Distant terrain pages | Buffer-to-BC3 copy geometry used source texel units instead of destination block geometry | Existing VKD3D-Proton PR #3202 |
-| Square blocks and broad light flicker | Game uses a 32-bit atomic through an `R16_UINT` view; RADV GFX10+ OOB selection exposes a malformed tiled-light allocation | Mesa MR !43672; retain VKD3D-Proton PR #3207 only as draft investigation evidence |
+| Startup without parameters | Wine lacked `GetNumaNodeProcessorMaskEx`; the shipped Intel OpenMP runtime aborts | Wine MR !11604 merged on 2026-08-10. The earlier `e8319c0e` series, not final head `663fd7cc`, was tested locally without a hard-coded thread count |
+| Distant terrain pages | Buffer-to-BC3 copy geometry used source texel units instead of destination block geometry | VKD3D-Proton PR #3202 merged as commit `731c4aae` |
+| Square blocks and broad light flicker | Game uses a 32-bit atomic through an `R16_UINT` view; RADV GFX10+ OOB selection exposes a malformed tiled-light allocation | Mesa MR !43672 remains open and preferred. dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed unmerged as superseded |
 
 The fine sandy or film-grain lighting is present on native Windows and is not a
 Proton defect.
 
-## Publication sequence
+## Historical D47 publication sequence
 
 1. Keep terrain PR #3202 separate and allow its review to proceed.
 2. Add one concise follow-up to existing VKD3D-Proton issue #3134, whose
@@ -126,10 +127,10 @@ Proton defect.
 6. After the PR exists, prepare short updates for Proton #9906, the original
    affected users, and this investigation repository.
 
-## Current two-repository publication sequence
+## Historical D49 two-repository publication sequence
 
-The preceding sequence records how the D47 result reached PR #3207. D49 now
-requires this order:
+The preceding sequence records how the D47 result reached PR #3207. At that
+point, D49 required this order:
 
 1. Submit the generic compiler mechanism and its shader/reference tests to
    dxil-spirv as a draft PR.
@@ -160,9 +161,9 @@ It must not contain:
   workaround;
 - captured shaders or RenderDoc files.
 
-The issue-comment and PR drafts live locally for review.
+The resulting PR discussion remains available as historical review evidence.
 
-## D49 upstream scope gate
+## Historical D49 upstream scope gate
 
 The dxil-spirv change may contain the additive quirk, generic typed-atomic
 analysis and lowering, safe remapper fallback, and focused positive and
@@ -201,10 +202,10 @@ a descriptor heap.
 
 The current sequence is therefore:
 
-1. Keep dxil-spirv PR #296 and VKD3D-Proton PR #3207 as drafts or close them as
-   superseded after maintainer guidance. Do not present either as merge-ready.
-2. Follow Mesa MR !43672 review and test its accepted revision locally with
-   unmodified dxil-spirv and VKD3D-Proton.
+1. dxil-spirv PR #296 and VKD3D-Proton PR #3207 are closed unmerged as
+   superseded. Preserve their discussions as historical evidence.
+2. Follow the still-open Mesa MR !43672 and test its accepted revision locally
+   with unmodified dxil-spirv and VKD3D-Proton.
 3. If that clean control passes, update the existing reports with the result.
    Do not open another VKD3D-Proton graphics PR.
 

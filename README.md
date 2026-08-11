@@ -1,12 +1,15 @@
 # IL-2 Korea Proton compatibility investigation
 
-This repository contains the reproducible evidence behind three independent
-compatibility findings for **Korea. IL-2 Series** (Steam AppID 247970): startup
-through Wine, terrain uploads through VKD3D-Proton, and tiled-light allocation
-at the D3D12-to-Vulkan driver boundary.
+This repository is the concluded public record of three independent
+compatibility investigations for **Korea. IL-2 Series** (Steam AppID 247970):
+startup through Wine, terrain uploads through VKD3D-Proton, and tiled-light
+allocation at the D3D12-to-Vulkan driver boundary. It preserves the successful
+results, negative controls, superseded approaches, and exact evidence limits so
+the work can be audited or resumed without repeating the investigation.
 
 > [!IMPORTANT]
-> This is an investigation and upstream evidence repository, not a game mod.
+> This is an investigation and upstream evidence archive, not a game mod or a
+> replacement Proton distribution.
 > No game files were modified. The Wine startup series was validated without
 > launch parameters, but the isolated D52 lighting test deliberately excluded
 > that Wine work and therefore still used the OpenMP startup workaround. A fix
@@ -16,26 +19,32 @@ at the D3D12-to-Vulkan driver boundary.
 
 | Problem | Proven cause | Upstream path | Status on 2026-08-11 |
 | --- | --- | --- | --- |
-| Startup abort or need for OpenMP launch options | Wine's public NUMA queries did not expose the processor topology already known internally | [Wine MR !11604](https://gitlab.winehq.org/wine/wine/-/merge_requests/11604) | Exact six-commit series validated with empty Steam launch options. The same series is in [Valve's Wine fork](https://github.com/ValveSoftware/wine/compare/c3007e6f2a36914cc55301eb5efd067707bf8bb1...99166a7e25b08ccef0168217540542260eaed76f) and the [Proton Bleeding Edge source branch](https://github.com/ValveSoftware/Proton/commit/d28e7f2c40da279452db93897c5b9c2c84356fac), but the Wine MR remains open and standard Proton branches were still pinned before it at the final check |
-| Missing or magenta terrain pages | Placed-buffer geometry stayed in uncompressed source texels instead of being converted to BC3 destination block geometry | [VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) | General three-file fix with a regression test, merged as `731c4aae`, and independently confirmed on another system |
-| Flashing square lighting blocks | The game issues a 32-bit atomic through an `R16_UINT` UAV view; D50 and D51 isolate the view format as the failing boundary on the tested RADV stack | [Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672), which aligns RADV's out-of-bounds component selection with native AMD D3D12 and pre-GFX10 behavior | A VKD3D-Proton-only R32 alias removed the blocks in two D52 runs with stock dxil-spirv. That candidate is diagnostic and superseded as an upstream direction by the cleaner Mesa change |
+| Startup abort or need for OpenMP launch options | Wine's public NUMA queries did not expose the processor topology already known internally | [Wine MR !11604](https://gitlab.winehq.org/wine/wine/-/merge_requests/11604) | Merged on 2026-08-10 at final head `663fd7cc`. This investigation validated the earlier `e8319c0e` head and Valve's equivalent series with empty Steam launch options, not the final rebased MR head. Availability in standard Proton depends on downstream integration |
+| Missing or magenta terrain pages | Placed-buffer geometry stayed in uncompressed source texels instead of being converted to BC3 destination block geometry | [VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202) | The pre-merge PR artifact was independently confirmed on another system; its reviewed successor merged as `731c4aae`. The final merge was not separately packaged in this investigation |
+| Flashing square lighting blocks | The game issues a 32-bit atomic through an `R16_UINT` UAV view; D50 and D51 isolate the view format as the failing boundary on the tested RADV stack | [Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672), which aligns RADV's out-of-bounds component selection with native AMD D3D12 and pre-GFX10 behavior | A VKD3D-Proton-only R32 alias removed the blocks in two D52 runs with stock dxil-spirv. The dxil-spirv and VKD3D-Proton PRs were closed unmerged as superseded. The Mesa MR is the preferred general direction, but it has not been locally game-tested by this investigation |
 
-The earlier community summary is in
-[Proton issue #9906](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5238316414).
-The current lighting conclusion and D50-D52 results are recorded in the
-[latest PR #3207 update](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5256360847).
+The final community-facing status is in
+[Proton issue #9906](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5257604136).
+The D50-D52 reasoning and the decision to move away from a VKD3D-Proton quirk
+are preserved in the
+[PR #3207 discussion](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5256360847).
 The complete technical conclusions, exact hashes, and evidence boundaries are
 in [`docs/final-report.md`](docs/final-report.md).
+The sanitized archive bundle is the
+[2026-08-11 final evidence release](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/final-evidence-2026-08-11).
 
-## Public handoff
+## Upstream record
 
-- [Consolidated Proton status](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5238316414)
+- [Final Proton community status](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5257604136)
 - [Wine/NUMA startup validation](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5218434565)
 - [VKD3D-Proton tiled-light root-cause report](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5238151028)
-- [Terrain PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202)
-- [Initial lighting PR #3207 and maintainer review](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207)
-- [Proposed general RADV correction in Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672)
+- [Merged terrain PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202)
+- [Closed dxil-spirv experiment #296](https://github.com/HansKristian-Work/dxil-spirv/pull/296)
+- [Closed VKD3D-Proton lighting experiment #3207 and maintainer review](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207)
+- [Open general RADV correction in Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672)
 - [D50 through D52 descriptor-boundary result](docs/evidence-d50-d52-r32-alias-result.md)
+- [Final evidence release from 2026-08-11](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/final-evidence-2026-08-11)
+- [Historical evidence snapshot from 2026-08-10](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/final-evidence-2026-08-10)
 - [Early diagnostic handoff from 2026-08-06](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/handoff-2026-08-06)
 
 ## What the investigation proved
@@ -47,12 +56,17 @@ which processors belong to each NUMA node. Wine detected the host topology but
 returned an unimplemented result through the queried public API. OpenMP treated
 that result as fatal.
 
-The exact six commits from Wine MR !11604 expose the runtime topology through
-the missing APIs. A full Steam launch succeeded with an empty launch-options
-field, no `KMP_*`, `OMP_*`, or `WINE_CPU_TOPOLOGY` setting, and affinity
-controls allowing 1, 2, 4, 8, and 16 CPUs. OpenMP reported the corresponding
-available count in every case. No CPU vendor, game, AppID, or thread count is
-encoded in the implementation.
+The six-commit series tested from Wine MR !11604 exposes the runtime topology
+through the missing APIs. A full Steam launch succeeded with an empty
+launch-options field, no `KMP_*`, `OMP_*`, or `WINE_CPU_TOPOLOGY` setting, and
+affinity controls allowing 1, 2, 4, 8, and 16 CPUs. OpenMP reported the
+corresponding available count in every case. No CPU vendor, game, AppID, or
+thread count is encoded in the implementation.
+
+Wine merged the MR on 2026-08-10 at rebased head `663fd7cc`. The local Proton
+validation predates that rebase and covers head `e8319c0e` plus Valve's
+equivalent series. It supports the merged mechanism but is not a claim that
+the final rebased commit itself was rerun here.
 
 See [`docs/evidence-n05-wine-mr-11604.md`](docs/evidence-n05-wine-mr-11604.md).
 
@@ -63,11 +77,15 @@ for a `256x256 BC3_UNORM` terrain page. Both physical elements are 16 bytes, so
 one source texel represents one 4x4 BC3 block. VKD3D-Proton retained the source
 geometry and populated only one sixteenth of the destination page.
 
-The merged general fix converts equal-sized physical elements through their
-block geometry. It contains no IL-2 executable or AppID check. A gated causal
-test adjusted 522 of 522 observed page and border copies with zero rejects; a
-clean build restored the terrain at multiple altitudes. The PR artifact was
-also [confirmed by another user](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5237490788).
+The general change converts equal-sized physical elements through their block
+geometry. It contains no IL-2 executable or AppID check. A gated causal test
+adjusted 522 of 522 observed page and border copies with zero rejects; D08
+predecessor `cf11ba76` restored the terrain at multiple altitudes. The
+pre-merge PR artifact was also
+[confirmed by another user](https://github.com/ValveSoftware/Proton/issues/9906#issuecomment-5237490788),
+and the reviewed successor merged as `731c4aae`. Neither that final merge nor
+historical review candidate `64ec55e7` was separately packaged for an in-game
+run in this specific evidence record.
 
 The images below are representative observations from different controlled
 runs and viewpoints. They are not presented as a matched frame-for-frame A/B.
@@ -103,7 +121,11 @@ Two game runs were free of the blocks. D52 used the OpenMP launch workaround
 because its isolated Proton base excluded the separate Wine fix, and it also
 excluded the terrain fix. No D52 screenshot was captured.
 
-The R32 alias is evidence, not the proposed upstream implementation. Hans'
+The R32 alias is evidence, not the proposed upstream implementation. The
+experimental [dxil-spirv PR #296](https://github.com/HansKristian-Work/dxil-spirv/pull/296)
+and [VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207)
+were closed unmerged once the descriptor-boundary result made those approaches
+unnecessary. Hans'
 [Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672)
 provides the cleaner general direction by making RADV's out-of-bounds component
 selection match native AMD D3D12 and pre-GFX10 behavior. NVIDIA already passes
@@ -111,6 +133,7 @@ the relevant descriptor-heap test. This investigation agrees with resolving
 the compatibility behavior in Mesa instead of carrying either the earlier
 dxil-spirv lowering or a per-game VKD3D-Proton alias quirk. Review and a final
 test of the Mesa change on an otherwise unmodified stack remain outstanding.
+No local game run in this archive used Mesa MR !43672.
 
 The fine sandy or film-grain lighting visible in motion is also present on
 native Windows and is not part of this defect.
@@ -159,7 +182,7 @@ The repository intentionally retains failed tests and false leads. They show
 which mechanisms were excluded and prevent the successful results from being
 mistaken for coincidental configuration changes.
 
-## Verified final environment
+## Verified test environment and component identities
 
 - CPU topology: 16 logical CPUs in one host NUMA node
 - GPU: AMD Radeon RX 7800 XT
@@ -172,16 +195,23 @@ mistaken for coincidental configuration changes.
   dxil-spirv `cc75a0c9`; two clean runs using the separate OpenMP workaround
 - Terrain fix: merged in VKD3D-Proton `731c4aae`
 - Wine MR head validated through Proton: `e8319c0e6bfe7f94512218b48e3158e0c286b481`
+- Wine MR final merged head: `663fd7cc` (not rerun after the final rebase)
 
-This hardware coverage proves the reported mechanisms and removes hard-coded
-host assumptions. It does not replace upstream review or cross-vendor runtime
+This hardware coverage supports the reported mechanisms, and the tested
+implementations encode no fixed host processor count. It does not replace
+upstream review, physical cross-topology validation, or cross-vendor runtime
 testing.
 
-## Reproducing or resuming
+## Using this archive
 
 Do not alter a Proton prefix until a backup exists and Steam and the game are
 fully stopped. Start with [`docs/reproduction.md`](docs/reproduction.md) and
 the safety-aware scripts under [`scripts/`](scripts/).
+
+The investigation itself is concluded. Future work should begin from the
+merged Wine and VKD3D-Proton changes and test Mesa MR !43672 on an otherwise
+unmodified graphics stack, rather than reviving the closed compiler or
+per-game alias approaches without new evidence.
 
 Generated captures, prefixes, game assets, credentials, shader caches, custom
 Proton packages, and unfiltered large traces are not committed. The final

@@ -24,12 +24,15 @@ VKD3D-Proton's existing image-to-image path nevertheless support the same
 physical-block interpretation. The safest ownership statement is therefore a
 VKD3D-Proton native-compatibility gap, not a demonstrated RADV defect. The
 general `cf11ba76` predecessor passes its regression tests and D08 validates it
-in game without any IL-2-specific filter or diagnostic gate. Current PR
-candidate `64ec55e7` further restricts activation to equal-sized physical
-elements with different block dimensions, leaving same-geometry copies on the
-original path while selecting unchanged conversion arithmetic for IL-2.
+in game without any IL-2-specific filter or diagnostic gate. The narrowed
+change was merged through PR #3202 as `731c4aae`. It restricts activation to
+equal-sized physical elements with different block dimensions, leaving
+same-geometry copies on the original path while selecting unchanged conversion
+arithmetic for IL-2.
 
-The startup/OpenMP problem remains an independent Wine/NUMA investigation.
+The startup/OpenMP problem is an independent Wine/NUMA track. Wine MR !11604
+merged on 2026-08-10; this investigation validated an earlier six-commit head
+and Valve's equivalent integration rather than the final rebased Wine head.
 The menu/cockpit/fire-lit squares are also independent. D20 found overlapping
 tiled-light index ranges. D21-D24 traced that data pattern to the game's
 32-bit atomic through a live `R16_UINT` typed UAV, but D25 only changed the
@@ -146,6 +149,10 @@ behavior, and provides a general compatibility behavior without a per-game
 VKD3D-Proton quirk. D50 through D52 support its diagnosis, but the Mesa change
 has not yet been tested locally and remains subject to upstream review.
 
+The experimental dxil-spirv PR #296 and VKD3D-Proton PR #3207 were closed
+without merging on 2026-08-11. Their code and discussion remain archived as
+investigation evidence.
+
 Both D52 runs used `OMP_NUM_THREADS=16 KMP_AFFINITY=disabled` only for the
 independent Wine startup issue. D52 intentionally excluded terrain PR #3202,
 so it does not constitute a combined all-fixes build. See
@@ -155,7 +162,7 @@ so it does not constitute a combined all-fixes build. See
 
 | Rank | Mechanism | Evidence | Confidence |
 |---:|---|---|---|
-| 1 | Missing block-unit conversion on buffer-to-BC3 terrain-page copies | D07 adjusted 522/522 exact-class copies in run 1 and 304/304 in run 2, with zero rejects, and repaired high-altitude terrain both times; clean general-build D08 repeats the repair; the focused synthetic test fails four assertions on the old path and passes 22/22 with the narrowed general fix | High; causal for terrain and addressed by current PR candidate `64ec55e7` |
+| 1 | Missing block-unit conversion on buffer-to-BC3 terrain-page copies | D07 adjusted 522/522 exact-class copies in run 1 and 304/304 in run 2, with zero rejects, and repaired high-altitude terrain both times; clean general-build D08 repeats the repair; the focused synthetic test fails four assertions on the old path and passes 22/22 with the narrowed general fix | High; causal for terrain and merged through PR #3202 as `731c4aae` |
 | 2 | IL-2 performs a 32-bit atomic through an `R16_UINT` UAV, and RADV's GFX10+ texel-buffer out-of-bounds selection exposes a different result from native AMD | D44 captures the corrupted allocation. D50 changes only R32/R16/R32 view format and fails only for R16. D51 passes the exact shader through both descriptor backends with an R32 alias. D52 keeps stock dxil-spirv and is clean twice. | High for the root cause on the reporting host; Mesa MR !43672 is the preferred upstream direction but is not yet locally validated |
 | 3 | The producers' packed-mask/scalar tile-depth rejection changes presentation of the malformed light list | D38 can hide blocks while retaining lighting; D39/D40 restore them. D47 retains the original predicates but is clean once the allocator is corrected. | Diagnostic presentation factor only; rejected from the final fix |
 | 4 | Game texture-provider fallback contributes secondary missing inputs | The successful D07 run still logs missing summer/common inputs, proving they are not required for the rectangular terrain failure | Low as a remaining contributor |
@@ -216,9 +223,10 @@ matched Windows `tex.log`, they cannot be promoted to the Linux root cause.
 Do not add an application override or run more unrelated terrain flags. D08
 validates the general `vk_buffer_image_copy_from_d3d12()` conversion at
 predecessor `cf11ba76` without the IL-2 resource/shape filter or
-`VKD3D_IL2_BC3_PAGE_COPY`. Current PR commit `64ec55e7` preserves that IL-2
-branch while returning all same-block-geometry copies to the original path;
-its focused and full copy tests pass.
+`VKD3D_IL2_BC3_PAGE_COPY`. Historical review commit `64ec55e7` preserved that
+IL-2 branch while returning all same-block-geometry copies to the original
+path; its focused and full copy tests passed. The final revision merged through
+PR #3202 as `731c4aae`.
 
 For the separate shimmering defect, D44 invalidates D25 as a causal negative:
 its intended shader access translation is present, but the forced SSBO still
