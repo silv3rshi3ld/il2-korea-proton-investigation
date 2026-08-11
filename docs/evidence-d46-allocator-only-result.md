@@ -35,5 +35,3 @@ parameters or game modification. Corrected D47 must restore only the allocator
 quirk plus application wiring before minimal upstream scope is decided. The
 fine sandy or film-grain lighting is normal on native Windows and remains
 outside the defect.
-
-Nothing has been posted or uploaded.

@@ -2,7 +2,8 @@
 
 This directory contains a curated public screenshot set and additional ignored
 local evidence. The published images document the broken baseline, the repaired
-terrain path, and the separate menu-aircraft corruption that remains unresolved.
+terrain path, and historical lighting A/B observations. D50 through D52 later
+isolated the lighting defect, but no D52 screenshot was captured or published.
 
 ## Published evidence
 
@@ -24,6 +25,21 @@ terrain path, and the separate menu-aircraft corruption that remains unresolved.
 - [`D08-r1-terrain-repaired-dive-2427m.png`](curated/d08-general-fix/D08-r1-terrain-repaired-dive-2427m.png): repaired terrain during a dive at 2,427 m;
 - [`D08-r1-terrain-repaired-low-altitude-742m.png`](curated/d08-general-fix/D08-r1-terrain-repaired-low-altitude-742m.png): repaired terrain at 742 m;
 - [`D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png`](curated/d08-general-fix/D08-r1-menu-aircraft-block-artifacts-shimmering-persists.png): the independent menu-aircraft defect persists.
+
+### Lighting evidence boundary
+
+The repository's published lighting screenshots predate D52 and remain valid
+historical visual evidence. They must not be described as screenshots of the
+D52 VKD3D-Proton-only R32 alias. The D52 result consists of two observed clean
+game runs plus runtime and shader-path validation, recorded in
+[`../docs/evidence-d50-d52-r32-alias-result.md`](../docs/evidence-d50-d52-r32-alias-result.md).
+Those isolated runs used the OpenMP startup workaround and excluded both the
+Wine startup series and merged terrain fix.
+
+The sanitized text evidence for the exact D52 tool, DLL hashes, runtime marker,
+and captured shader identities is retained at
+[`curated/d52-r32-alias/runtime-proof.txt`](curated/d52-r32-alias/runtime-proof.txt).
+It contains no game binary or custom Proton binary.
 
 ## Additional local evidence
 

@@ -1,5 +1,12 @@
 # D49 compiler-aware ABI-safe result
 
+> [!IMPORTANT]
+> Historical implementation result. D49's visual result remains valid, but
+> D50-D52 later proved that changing dxil-spirv's atomic lowering is not
+> required. The paired D49 design is superseded by the agreed Mesa MR !43672
+> direction. See
+> [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).
+
 ## Purpose
 
 D49 tests the tiled-light correction after replacing the first one-repository
@@ -112,3 +119,26 @@ This is one-system runtime validation, not cross-vendor proof. It does not
 claim that the paired changes are merged, accepted upstream, or safe to enable
 on descriptor layouts which cannot provide the raw SSBO sibling. Those layouts
 deliberately keep the existing typed path.
+
+## D50-D52 supersession
+
+The D49 detour was useful but is no longer the proposed architecture. D50
+changed only the view format on one 87,040-byte buffer in an R32, R16, R32
+sequence and reproduced corruption only with R16 on both tested RADV devices.
+D51 ran the exact captured shader with a full-size R32 alias and passed on both
+devices through both descriptor backends. D52 then reproduced the clean game
+result twice while leaving dxil-spirv unchanged at
+`cc75a0c98d34d7bcc03560527c799b52e48b4d1f`.
+
+The D52 shader retained its natural `R32ui` texel-buffer type,
+`OpImageTexelPointer`, and `OpAtomicIAdd`; only its descriptor set and binding
+changed. This shows that D49's SSBO lowering is sufficient but not necessary.
+
+Maintainer reproduction led to
+[Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672),
+which changes RADV's GFX10+ texel-buffer OOB selection to match native AMD
+D3D12 and pre-GFX10 behavior. NVIDIA also passes the maintainer's test with a
+descriptor heap. That driver-level behavior is cleaner and more general than
+either D49 or the per-game D52 alias. D49 remains historical validation and
+should not be described as merge-ready or current. Neither draft detour was
+merged, so no lasting upstream change resulted.

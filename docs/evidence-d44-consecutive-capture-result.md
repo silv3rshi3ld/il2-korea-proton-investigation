@@ -1,5 +1,11 @@
 # D44 consecutive tiled-light capture: result
 
+> [!NOTE]
+> Historical capture interpretation. D44 correctly identifies the malformed
+> allocator and why D25 did not test a usable descriptor. D50-D52 later showed
+> that a full-size R32 texel-buffer alias also repairs the allocator without
+> SSBO lowering. Mesa MR !43672 is the current upstream direction.
+
 ## Result
 
 D44 captures the square blocks and broad light flicker in three consecutive
@@ -87,4 +93,16 @@ D45 adds the missing raw-SSBO binding selection under the same exact
 Steam launch options and judge both the square grid and broad flicker. Fine
 sandy or film-grain lighting remains accepted native Windows behaviour.
 
-Nothing has been posted or uploaded.
+## D50-D52 refinement
+
+D44 established that changing operation class without changing descriptor
+selection was incomplete. It did not prove that the completed selection had to
+be an SSBO. D50 later changed only the view format on the same 87,040-byte
+buffer and reproduced the restart only with `R16_UINT`. D51 passed the exact
+shader through a full-size `R32_UINT` view, and D52 changed only that shader's
+descriptor set/binding from `1/1` to `2/0` while retaining `R32ui`,
+`OpImageTexelPointer`, and `OpAtomicIAdd`. Two D52 game runs were clean.
+
+The refined conclusion is that the allocator failure is causal and descriptor
+view/OOB behavior is the decisive boundary. The raw SSBO sibling was one
+successful diagnostic route, not a required final implementation.

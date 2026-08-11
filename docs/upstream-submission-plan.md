@@ -5,9 +5,9 @@
 > [VKD3D-Proton PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202).
 > The separate startup and tiled-light outcomes were later published through
 > Wine MR !11604 and VKD3D-Proton PR #3207. The direct lighting
-> implementation was subsequently superseded by D49. The published PR #3207
-> head is not a mergeable final implementation and should be converted to a
-> dependent draft before its next update. Current status is maintained in
+> implementation was subsequently superseded by D49, then D49 was superseded
+> by D50-D52 and Mesa MR !43672. PR #3207 is a draft and is not a mergeable
+> final implementation. Current status is maintained in
 > [`final-report.md`](final-report.md).
 
 The user approved publication on 2026-08-07. The investigation repository is
@@ -188,3 +188,44 @@ The retained tool is
 The sandy or film-grain lighting also occurs on native Windows and is excluded
 from acceptance criteria. D49 has not received cross-hardware runtime
 validation, so neither PR should claim it.
+
+## D50-D52 lighting resolution and revised upstream path
+
+This section supersedes the D49 submission path above. The terrain PR and Wine
+startup MR remain independent.
+
+D50 held the minimal shader, pipeline, dispatch, and 87,040-byte buffer fixed
+and changed only the view in an R32, R16, R32 sequence. Both R32 runs passed
+and only R16 reproduced the workgroup restart on both tested RADV devices. D51
+then passed the exact captured shader with a full-size R32 view through both
+descriptor backends on both devices.
+
+D52 applied that discriminator in VKD3D-Proton without changing dxil-spirv. It
+kept `R32ui`, `OpImageTexelPointer`, and `OpAtomicIAdd`, changed only the exact
+resource's descriptor set/binding from `1/1` to `2/0`, and removed the blocks
+in two game runs. This proves compiler-side SSBO lowering is unnecessary, but
+the D52 application-specific alias and sibling-layout assumptions are not a
+merge-ready upstream design.
+
+Maintainer reproduction produced
+[Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672).
+It changes RADV's GFX10+ texel-buffer OOB selection from
+`STRUCTURED_WITH_OFFSET` to `STRUCTURED`, matching the native AMD D3D12 driver
+and pre-GFX10 behavior. NVIDIA also passes the maintainer's descriptor-heap
+test. This is the agreed upstream direction.
+
+Revised sequence:
+
+1. Keep dxil-spirv PR #296 and VKD3D-Proton PR #3207 in draft state while the
+   maintainer decides their disposition. Do not mark either ready for review.
+2. Do not publish D52 as another PR. Retain it as causal evidence only.
+3. Follow Mesa MR !43672 and build its accepted revision locally.
+4. Test that Mesa revision with stock dxil-spirv and unmodified VKD3D-Proton,
+   using the separate OpenMP workaround only if the Wine startup MR is absent.
+5. Record the runtime provenance and repeat the visual check. If it passes,
+   update the existing VKD3D-Proton and Proton discussions instead of opening
+   another graphics issue or PR.
+
+The D49 and D52 work was not merged, so the change in direction caused no
+lasting upstream impact. Their tests remain useful because they isolate why
+the driver-level Mesa change is the cleaner general solution.

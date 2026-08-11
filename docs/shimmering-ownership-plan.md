@@ -7,9 +7,10 @@ Date: 2026-08-10
 > [VKD3D-Proton issue #3134](https://github.com/HansKristian-Work/vkd3d-proton/issues/3134#issuecomment-5238151028)
 > and the allocator-only quirk was published as
 > [VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207).
-> That direct implementation is now historical evidence. D49 supersedes it
-> with a two-repository, compiler-aware design. The published PR #3207 head is
-> not a mergeable final change and should become a dependent draft. See
+> That direct implementation and the later D49 two-repository design are now
+> historical evidence. D50-D52 isolated the texel-buffer view/OOB behavior
+> without changing dxil-spirv. Mesa MR !43672 is the agreed upstream direction,
+> and PR #3207 remains a non-mergeable draft. See
 > [`final-report.md`](final-report.md) for the current combined status.
 
 ## Final technical conclusion
@@ -92,13 +93,21 @@ surgical application and shader selection. The reusable lowering mechanism
 belongs in dxil-spirv. This is not a Mesa workaround, Proton launch parameter,
 game mod, or custom lighting engine.
 
+That paragraph records the D49 ownership decision before maintainer
+reproduction. D50-D52 and Mesa MR !43672 supersede it. The exact shader works
+through the existing texel-buffer lowering when supplied an R32 view, so no
+generic dxil-spirv legalization is required. RADV's GFX10+ texel-buffer OOB
+selection is the remaining compatibility difference from native AMD D3D12 and
+pre-GFX10 behavior. The preferred ownership is therefore Mesa/RADV, with no
+per-game VKD3D-Proton quirk if MR !43672 is accepted.
+
 ## Separate IL-2 tracks
 
 | Track | Mechanism | Upstream path |
 | --- | --- | --- |
 | Startup without parameters | Wine lacked `GetNumaNodeProcessorMaskEx`; the shipped Intel OpenMP runtime aborts | Existing Wine MR !11604; validated locally without a hard-coded thread count |
 | Distant terrain pages | Buffer-to-BC3 copy geometry used source texel units instead of destination block geometry | Existing VKD3D-Proton PR #3202 |
-| Square blocks and broad light flicker | Invalid typed-UAV atomic selected the wrong Vulkan descriptor class and corrupted the tiled-light list | Update existing VKD3D-Proton issue #3134, then one narrow PR |
+| Square blocks and broad light flicker | Game uses a 32-bit atomic through an `R16_UINT` view; RADV GFX10+ OOB selection exposes a malformed tiled-light allocation | Mesa MR !43672; retain VKD3D-Proton PR #3207 only as draft investigation evidence |
 
 The fine sandy or film-grain lighting is present on native Windows and is not a
 Proton defect.
@@ -172,3 +181,33 @@ dxil-spirv resources suite, exact-shader and remapper checks, VKD3D-Proton
 x86-64 and x86 builds, packaging, and one verified-loaded reporting-host run.
 The only full translator-suite failure reproduces on the base at
 `control-flow/switch-continue.frag`. No cross-hardware D49 result is claimed.
+
+## Current D50-D52 resolution
+
+D50 closes the buffer-size control gap with one 87,040-byte allocation and an
+R32, R16, R32 view sequence. Only R16 fails on both tested RADV devices. D51
+passes the exact captured game shader and full-size R32 alias through both
+descriptor backends on both devices. D52 then selects an R32 texel-buffer
+sibling for only the exact IL-2 shape and shader while leaving dxil-spirv at
+`cc75a0c9`. Its DXIL is unchanged, its SPIR-V retains the natural texel-buffer
+atomic, and two game runs are visually clean.
+
+D52 is diagnostic and not merge-ready. It makes sibling-layout assumptions
+and encodes an application-specific descriptor policy. Maintainer testing
+instead produced Mesa MR !43672, which switches RADV's GFX10+ texel-buffer OOB
+selection from `STRUCTURED_WITH_OFFSET` to `STRUCTURED`. This matches native
+AMD D3D12 and pre-GFX10 behavior; NVIDIA also passes the maintainer's test with
+a descriptor heap.
+
+The current sequence is therefore:
+
+1. Keep dxil-spirv PR #296 and VKD3D-Proton PR #3207 as drafts or close them as
+   superseded after maintainer guidance. Do not present either as merge-ready.
+2. Follow Mesa MR !43672 review and test its accepted revision locally with
+   unmodified dxil-spirv and VKD3D-Proton.
+3. If that clean control passes, update the existing reports with the result.
+   Do not open another VKD3D-Proton graphics PR.
+
+The detour caused no lasting upstream change because neither draft was merged.
+It supplied the A/B evidence that isolated the descriptor-format boundary and
+helped connect the game symptom to the driver behavior.

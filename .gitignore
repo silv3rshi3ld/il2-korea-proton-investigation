@@ -20,6 +20,9 @@ captures/curated/d08-general-fix/*
 !captures/curated/d08-general-fix/D08-r1-terrain-repaired-cockpit-4813m.png
 !captures/curated/d08-general-fix/D08-r1-terrain-repaired-dive-2427m.png
 !captures/curated/d08-general-fix/D08-r1-terrain-repaired-low-altitude-742m.png
+!captures/curated/d52-r32-alias/
+captures/curated/d52-r32-alias/*
+!captures/curated/d52-r32-alias/runtime-proof.txt
 
 # Local source/build trees are intentionally kept out of the evidence repository.
 build/

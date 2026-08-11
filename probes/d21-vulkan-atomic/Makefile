@@ -16,7 +16,7 @@ VALIDATION ?= --validation
 EXACT_SPV ?= ../../captures/runs/D14-shader-dump-r1/shaders/7cefa1bc80bb4c70.spv
 EXACT_R16_SSBO_SPV ?= ../../build/renderdoc-1.45-local/7cefa1bc80bb4c70-counter-ssbo.spv
 
-.PHONY: all check-shaders list run run-exact run-all clean
+.PHONY: all check-shaders list run run-exact run-all run-offset-zero-ab clean
 
 all: $(PROGRAM) check-shaders
 
@@ -50,6 +50,14 @@ run-all: all
 	test -f $(EXACT_SPV)
 	test -f $(EXACT_R16_SSBO_SPV)
 	$(PROGRAM) $(VALIDATION) --device $(DEVICE) --texel $(TEXEL_SPV) --ssbo $(SSBO_SPV) \
+		--exact $(EXACT_SPV) --exact-r16 $(EXACT_SPV) \
+		--exact-r16-ssbo $(EXACT_R16_SSBO_SPV)
+
+run-offset-zero-ab: all
+	test -f $(EXACT_SPV)
+	test -f $(EXACT_R16_SSBO_SPV)
+	$(PROGRAM) $(VALIDATION) --format-ab --device $(DEVICE) \
+		--texel $(TEXEL_SPV) --ssbo $(SSBO_SPV) \
 		--exact $(EXACT_SPV) --exact-r16 $(EXACT_SPV) \
 		--exact-r16-ssbo $(EXACT_R16_SSBO_SPV)
 

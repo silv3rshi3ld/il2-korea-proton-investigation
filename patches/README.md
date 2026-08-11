@@ -112,7 +112,9 @@ It was published in
 Maintainer review correctly identified that dxil-spirv cannot generally treat
 a texel buffer as an SSBO solely because VKD3D-Proton selects a different
 descriptor. The patch remains valid causal and single-system runtime evidence,
-but it is not a portable upstream implementation and is superseded by D49.
+but it is not a portable upstream implementation. D49 superseded its
+architecture temporarily, and D50 through D52 later removed the need for the
+alternate compiler lowering entirely.
 
 The clean package builds successfully for x86-64 and x86. A fresh matched A/B
 on 2026-08-10 used the following exact candidate binaries; see
@@ -125,9 +127,9 @@ on 2026-08-10 used the following exact candidate binaries; see
 | x86 | `d3d12.dll` | `17de6a419afe8c1dd90e8af25bb9e6d95a58ddbf2edfb0ed935bec9ea23c6e72` |
 | x86 | `d3d12core.dll` | `73a77a5c27bc73c584a8a8ec7b226558d6528bef1f0387468eb074439b2beeca` |
 
-## Current D49 compiler-aware implementation
+## Historical D49 compiler-aware implementation
 
-D49 moves the generic legalization into dxil-spirv and leaves only policy and
+D49 moved the generic legalization into dxil-spirv and left only policy and
 backend safety in VKD3D-Proton. For eligible scalar 32-bit signed or unsigned
 typed-UAV atomics, dxil-spirv temporarily presents the resource to the binding
 remapper as a raw buffer. Lowering is enabled only if the remapper returns an
@@ -151,10 +153,10 @@ clean menu and short flight, retained the terrain repair, and showed neither
 the large blocks nor broad flicker. This validation is currently limited to
 the investigation system and is not a cross-vendor claim.
 
-The current local dxil-spirv candidate commit is
+The historical local dxil-spirv candidate commit is
 `afff4dfb3e51ab81a4d541011bcf7ec2f65e2ffa`. It is not published. The
-dependent VKD3D-Proton integration remains uncommitted until that compiler
-dependency can be represented by an upstream-reachable gitlink.
+dependent VKD3D-Proton integration remained local. D50 through D52 later
+showed that this compiler dependency is unnecessary.
 
 | Architecture | File | D49 SHA-256 |
 | --- | --- | --- |
@@ -163,10 +165,40 @@ dependency can be represented by an upstream-reachable gitlink.
 | x86 | `d3d12.dll` | `1285974667c4b974baf82aea0a903d8bc7eeba8992a41a4bfc6c36d07f2d7993` |
 | x86 | `d3d12core.dll` | `9cdd2eb9d326eea278dc0449d069cf2442001210874bb72a2c3c98a5aeef1024` |
 
-No D49 patch export is added yet. The dxil-spirv change must be published and
-become reachable from upstream before the dependent VKD3D-Proton submodule
-update can be presented cleanly. This avoids recording a gitlink to a private
-or fork-only commit.
+No D49 patch export is included. Its private compiler gitlink was intentionally
+never recorded in this repository.
+
+## Current D50 through D52 disposition
+
+D50 changed only the Vulkan view format around the same 87,040-byte buffer,
+range, shader, and coordinate-zero 32-bit atomic. The sequence `R32_UINT`,
+`R16_UINT`, `R32_UINT` produced pass, fail, pass. D51 then exercised the exact
+captured shader through an 87,040-byte R32 alias and passed through both the
+mutable descriptor-set and descriptor-buffer paths. Together they isolate the
+view-format boundary without changing dxil-spirv lowering.
+
+D52 used VKD3D-Proton only. It retained stock dxil-spirv commit `cc75a0c9`,
+the natural R32ui texel-buffer `OpImageTexelPointer` and `OpAtomicIAdd`, and the
+ordinary R16 descriptor. For the exact IL-2 executable, shader, resource, and
+UAV description, it additionally selected an R32 alias. Two game runs were
+free of the square blocks. Because this was an isolated lighting package based
+before the other changes, it required the OpenMP startup workaround and did not
+contain the merged terrain fix. No D52 screenshot was captured.
+
+D52 is a discriminator, not an upstream patch candidate. Hans' proposed
+[Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672)
+is the cleaner and more general direction: it aligns RADV's out-of-bounds
+component selection with native AMD D3D12 and pre-GFX10 behavior. NVIDIA
+already passes the relevant descriptor-heap test. This investigation agrees
+with resolving the behavior there rather than carrying a per-game alias or the
+earlier dxil-spirv lowering. The Mesa change still needs review and an otherwise
+unmodified-stack runtime validation.
+
+`0017-vkd3d-proton-Add-diagnostic-R32-texel-alias-for-IL2.patch` preserves the
+reviewed D52 source diff for reproducibility. It is explicitly a diagnostic
+artifact, not an upstream candidate. No D52 binary is published. See
+[`../docs/evidence-d50-d52-r32-alias-result.md`](../docs/evidence-d50-d52-r32-alias-result.md)
+for the canonical evidence and scope limits.
 
 ## Why the terrain candidate has no application override
 

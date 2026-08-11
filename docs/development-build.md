@@ -438,6 +438,14 @@ the `cf11ba76` runtime build and are not relabeled as `64ec55e7` artifacts. See
 
 ## D49 compiler-aware ABI-safe lighting candidate
 
+> [!IMPORTANT]
+> Historical implementation record. D50-D52 later proved that the existing
+> texel-buffer lowering works when the exact resource is bound through an
+> `R32_UINT` view. D49 is therefore superseded as an upstream design. The
+> agreed direction is Mesa MR !43672, not a dxil-spirv change or a per-game
+> VKD3D-Proton alias. See
+> [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).
+
 D49 supersedes the direct tiled-light implementation at `9b6e15be` and patch
 `0016`. Those earlier artifacts remain the causal and runtime proof that the
 allocator must use a legal raw storage-buffer access. They are not the current
@@ -514,3 +522,60 @@ first implementation. It should be converted to a dependent draft before its
 next update and cannot become a mergeable final form until the generic
 dxil-spirv change is reviewed and available through an upstream-reachable
 commit.
+
+Status update: PR #3207 was subsequently converted to draft and updated to the
+paired D49 design. Maintainer reproduction and D50-D52 then superseded that
+design before either draft was merged.
+
+## D50-D52 R32 texel-buffer alias discriminator
+
+D50 and D51 refine the standalone atomic matrix without changing compiler
+lowering. D50 uses the same minimal coordinate-zero shader, pipeline, dispatch,
+and 87,040-byte buffer for an `R32_UINT`, `R16_UINT`, `R32_UINT` sequence. On
+both tested RADV devices, both R32 runs pass and only R16 reproduces the
+per-workgroup restart. D51 then runs exact shader `0x7cefa1bc80bb4c70`
+against a full-size `R32_UINT` alias. Both the mutable descriptor-set and
+descriptor-buffer paths pass on both devices with counter 8,160, zero overlap,
+zero missing intervals, and no writes after the first counter word.
+
+D52 carries that discriminator into the game without modifying dxil-spirv:
+
+| Component | Identity |
+| --- | --- |
+| VKD3D-Proton base | `84c87c8390d9df75ba41d911496296fe13f0e275` |
+| dxil-spirv gitlink, unchanged | `cc75a0c98d34d7bcc03560527c799b52e48b4d1f` |
+| Custom Proton tool | `IL2-Korea-D52-R32Alias-84c87c83-r2` |
+
+The uncommitted diagnostic keeps the normal R16 descriptor and adds an R32
+storage-texel-buffer sibling only for the exact executable, allocator shader,
+resource, UAV shape, and supported embedded mutable-descriptor layout. Clean
+x86-64 and x86 package builds completed. The package hashes are:
+
+| Architecture | File | SHA-256 |
+| --- | --- | --- |
+| x86-64 | `d3d12.dll` | `beecadd5579db1decf33ab13db7b6e9138eea78768f861bf77362f54e9dd1cb8` |
+| x86-64 | `d3d12core.dll` | `dfecb221202c1dd6c0532fa3fbd5cbe4764e7736efb752290bbb64d24a2be86e` |
+| x86 | `d3d12.dll` | `540e32dc651a65ed0d0617ed924393835d4f4bd37f9b917e95a0f6cd57a68af9` |
+| x86 | `d3d12core.dll` | `e8d1b8f4994e2ce2c2462eed00cf1507a2a3bfb688a54cbfde63db85d41cee26` |
+
+The runtime marker confirms alias creation. Captured DXIL remains
+byte-identical at
+`3e249c5bc6d596371907aa7a4c653f13a0e92e62d094222aa65932a2772df236`.
+The SPIR-V changes from baseline
+`dc41155e335ea72ee29485610ebef683a2f7fef88e898c64e66ae7bbea3772a7`
+to D52
+`c68b701b0ae648a31fb975a36a9f736a26ceb70bf95fada30387d5fb2dda49e3`.
+Disassembly shows only the target resource's descriptor set/binding changing
+from `1/1` to `2/0`; `R32ui`, `OpImageTexelPointer`, and `OpAtomicIAdd` remain
+unchanged.
+
+Two game runs were free of the square blocks. The second used no VKD3D logging
+or shader-dump environment. Both retained the separate OpenMP startup bypass
+because this tool uses stock Experimental Wine. D52 does not include terrain
+PR #3202.
+
+D52 is not a release or merge candidate. It proved that descriptor/view
+behavior, rather than compiler lowering, is the decisive boundary. Mesa MR
+!43672 changes RADV's GFX10+ texel-buffer OOB selection to match native AMD
+D3D12 and pre-GFX10 behavior and is the agreed upstream direction. This
+investigation has not yet runtime-tested that exact Mesa commit.

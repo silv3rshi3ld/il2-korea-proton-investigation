@@ -22,6 +22,7 @@
 #define GROUP_SIZE_Y 8u
 #define DISPATCH_X 10u
 #define DISPATCH_Y 5u
+#define LIVE_COUNTER_SIZE 87040u
 #define SENTINEL UINT32_MAX
 
 static uint32_t validation_errors;
@@ -37,6 +38,7 @@ struct options
     const char *exact_spv;
     const char *exact_r16_spv;
     const char *exact_r16_ssbo_spv;
+    bool format_ab;
 };
 
 struct context
@@ -69,6 +71,19 @@ enum atomic_variant
 {
     ATOMIC_TEXEL,
     ATOMIC_SSBO,
+};
+
+struct atomic_metrics
+{
+    uint32_t final_counter;
+    uint32_t unique;
+    uint32_t missing;
+    uint32_t duplicates;
+    uint32_t out_of_range;
+    uint32_t sentinel;
+    uint32_t groups_containing_zero;
+    uint32_t groups_min_zero;
+    bool globally_correct;
 };
 
 static const char *vk_result_name(VkResult result)
@@ -805,20 +820,18 @@ done:
     return data;
 }
 
-static bool analyze_result(enum atomic_variant variant, const struct host_buffer *counter,
-        const struct host_buffer *output, uint32_t validation_errors_before)
+static bool collect_atomic_metrics(const struct host_buffer *counter,
+        const struct host_buffer *output, struct atomic_metrics *metrics)
 {
-    const char *name = variant == ATOMIC_TEXEL ? "texel" : "ssbo";
     const uint32_t *values = output->mapping;
-    const uint32_t final_counter = *(const uint32_t *)counter->mapping;
     uint32_t *seen = calloc(ACTIVE_COUNT, sizeof(*seen));
-    uint32_t unique = 0, missing = 0, duplicates = 0, out_of_range = 0, sentinel = 0;
-    uint32_t groups_containing_zero = 0, groups_min_zero = 0;
-    bool pass;
+
+    memset(metrics, 0, sizeof(*metrics));
+    metrics->final_counter = *(const uint32_t *)counter->mapping;
 
     if (!seen)
     {
-        fprintf(stderr, "Out of memory while checking %s output.\n", name);
+        fprintf(stderr, "Out of memory while checking atomic output.\n");
         return false;
     }
 
@@ -827,23 +840,23 @@ static bool analyze_result(enum atomic_variant variant, const struct host_buffer
         uint32_t value = values[i];
         if (value == SENTINEL)
         {
-            ++sentinel;
+            ++metrics->sentinel;
             continue;
         }
         if (value >= ACTIVE_COUNT)
         {
-            ++out_of_range;
+            ++metrics->out_of_range;
             continue;
         }
         if (seen[value]++)
-            ++duplicates;
+            ++metrics->duplicates;
         else
-            ++unique;
+            ++metrics->unique;
     }
     for (uint32_t i = 0; i < ACTIVE_COUNT; ++i)
     {
         if (!seen[i])
-            ++missing;
+            ++metrics->missing;
     }
 
     for (uint32_t group_y = 0; group_y < DISPATCH_Y; ++group_y)
@@ -873,24 +886,41 @@ static bool analyze_result(enum atomic_variant variant, const struct host_buffer
             }
 
             if (has_zero)
-                ++groups_containing_zero;
+                ++metrics->groups_containing_zero;
             if (minimum == 0)
-                ++groups_min_zero;
+                ++metrics->groups_min_zero;
         }
     }
 
-    pass = final_counter == ACTIVE_COUNT && unique == ACTIVE_COUNT && !missing &&
-            !duplicates && !out_of_range && !sentinel && groups_containing_zero == 1 &&
-            groups_min_zero == 1 && validation_errors == validation_errors_before;
+    metrics->globally_correct = metrics->final_counter == ACTIVE_COUNT &&
+            metrics->unique == ACTIVE_COUNT && !metrics->missing &&
+            !metrics->duplicates && !metrics->out_of_range && !metrics->sentinel &&
+            metrics->groups_containing_zero == 1 && metrics->groups_min_zero == 1;
+
+    free(seen);
+    return true;
+}
+
+static bool analyze_result(enum atomic_variant variant, const struct host_buffer *counter,
+        const struct host_buffer *output, uint32_t validation_errors_before)
+{
+    const char *name = variant == ATOMIC_TEXEL ? "texel" : "ssbo";
+    struct atomic_metrics metrics;
+    bool pass;
+
+    if (!collect_atomic_metrics(counter, output, &metrics))
+        return false;
+
+    pass = metrics.globally_correct && validation_errors == validation_errors_before;
 
     printf("D21_RESULT variant=%s status=%s counter=%u expected=%u unique=%u "
            "missing=%u duplicates=%u out_of_range=%u sentinel=%u "
            "groups_containing_zero=%u groups_min_zero=%u validation_errors=%u\n",
-            name, pass ? "PASS" : "FAIL", final_counter, ACTIVE_COUNT, unique,
-            missing, duplicates, out_of_range, sentinel, groups_containing_zero,
-            groups_min_zero, validation_errors - validation_errors_before);
+            name, pass ? "PASS" : "FAIL", metrics.final_counter, ACTIVE_COUNT,
+            metrics.unique, metrics.missing, metrics.duplicates, metrics.out_of_range,
+            metrics.sentinel, metrics.groups_containing_zero, metrics.groups_min_zero,
+            validation_errors - validation_errors_before);
 
-    free(seen);
     return pass;
 }
 
@@ -1145,6 +1175,333 @@ cleanup:
     return success;
 }
 
+static void print_counter_prefix(const char *run, const struct host_buffer *counter)
+{
+    const uint8_t *bytes = counter->mapping;
+    size_t count = counter->logical_size < 16u ? (size_t)counter->logical_size : 16u;
+    size_t nonzero_after_word = 0;
+    size_t first_nonzero_after_word = SIZE_MAX;
+    uint32_t u32_0 = 0;
+    uint16_t u16_0 = 0, u16_1 = 0;
+
+    if (counter->logical_size >= sizeof(u32_0))
+    {
+        memcpy(&u32_0, bytes, sizeof(u32_0));
+        memcpy(&u16_0, bytes, sizeof(u16_0));
+        memcpy(&u16_1, bytes + sizeof(u16_0), sizeof(u16_1));
+    }
+    for (size_t i = sizeof(u32_0); i < (size_t)counter->logical_size; ++i)
+    {
+        if (bytes[i])
+        {
+            if (first_nonzero_after_word == SIZE_MAX)
+                first_nonzero_after_word = i;
+            ++nonzero_after_word;
+        }
+    }
+
+    printf("D50_RAW run=%s u32_0=%u u16_0=%u u16_1=%u bytes=", run,
+            u32_0, u16_0, u16_1);
+    for (size_t i = 0; i < count; ++i)
+        printf("%02x", bytes[i]);
+    printf(" nonzero_bytes_after_word=%zu first_nonzero_after_word=",
+            nonzero_after_word);
+    if (first_nonzero_after_word == SIZE_MAX)
+        printf("none\n");
+    else
+        printf("%zu\n", first_nonzero_after_word);
+}
+
+static bool run_minimal_format_ab(const struct context *context, const char *spv_path)
+{
+    static const unsigned int sequence[] = {0, 1, 0};
+    static const char *run_names[] = {"r32-first", "r16", "r32-second"};
+    static const VkFormat formats[] = {VK_FORMAT_R32_UINT, VK_FORMAT_R16_UINT};
+    struct host_buffer counter = {0}, output = {0};
+    VkBufferView counter_views[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
+    VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+    VkDescriptorSet descriptor_sets[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+    VkShaderModule shader_module = VK_NULL_HANDLE;
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    VkCommandPool command_pool = VK_NULL_HANDLE;
+    VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+    VkFence fence = VK_NULL_HANDLE;
+    uint32_t *spirv = NULL;
+    size_t spirv_size = 0;
+    bool r32_first_pass = false, r16_correct = false, r32_second_pass = false;
+    bool success = false;
+    VkFormatProperties format_properties[2];
+    VkBufferViewCreateInfo view_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+        .offset = 0,
+        .range = LIVE_COUNTER_SIZE,
+    };
+    VkDescriptorSetLayoutBinding bindings[2] = {
+        {
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        },
+        {
+            .binding = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        },
+    };
+    VkDescriptorSetLayoutCreateInfo set_layout_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 2,
+        .pBindings = bindings,
+    };
+    VkDescriptorPoolSize pool_sizes[2] = {
+        {.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, .descriptorCount = 2},
+        {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = 2},
+    };
+    VkDescriptorPoolCreateInfo pool_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = 2,
+        .poolSizeCount = 2,
+        .pPoolSizes = pool_sizes,
+    };
+    VkDescriptorSetLayout allocated_layouts[2];
+    VkDescriptorSetAllocateInfo set_allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorSetCount = 2,
+        .pSetLayouts = allocated_layouts,
+    };
+    VkDescriptorBufferInfo output_buffer_info = {
+        .offset = 0,
+        .range = ACTIVE_COUNT * sizeof(uint32_t),
+    };
+    VkWriteDescriptorSet writes[4] = {0};
+    VkPipelineLayoutCreateInfo pipeline_layout_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+    };
+    VkShaderModuleCreateInfo shader_info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+    };
+    VkPipelineShaderStageCreateInfo stage_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+        .pName = "main",
+    };
+    VkComputePipelineCreateInfo pipeline_info = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+    };
+    VkCommandPoolCreateInfo command_pool_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .queueFamilyIndex = context->queue_family,
+    };
+    VkCommandBufferAllocateInfo command_allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    VkBufferMemoryBarrier barriers[2] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_HOST_READ_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_HOST_READ_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        },
+    };
+    VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &command_buffer,
+    };
+    VkFenceCreateInfo fence_info = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+    };
+
+    vkGetPhysicalDeviceFormatProperties(context->physical_device, formats[0],
+            &format_properties[0]);
+    vkGetPhysicalDeviceFormatProperties(context->physical_device, formats[1],
+            &format_properties[1]);
+    printf("D50_BEGIN variant=minimal-coordinate-zero-format-ab shader=%s "
+           "counter_size=%u r32_atomic=%s r16_atomic=%s\n",
+            spv_path, LIVE_COUNTER_SIZE,
+            (format_properties[0].bufferFeatures &
+                    VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT) ? "yes" : "no",
+            (format_properties[1].bufferFeatures &
+                    VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT) ? "yes" : "no");
+
+    if (!create_host_buffer(context, LIVE_COUNTER_SIZE,
+            VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, &counter) ||
+            !create_host_buffer(context, ACTIVE_COUNT * sizeof(uint32_t),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &output))
+        goto cleanup;
+
+    view_info.buffer = counter.buffer;
+    for (unsigned int i = 0; i < 2; ++i)
+    {
+        view_info.format = formats[i];
+        VK_CHECK_GOTO(vkCreateBufferView(context->device, &view_info, NULL,
+                &counter_views[i]));
+    }
+
+    VK_CHECK_GOTO(vkCreateDescriptorSetLayout(context->device, &set_layout_info, NULL,
+            &descriptor_set_layout));
+    VK_CHECK_GOTO(vkCreateDescriptorPool(context->device, &pool_info, NULL,
+            &descriptor_pool));
+    allocated_layouts[0] = descriptor_set_layout;
+    allocated_layouts[1] = descriptor_set_layout;
+    set_allocate_info.descriptorPool = descriptor_pool;
+    VK_CHECK_GOTO(vkAllocateDescriptorSets(context->device, &set_allocate_info,
+            descriptor_sets));
+
+    output_buffer_info.buffer = output.buffer;
+    for (unsigned int i = 0; i < 2; ++i)
+    {
+        writes[2u * i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[2u * i].dstSet = descriptor_sets[i];
+        writes[2u * i].dstBinding = 0;
+        writes[2u * i].descriptorCount = 1;
+        writes[2u * i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        writes[2u * i].pTexelBufferView = &counter_views[i];
+        writes[2u * i + 1u].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[2u * i + 1u].dstSet = descriptor_sets[i];
+        writes[2u * i + 1u].dstBinding = 1;
+        writes[2u * i + 1u].descriptorCount = 1;
+        writes[2u * i + 1u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        writes[2u * i + 1u].pBufferInfo = &output_buffer_info;
+    }
+    vkUpdateDescriptorSets(context->device, 4, writes, 0, NULL);
+
+    pipeline_layout_info.pSetLayouts = &descriptor_set_layout;
+    VK_CHECK_GOTO(vkCreatePipelineLayout(context->device, &pipeline_layout_info, NULL,
+            &pipeline_layout));
+    spirv = load_spirv(spv_path, &spirv_size);
+    if (!spirv)
+        goto cleanup;
+    shader_info.codeSize = spirv_size;
+    shader_info.pCode = spirv;
+    VK_CHECK_GOTO(vkCreateShaderModule(context->device, &shader_info, NULL,
+            &shader_module));
+    stage_info.module = shader_module;
+    pipeline_info.stage = stage_info;
+    pipeline_info.layout = pipeline_layout;
+    VK_CHECK_GOTO(vkCreateComputePipelines(context->device, VK_NULL_HANDLE, 1,
+            &pipeline_info, NULL, &pipeline));
+
+    VK_CHECK_GOTO(vkCreateCommandPool(context->device, &command_pool_info, NULL,
+            &command_pool));
+    command_allocate_info.commandPool = command_pool;
+    VK_CHECK_GOTO(vkAllocateCommandBuffers(context->device, &command_allocate_info,
+            &command_buffer));
+    VK_CHECK_GOTO(vkCreateFence(context->device, &fence_info, NULL, &fence));
+    barriers[0].buffer = counter.buffer;
+    barriers[1].buffer = output.buffer;
+
+    for (unsigned int run = 0; run < 3; ++run)
+    {
+        const unsigned int descriptor_index = sequence[run];
+        struct atomic_metrics metrics;
+        uint32_t errors_before = validation_errors;
+        uint32_t warnings_before = validation_warnings;
+        bool valid_run;
+
+        if (run)
+        {
+            VK_CHECK_GOTO(vkResetFences(context->device, 1, &fence));
+            VK_CHECK_GOTO(vkResetCommandPool(context->device, command_pool, 0));
+        }
+        memset(counter.mapping, 0, (size_t)counter.logical_size);
+        memset(output.mapping, 0xff, (size_t)output.logical_size);
+        if (!flush_host_buffer(context, &counter) || !flush_host_buffer(context, &output))
+            goto cleanup;
+
+        VK_CHECK_GOTO(vkBeginCommandBuffer(command_buffer, &begin_info));
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                pipeline_layout, 0, 1, &descriptor_sets[descriptor_index], 0, NULL);
+        vkCmdDispatch(command_buffer, DISPATCH_X, DISPATCH_Y, 1);
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_PIPELINE_STAGE_HOST_BIT, 0, 0, NULL, 2, barriers, 0, NULL);
+        VK_CHECK_GOTO(vkEndCommandBuffer(command_buffer));
+        VK_CHECK_GOTO(vkQueueSubmit(context->queue, 1, &submit_info, fence));
+        VK_CHECK_GOTO(vkWaitForFences(context->device, 1, &fence, VK_TRUE, UINT64_MAX));
+
+        if (!invalidate_host_buffer(context, &counter) ||
+                !invalidate_host_buffer(context, &output) ||
+                !collect_atomic_metrics(&counter, &output, &metrics))
+            goto cleanup;
+        valid_run = metrics.globally_correct && validation_errors == errors_before;
+        printf("D50_RESULT run=%s view=%s output_status=%s counter=%u expected=%u "
+               "unique=%u missing=%u duplicates=%u out_of_range=%u sentinel=%u "
+               "groups_containing_zero=%u groups_min_zero=%u "
+               "validation_errors=%u validation_warnings=%u\n",
+                run_names[run], descriptor_index ? "R16_UINT" : "R32_UINT",
+                metrics.globally_correct ? "GLOBAL_CORRECT" : "CORRUPT",
+                metrics.final_counter, ACTIVE_COUNT, metrics.unique, metrics.missing,
+                metrics.duplicates, metrics.out_of_range, metrics.sentinel,
+                metrics.groups_containing_zero, metrics.groups_min_zero,
+                validation_errors - errors_before, validation_warnings - warnings_before);
+        print_counter_prefix(run_names[run], &counter);
+
+        if (!run)
+            r32_first_pass = valid_run;
+        else if (run == 1)
+            r16_correct = metrics.globally_correct;
+        else
+            r32_second_pass = valid_run;
+    }
+
+    success = r32_first_pass && r32_second_pass;
+    printf("D50_SUMMARY r32_first=%s r16=%s r32_second=%s status=%s\n",
+            r32_first_pass ? "PASS" : "FAIL",
+            r16_correct ? "GLOBAL_CORRECT" : "CORRUPT",
+            r32_second_pass ? "PASS" : "FAIL", success ? "EXECUTED" : "FAIL");
+
+cleanup:
+    if (context->device)
+        vkDeviceWaitIdle(context->device);
+    if (fence)
+        vkDestroyFence(context->device, fence, NULL);
+    if (command_pool)
+        vkDestroyCommandPool(context->device, command_pool, NULL);
+    if (pipeline)
+        vkDestroyPipeline(context->device, pipeline, NULL);
+    if (shader_module)
+        vkDestroyShaderModule(context->device, shader_module, NULL);
+    if (pipeline_layout)
+        vkDestroyPipelineLayout(context->device, pipeline_layout, NULL);
+    if (descriptor_pool)
+        vkDestroyDescriptorPool(context->device, descriptor_pool, NULL);
+    if (descriptor_set_layout)
+        vkDestroyDescriptorSetLayout(context->device, descriptor_set_layout, NULL);
+    for (unsigned int i = 0; i < 2; ++i)
+    {
+        if (counter_views[i])
+            vkDestroyBufferView(context->device, counter_views[i], NULL);
+    }
+    destroy_host_buffer(context, &output);
+    destroy_host_buffer(context, &counter);
+    free(spirv);
+    return success;
+}
+
 static uint32_t d22_input_count(uint32_t x, uint32_t y)
 {
     return 1u + ((x + 3u * y) % 5u);
@@ -1153,13 +1510,15 @@ static uint32_t d22_input_count(uint32_t x, uint32_t y)
 static bool analyze_exact_result(const struct host_buffer *counter,
         const struct host_buffer *staging, uint32_t expected_total,
         uint32_t validation_errors_before, bool descriptor_buffer_backend,
-        VkFormat counter_format, bool counter_as_storage_buffer)
+        VkFormat counter_format, VkDeviceSize counter_size,
+        bool counter_as_storage_buffer)
 {
     const uint32_t *grid = staging->mapping;
     const uint32_t final_counter = *(const uint32_t *)counter->mapping;
     uint32_t *coverage = calloc(expected_total, sizeof(*coverage));
     uint32_t count_mismatch = 0, out_of_range = 0, overlap = 0, missing = 0;
     uint32_t layer1_mismatch = 0, groups_containing_zero = 0;
+    size_t counter_tail_nonzero = 0;
     bool correct;
 
     if (!coverage)
@@ -1202,6 +1561,12 @@ static bool analyze_exact_result(const struct host_buffer *counter,
             ++missing;
     }
 
+    for (size_t i = sizeof(uint32_t); i < (size_t)counter->logical_size; ++i)
+    {
+        if (((const uint8_t *)counter->mapping)[i])
+            ++counter_tail_nonzero;
+    }
+
     for (uint32_t group_y = 0; group_y < DISPATCH_Y; ++group_y)
     {
         for (uint32_t group_x = 0; group_x < DISPATCH_X; ++group_x)
@@ -1229,7 +1594,8 @@ static bool analyze_exact_result(const struct host_buffer *counter,
     }
 
     correct = final_counter == expected_total && !count_mismatch && !out_of_range &&
-            !overlap && !missing && !layer1_mismatch && groups_containing_zero == 1 &&
+            !overlap && !missing && !layer1_mismatch && !counter_tail_nonzero &&
+            groups_containing_zero == 1 &&
             ((counter_format == VK_FORMAT_R16_UINT && !counter_as_storage_buffer) ||
                     validation_errors == validation_errors_before);
 
@@ -1238,32 +1604,51 @@ static bool analyze_exact_result(const struct host_buffer *counter,
         printf("D23_RESULT variant=exact-game-spv-r16-live-view backend=%s "
                "output_status=%s counter=%u expected=%u "
                "count_mismatch=%u out_of_range=%u overlap=%u missing=%u "
-               "layer1_mismatch=%u groups_containing_zero=%u validation_errors=%u\n",
+               "layer1_mismatch=%u groups_containing_zero=%u "
+               "counter_tail_nonzero=%zu validation_errors=%u\n",
                 descriptor_buffer_backend ? "descriptor-buffer" : "mutable-descriptor-set",
                 correct ? "GLOBAL_CORRECT" : "CORRUPT", final_counter, expected_total,
                 count_mismatch, out_of_range, overlap, missing, layer1_mismatch,
-                groups_containing_zero, validation_errors - validation_errors_before);
+                groups_containing_zero, counter_tail_nonzero,
+                validation_errors - validation_errors_before);
     }
     else if (counter_as_storage_buffer)
     {
         printf("D24_RESULT variant=exact-game-spv-r16-uav-ssbo-atomic backend=%s "
                "status=%s counter=%u expected=%u "
                "count_mismatch=%u out_of_range=%u overlap=%u missing=%u "
-               "layer1_mismatch=%u groups_containing_zero=%u validation_errors=%u\n",
+               "layer1_mismatch=%u groups_containing_zero=%u "
+               "counter_tail_nonzero=%zu validation_errors=%u\n",
                 descriptor_buffer_backend ? "descriptor-buffer" : "mutable-descriptor-set",
                 correct ? "PASS" : "FAIL", final_counter, expected_total,
                 count_mismatch, out_of_range, overlap, missing, layer1_mismatch,
-                groups_containing_zero, validation_errors - validation_errors_before);
+                groups_containing_zero, counter_tail_nonzero,
+                validation_errors - validation_errors_before);
+    }
+    else if (counter_size == LIVE_COUNTER_SIZE)
+    {
+        printf("D51_RESULT variant=exact-game-spv-r32-live-sized-alias backend=%s "
+               "status=%s counter=%u expected=%u "
+               "count_mismatch=%u out_of_range=%u overlap=%u missing=%u "
+               "layer1_mismatch=%u groups_containing_zero=%u "
+               "counter_tail_nonzero=%zu validation_errors=%u\n",
+                descriptor_buffer_backend ? "descriptor-buffer" : "mutable-descriptor-set",
+                correct ? "PASS" : "FAIL", final_counter, expected_total,
+                count_mismatch, out_of_range, overlap, missing, layer1_mismatch,
+                groups_containing_zero, counter_tail_nonzero,
+                validation_errors - validation_errors_before);
     }
     else
     {
         printf("D22_RESULT variant=exact-game-spv backend=%s status=%s "
                "counter=%u expected=%u "
                "count_mismatch=%u out_of_range=%u overlap=%u missing=%u "
-               "layer1_mismatch=%u groups_containing_zero=%u validation_errors=%u\n",
+               "layer1_mismatch=%u groups_containing_zero=%u "
+               "counter_tail_nonzero=%zu validation_errors=%u\n",
                 descriptor_buffer_backend ? "descriptor-buffer" : "mutable-descriptor-set",
                 correct ? "PASS" : "FAIL", final_counter, expected_total, count_mismatch,
                 out_of_range, overlap, missing, layer1_mismatch, groups_containing_zero,
+                counter_tail_nonzero,
                 validation_errors - validation_errors_before);
     }
 
@@ -1275,12 +1660,16 @@ static bool analyze_exact_result(const struct host_buffer *counter,
 
 static bool run_exact_variant(const struct context *context, const char *spv_path,
         bool descriptor_buffer_backend, VkFormat counter_format,
+        VkDeviceSize counter_size,
         bool counter_as_storage_buffer)
 {
     const VkDeviceSize grid_size = ACTIVE_COUNT * 2u * sizeof(uint32_t);
     const VkDeviceSize cbuffer_size = 4096u * 4u * sizeof(float);
-    const VkDeviceSize counter_size = counter_format == VK_FORMAT_R16_UINT ?
-            87040u : sizeof(uint32_t);
+    const bool r32_live_sized = counter_format == VK_FORMAT_R32_UINT &&
+            !counter_as_storage_buffer && counter_size == LIVE_COUNTER_SIZE;
+    const char *experiment = counter_as_storage_buffer ? "D24" :
+            (counter_format == VK_FORMAT_R16_UINT ? "D23" :
+                    (r32_live_sized ? "D51" : "D22"));
     struct host_buffer counter = {0}, staging = {0}, cbuffer = {0};
     struct host_buffer descriptor_buffers[2] = {{0}, {0}};
     struct device_image grid_image = {0};
@@ -1507,10 +1896,10 @@ static bool run_exact_variant(const struct context *context, const char *spv_pat
 
     printf("%s_BEGIN variant=exact-game-spv%s shader=%s backend=%s "
            "counter_format=%s counter_range=%" PRIu64 "\n",
-            counter_as_storage_buffer ? "D24" :
-                    (counter_format == VK_FORMAT_R16_UINT ? "D23" : "D22"),
+            experiment,
             counter_as_storage_buffer ? "-r16-uav-ssbo-atomic" :
-                    (counter_format == VK_FORMAT_R16_UINT ? "-r16-live-view" : ""),
+                    (counter_format == VK_FORMAT_R16_UINT ? "-r16-live-view" :
+                            (r32_live_sized ? "-r32-live-sized-alias" : "")),
             spv_path,
             descriptor_buffer_backend ? "descriptor-buffer" : "mutable-descriptor-set",
             counter_format == VK_FORMAT_R16_UINT ? "R16_UINT" : "R32_UINT",
@@ -1630,7 +2019,8 @@ static bool run_exact_variant(const struct context *context, const char *spv_pat
         if (!get_layout_size || !get_binding_offset || !get_descriptor ||
                 !cmd_bind_descriptor_buffers || !cmd_set_descriptor_offsets)
         {
-            fprintf(stderr, "D22 descriptor-buffer entry points are unavailable.\n");
+            fprintf(stderr, "%s descriptor-buffer entry points are unavailable.\n",
+                    experiment);
             goto cleanup;
         }
 
@@ -1649,7 +2039,8 @@ static bool run_exact_variant(const struct context *context, const char *spv_pat
                 binding_offsets[1] + descriptor_properties.uniformBufferDescriptorSize >
                         layout_sizes[1])
         {
-            fprintf(stderr, "D22 invalid descriptor-buffer addresses or layout sizes.\n");
+            fprintf(stderr, "%s invalid descriptor-buffer addresses or layout sizes.\n",
+                    experiment);
             goto cleanup;
         }
         if (!create_host_address_buffer(context, layout_sizes[0],
@@ -1688,9 +2079,10 @@ static bool run_exact_variant(const struct context *context, const char *spv_pat
         if (!flush_host_buffer(context, &descriptor_buffers[0]) ||
                 !flush_host_buffer(context, &descriptor_buffers[1]))
             goto cleanup;
-        printf("D22_DESCRIPTOR_LAYOUT set1_size=%" PRIu64 " set1_offset=%" PRIu64
+        printf("%s_DESCRIPTOR_LAYOUT set1_size=%" PRIu64 " set1_offset=%" PRIu64
                " mutable_stride=%" PRIu64 " set2_size=%" PRIu64
                " set2_offset=%" PRIu64 " alignment=%" PRIu64 "\n",
+                experiment,
                 (uint64_t)layout_sizes[0], (uint64_t)binding_offsets[0],
                 (uint64_t)mutable_stride, (uint64_t)layout_sizes[1],
                 (uint64_t)binding_offsets[1],
@@ -1800,7 +2192,8 @@ static bool run_exact_variant(const struct context *context, const char *spv_pat
             !invalidate_host_buffer(context, &staging))
         goto cleanup;
     success = analyze_exact_result(&counter, &staging, expected_total, errors_before,
-            descriptor_buffer_backend, counter_format, counter_as_storage_buffer);
+            descriptor_buffer_backend, counter_format, counter_size,
+            counter_as_storage_buffer);
 
 cleanup:
     if (context->device)
@@ -1850,7 +2243,8 @@ static bool parse_device_index(const char *text, int32_t *index)
 static void usage(const char *program)
 {
     fprintf(stderr,
-            "Usage: %s [--validation] [--device INDEX] --texel FILE --ssbo FILE "
+            "Usage: %s [--validation] [--format-ab] [--device INDEX] "
+            "--texel FILE --ssbo FILE "
             "[--exact FILE] [--exact-r16 FILE] [--exact-r16-ssbo FILE]\n"
             "       %s [--validation] --list\n", program, program);
 }
@@ -1869,6 +2263,10 @@ static bool parse_options(int argc, char **argv, struct options *options)
         else if (!strcmp(argv[i], "--list"))
         {
             options->list_only = true;
+        }
+        else if (!strcmp(argv[i], "--format-ab"))
+        {
+            options->format_ab = true;
         }
         else if (!strcmp(argv[i], "--device") && i + 1 < argc)
         {
@@ -1921,6 +2319,8 @@ int main(int argc, char **argv)
     bool texel_pass, ssbo_pass, exact_set_pass = true, exact_buffer_pass = true;
     bool exact_r16_set_ran = true, exact_r16_buffer_ran = true;
     bool exact_r16_ssbo_set_pass = true, exact_r16_ssbo_buffer_pass = true;
+    bool format_ab_pass = true;
+    bool exact_r32_live_set_pass = true, exact_r32_live_buffer_pass = true;
     uint32_t non_d23_validation_errors;
     int exit_code = 1;
 
@@ -1977,24 +2377,44 @@ int main(int argc, char **argv)
     if (options.exact_spv)
     {
         exact_set_pass = run_exact_variant(&context, options.exact_spv, false,
-                VK_FORMAT_R32_UINT, false);
+                VK_FORMAT_R32_UINT, sizeof(uint32_t), false);
         exact_buffer_pass = run_exact_variant(&context, options.exact_spv, true,
-                VK_FORMAT_R32_UINT, false);
+                VK_FORMAT_R32_UINT, sizeof(uint32_t), false);
+    }
+    if (options.format_ab && options.exact_spv)
+    {
+        exact_r32_live_set_pass = run_exact_variant(&context, options.exact_spv, false,
+                VK_FORMAT_R32_UINT, LIVE_COUNTER_SIZE, false);
+        exact_r32_live_buffer_pass = run_exact_variant(&context, options.exact_spv, true,
+                VK_FORMAT_R32_UINT, LIVE_COUNTER_SIZE, false);
     }
     non_d23_validation_errors = validation_errors;
     if (options.exact_r16_spv)
     {
         exact_r16_set_ran = run_exact_variant(&context, options.exact_r16_spv, false,
-                VK_FORMAT_R16_UINT, false);
+                VK_FORMAT_R16_UINT, LIVE_COUNTER_SIZE, false);
         exact_r16_buffer_ran = run_exact_variant(&context, options.exact_r16_spv, true,
-                VK_FORMAT_R16_UINT, false);
+                VK_FORMAT_R16_UINT, LIVE_COUNTER_SIZE, false);
     }
     if (options.exact_r16_ssbo_spv)
     {
         exact_r16_ssbo_set_pass = run_exact_variant(&context,
-                options.exact_r16_ssbo_spv, false, VK_FORMAT_R16_UINT, true);
+                options.exact_r16_ssbo_spv, false, VK_FORMAT_R16_UINT,
+                LIVE_COUNTER_SIZE, true);
         exact_r16_ssbo_buffer_pass = run_exact_variant(&context,
-                options.exact_r16_ssbo_spv, true, VK_FORMAT_R16_UINT, true);
+                options.exact_r16_ssbo_spv, true, VK_FORMAT_R16_UINT,
+                LIVE_COUNTER_SIZE, true);
+    }
+    if (options.format_ab)
+    {
+        format_ab_pass = run_minimal_format_ab(&context, options.texel_spv);
+        printf("D50_D51_SUMMARY minimal_format_ab=%s "
+               "exact_r32_live_set=%s exact_r32_live_descriptor_buffer=%s\n",
+                format_ab_pass ? "EXECUTED" : "FAIL",
+                options.exact_spv ?
+                        (exact_r32_live_set_pass ? "PASS" : "FAIL") : "NOT_RUN",
+                options.exact_spv ?
+                        (exact_r32_live_buffer_pass ? "PASS" : "FAIL") : "NOT_RUN");
     }
     printf("D21_D22_D23_D24_SUMMARY device_index=%d texel=%s ssbo=%s exact_set=%s "
            "exact_descriptor_buffer=%s "
@@ -2017,6 +2437,8 @@ int main(int argc, char **argv)
     exit_code = texel_pass && ssbo_pass && exact_set_pass && exact_buffer_pass &&
             exact_r16_set_ran && exact_r16_buffer_ran &&
             exact_r16_ssbo_set_pass && exact_r16_ssbo_buffer_pass &&
+            format_ab_pass && exact_r32_live_set_pass &&
+            exact_r32_live_buffer_pass &&
             !non_d23_validation_errors ? 0 : 2;
 
 cleanup:

@@ -15,8 +15,11 @@ document control quality and prevent accidental repetition.
   NUMA series and empty-launch-options Steam validation
 - [`evidence-pr-scope-refinement.md`](evidence-pr-scope-refinement.md): final
   terrain PR scope, regression results, and evidence boundary
+- [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md):
+  current R16-versus-R32 descriptor-boundary proof, VKD3D-Proton-only D52
+  discriminator, and disposition in favor of Mesa MR !43672
 - [`evidence-d49-compiler-aware-result.md`](evidence-d49-compiler-aware-result.md):
-  current ABI-safe paired dxil-spirv and VKD3D-Proton lighting result
+  superseded paired dxil-spirv and VKD3D-Proton lighting experiment
 - [`evidence-u01-upstream-candidate-ab.md`](evidence-u01-upstream-candidate-ab.md):
   historical matched lighting A/B for the superseded first implementation
 - [`../patches/README.md`](../patches/README.md): final and diagnostic patch
@@ -74,11 +77,16 @@ document control quality and prevent accidental repetition.
 - [`evidence-d47-allocator-only-wired-result.md`](evidence-d47-allocator-only-wired-result.md):
   clean allocator-only in-game result
 - [`evidence-d49-compiler-aware-result.md`](evidence-d49-compiler-aware-result.md):
-  compiler-aware ABI-safe result with backend capability gating and typed
-  fallback
+  historical compiler-aware result with backend capability gating and typed
+  fallback, superseded after D50 through D52 removed the need for alternate
+  compiler lowering
+- [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md):
+  D50 pass/fail/pass view-format control, D51 exact-shader coverage, two clean
+  D52 game runs with stock dxil-spirv, and the cleaner Mesa upstream direction
 - [`evidence-u01-upstream-candidate-ab.md`](evidence-u01-upstream-candidate-ab.md):
   historically valid one-commit runtime/mechanism A/B, superseded as an
-  upstream architecture by D49
+  upstream architecture first by D49 and finally by the D50 through D52
+  descriptor-boundary result and Mesa direction
 
 > [!NOTE]
 > D25 originally appeared to reject the allocator as the visual cause. Later
@@ -128,7 +136,8 @@ instructions:
   submission plan completed by PR #3202
 - [`shimmering-ownership-plan.md`](shimmering-ownership-plan.md): lighting
   ownership and initial publication plan; PR #3207 later received architectural
-  feedback and the current paired implementation is recorded by D49
+  feedback, D49 explored a paired implementation, and D50 through D52 isolated
+  the driver boundary more precisely
 
 All other `evidence-*-preparation.md` and `evidence-*-result.md` files form the
 full dated experiment trail. Their exact order and validity classification are
