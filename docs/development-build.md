@@ -545,8 +545,9 @@ D52 carries that discriminator into the game without modifying dxil-spirv:
 | dxil-spirv gitlink, unchanged | `cc75a0c98d34d7bcc03560527c799b52e48b4d1f` |
 | Custom Proton tool | `IL2-Korea-D52-R32Alias-84c87c83-r2` |
 
-The uncommitted diagnostic keeps the normal R16 descriptor and adds an R32
-storage-texel-buffer sibling only for the exact executable, allocator shader,
+The original game-tested, uncommitted diagnostic keeps the normal R16
+descriptor and adds an R32 storage-texel-buffer sibling only for the exact
+executable, allocator shader,
 resource, UAV shape, and supported embedded mutable-descriptor layout. Clean
 x86-64 and x86 package builds completed. The package hashes are:
 
@@ -580,3 +581,11 @@ D3D12 and pre-GFX10 behavior and is the preferred upstream direction. This
 investigation has not yet runtime-tested that exact Mesa commit. The MR remains
 open. Remaining work is to test an accepted Mesa revision with stock
 dxil-spirv and VKD3D-Proton and follow its normal Mesa/Proton delivery.
+
+For source provenance, the same D52 change was forward-ported on 2026-08-13
+from parent `238f157e1d64f90e0d90593557c092ab8af6e0a3` to personal fork commit
+[`8cd28e8f`](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143)
+on branch `diagnostic-il2-r32-alias-d52`. The x86-64 and x86 builds passed,
+but that forward-port was not installed or game-tested. It was linked from a
+[follow-up on closed PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
+as an inspectable diagnostic, not as a new PR or merge candidate.

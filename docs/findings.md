@@ -648,6 +648,15 @@
     It records the closed experimental lighting PRs, Mesa as the preferred but
     unvalidated upstream direction, the merged terrain fix, and the merged Wine
     NUMA work without claiming standard-release availability.
+136. On 2026-08-13, the D52 source was forward-ported to VKD3D-Proton parent
+    `238f157e1d64f90e0d90593557c092ab8af6e0a3` and published on personal fork
+    branch `diagnostic-il2-r32-alias-d52` as
+    [`8cd28e8f`](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143).
+    Both architecture builds passed, but the forward-port was not rerun in the
+    game. Its
+    [closed-PR follow-up](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
+    records it only as inspectable diagnostic source, not a request to reopen
+    PR #3207 or merge the per-game alias.
 
 The complete D50 through D52 record is
 [`evidence-d50-d52-r32-alias-result.md`](evidence-d50-d52-r32-alias-result.md).

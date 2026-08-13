@@ -14,6 +14,14 @@ D50 through D52 isolated the behavior at the RADV descriptor/view boundary.
 Mesa MR !43672 is the preferred general direction and remains open, but this
 archive does not contain a local game test of that Mesa change.
 
+For provenance, the D52 source was later forward-ported to the personal
+VKD3D-Proton fork as
+[`8cd28e8f`](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143)
+and linked from a
+[follow-up on closed PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345).
+That forward-port passed both architecture builds but was not rerun in the
+game and was not submitted as a new merge proposal.
+
 The Wine evidence covers the earlier MR head `e8319c0e` and Valve's equivalent
 series. The final rebased Wine head `663fd7cc` was not rerun here. These scope
 distinctions are intentional and apply throughout the archive.

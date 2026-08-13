@@ -42,6 +42,15 @@ narrow VKD3D-Proton R32 alias with stock dxil-spirv. That alias is diagnostic,
 not the preferred upstream solution. dxil-spirv PR #296 and VKD3D-Proton PR
 #3207 were closed unmerged as superseded.
 
+The original game-tested D52 change was later forward-ported to personal fork
+branch `diagnostic-il2-r32-alias-d52` as commit
+[`8cd28e8f`](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143).
+Its x86-64 and x86 builds passed, but that forward-port was not rerun in the
+game. A
+[follow-up comment on closed PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
+published the link strictly for inspection and explicitly did not request that
+the PR be reopened or the diagnostic merged.
+
 The investigation agrees with the cleaner general direction in Mesa MR !43672,
 which aligns RADV's out-of-bounds component selection with native AMD D3D12
 and pre-GFX10 behavior. NVIDIA already passes the relevant descriptor-heap
@@ -54,6 +63,8 @@ MR !43672 remains open and was not locally game-tested for this archive.
   <https://github.com/HansKristian-Work/dxil-spirv/pull/296>
 - Closed VKD3D-Proton lighting experiment and maintainer discussion:
   <https://github.com/HansKristian-Work/vkd3d-proton/pull/3207>
+- Published D52 diagnostic source:
+  <https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143>
 - Open proposed Mesa correction:
   <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672>
 

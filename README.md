@@ -58,6 +58,8 @@ general Mesa direction described by the final investigation.
 - [Merged terrain PR #3202](https://github.com/HansKristian-Work/vkd3d-proton/pull/3202)
 - [Closed dxil-spirv experiment #296](https://github.com/HansKristian-Work/dxil-spirv/pull/296)
 - [Closed VKD3D-Proton lighting experiment #3207 and maintainer review](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207)
+- [Published D52 diagnostic source on the personal VKD3D-Proton fork](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143)
+- [D52 publication note on closed PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
 - [Open general RADV correction in Mesa MR !43672](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/43672)
 - [D50 through D52 descriptor-boundary result](docs/evidence-d50-d52-r32-alias-result.md)
 - [Final evidence release from 2026-08-11](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/final-evidence-2026-08-11)
@@ -137,6 +139,16 @@ R32_UINT alias only for the exact executable, shader, resource, and UAV shape.
 Two game runs were free of the blocks. D52 used the OpenMP launch workaround
 because its isolated Proton base excluded the separate Wine fix, and it also
 excluded the terrain fix. No D52 screenshot was captured.
+
+The game-tested D52 source was later forward-ported as commit
+[`8cd28e8f`](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143)
+on the personal fork branch
+[`diagnostic-il2-r32-alias-d52`](https://github.com/silv3rshi3ld/vkd3d-proton/tree/diagnostic-il2-r32-alias-d52).
+That forward-port passed the x86-64 and x86 builds but was not rerun in the
+game. It was linked from a
+[follow-up comment on closed PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
+only to make the final discriminator inspectable, not to reopen the PR or
+propose the per-game alias for merging.
 
 The R32 alias is evidence, not the proposed upstream implementation. The
 experimental [dxil-spirv PR #296](https://github.com/HansKristian-Work/dxil-spirv/pull/296)
