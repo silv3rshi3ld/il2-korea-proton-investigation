@@ -204,6 +204,15 @@ artifact, not an upstream candidate. No D52 binary is published. See
 [`../docs/evidence-d50-d52-r32-alias-result.md`](../docs/evidence-d50-d52-r32-alias-result.md)
 for the canonical evidence and scope limits.
 
+The same source change was later forward-ported to personal fork branch
+`diagnostic-il2-r32-alias-d52` as commit
+[`8cd28e8f`](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143).
+That forward-port passed the x86-64 and x86 builds but was not rerun in the
+game. Its
+[follow-up link on closed PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
+made the source available for inspection without proposing that the PR be
+reopened or the diagnostic merged.
+
 The patch series is now archival. `0009` records historical terrain candidate
 `64ec55e7`; the reviewed successor merged as `731c4aae`. `0016`, the D49 build
 details, and `0017` record the lighting investigation's successive diagnostic

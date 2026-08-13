@@ -229,7 +229,12 @@ Current sequence:
 
 1. dxil-spirv PR #296 and VKD3D-Proton PR #3207 are closed unmerged as
    superseded. Preserve their discussion as historical evidence.
-2. Do not publish D52 as another PR. Retain it as causal evidence only.
+2. Do not submit D52 as another PR. Its source was later published on personal
+   fork branch `diagnostic-il2-r32-alias-d52` as
+   [`8cd28e8f`](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143)
+   and linked from a
+   [closed-PR follow-up](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
+   for inspection only. Retain it as causal evidence, not a merge proposal.
 3. Follow the still-open Mesa MR !43672 and build its accepted revision
    locally.
 4. Test that Mesa revision with stock dxil-spirv and unmodified VKD3D-Proton,

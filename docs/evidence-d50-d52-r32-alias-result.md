@@ -75,7 +75,7 @@ is needed for that result.
 
 ## D52: VKD3D-Proton-only runtime discriminator
 
-D52 is an uncommitted local diagnostic based on:
+The original game-tested D52 was an uncommitted local diagnostic based on:
 
 | Component | Identity |
 | --- | --- |
@@ -83,6 +83,18 @@ D52 is an uncommitted local diagnostic based on:
 | dxil-spirv gitlink, unchanged | `cc75a0c98d34d7bcc03560527c799b52e48b4d1f` |
 | Custom Proton tool | `IL2-Korea-D52-R32Alias-84c87c83-r2` |
 | Game build | `24615759` |
+
+On 2026-08-13, the same source change was forward-ported to VKD3D-Proton
+parent `238f157e1d64f90e0d90593557c092ab8af6e0a3` and published on the
+personal fork as commit
+[`8cd28e8f98751afe3b85c3b08519464907aa5143`](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143)
+on branch
+[`diagnostic-il2-r32-alias-d52`](https://github.com/silv3rshi3ld/vkd3d-proton/tree/diagnostic-il2-r32-alias-d52).
+The x86-64 and x86 builds passed. The forward-port was not installed or rerun
+in the game, so the two clean game runs and binary identities below apply only
+to the original `84c87c83` diagnostic. The source link was added in a
+[follow-up comment on closed PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
+for inspection only, with no request to reopen the PR or merge the alias.
 
 The candidate leaves the normal `R16_UINT` descriptor in place. For only
 `IL2Series.exe`, shader `0x7cefa1bc80bb4c70`, and the exact full-resource UAV

@@ -249,6 +249,8 @@ Primary evidence:
 - [VKD3D-Proton PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207)
 - [dxil-spirv PR #296](https://github.com/HansKristian-Work/dxil-spirv/pull/296)
 - [D50-D52 conclusion posted on PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5256360847)
+- [Published D52 diagnostic source](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143)
+- [D52 source-publication follow-up on closed PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
 
 ### D49 compiler-aware, ABI-safe experiment
 
@@ -332,6 +334,16 @@ descriptor. A one-shot runtime marker confirmed creation of that alias for the
 exact executable, shader, 87,040-byte resource, and matching UAV description.
 Two D52-r2 game runs showed no square lighting blocks. The first captured the
 marker and shader dump; the second used no VKD3D diagnostic environment.
+
+On 2026-08-13, the same D52 source was forward-ported to current
+VKD3D-Proton parent `238f157e1d64f90e0d90593557c092ab8af6e0a3` and published
+on personal fork branch `diagnostic-il2-r32-alias-d52` as
+[`8cd28e8f`](https://github.com/silv3rshi3ld/vkd3d-proton/commit/8cd28e8f98751afe3b85c3b08519464907aa5143).
+Its x86-64 and x86 builds passed, but the forward-port was not rerun in the
+game. The source was linked from a
+[follow-up on closed PR #3207](https://github.com/HansKristian-Work/vkd3d-proton/pull/3207#issuecomment-5276514345)
+for inspection only. It was not a request to reopen the PR and does not change
+the preferred Mesa direction.
 
 D52 is deliberately narrow diagnostic code, not the preferred upstream fix.
 It supports the conclusion that the failure is at the texel-buffer view and
