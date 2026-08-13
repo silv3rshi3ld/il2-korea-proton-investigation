@@ -8,8 +8,10 @@ results, negative controls, superseded approaches, and exact evidence limits so
 the work can be audited or resumed without repeating the investigation.
 
 > [!IMPORTANT]
-> This is an investigation and upstream evidence archive, not a game mod or a
-> replacement Proton distribution.
+> This is primarily an investigation and upstream evidence archive, not a game
+> mod. An optional, unofficial community test Proton is documented separately
+> under [`community-proton/`](community-proton/README.md); it is not an
+> upstream or supported Proton release.
 > No game files were modified. The Wine startup series was validated without
 > launch parameters, but the isolated D52 lighting test deliberately excluded
 > that Wine work and therefore still used the OpenMP startup workaround. A fix
@@ -32,6 +34,21 @@ The complete technical conclusions, exact hashes, and evidence boundaries are
 in [`docs/final-report.md`](docs/final-report.md).
 The sanitized archive bundle is the
 [2026-08-11 final evidence release](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/final-evidence-2026-08-11).
+
+## Community test Proton
+
+The separately packaged
+[`IL-2 Korea Three-Fix Proton`](community-proton/README.md) combines the tested
+Wine NUMA startup series, the VKD3D-Proton terrain candidate, and the narrowly
+scoped VKD3D-Proton lighting workaround in one importable Steam compatibility
+tool. Its page contains installation, verification, rollback, source, and
+testing-limit information.
+
+The binary archive is too large for ordinary Git tracking and belongs as a
+GitHub Release asset. It is supplied strictly for testing, as-is, without
+warranty, maintenance, or user support. The lighting workaround remains a
+historical application-specific compatibility mechanism, not the preferred
+general Mesa direction described by the final investigation.
 
 ## Upstream record
 

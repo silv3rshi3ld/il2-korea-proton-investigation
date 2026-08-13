@@ -60,7 +60,9 @@ MR !43672 remains open and was not locally game-tested for this archive.
 The historical paired lighting implementation and the D52 diagnostic do not
 grant redistribution rights beyond those of their upstream source trees. A
 sanitized formatted D52 diagnostic patch is retained as reproducibility
-evidence, but no custom Proton binary is included in this repository.
+evidence. No custom Proton binary is tracked in Git; an optional testing build
+may instead be distributed separately as a GitHub Release asset with upstream
+licenses, source provenance, packaged modifications, and checksums.
 
 For reuse or redistribution of a patch, consult the license of the source tree
 to which it applies and the applicable upstream contribution policy.
@@ -93,7 +95,8 @@ The repository and final evidence release intentionally exclude:
   prefixes;
 - game shader binaries and shader caches;
 - raw RenderDoc captures and unfiltered large runtime traces;
-- custom Proton packages or prebuilt replacement DLLs;
+- custom Proton packages or prebuilt replacement DLLs in the Git repository
+  itself; optional binary release assets are documented separately;
 - third-party artifacts whose redistribution has not been reviewed.
 
 Only an allowlisted, sanitized subset of tracked files is eligible for the
