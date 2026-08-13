@@ -44,11 +44,19 @@ scoped VKD3D-Proton lighting workaround in one importable Steam compatibility
 tool. Its page contains installation, verification, rollback, source, and
 testing-limit information.
 
-The binary archive is too large for ordinary Git tracking and belongs as a
-GitHub Release asset. It is supplied strictly for testing, as-is, without
-warranty, maintenance, or user support. The lighting workaround remains a
-historical application-specific compatibility mechanism, not the preferred
-general Mesa direction described by the final investigation.
+The binary archive is too large for ordinary Git tracking and is published as
+the
+[`community-proton-three-fixes-2026-08-13` prerelease](https://github.com/silv3rshi3ld/il2-korea-proton-investigation/releases/tag/community-proton-three-fixes-2026-08-13).
+It is supplied strictly for testing, as-is, without warranty, maintenance, or
+user support. The lighting workaround remains a historical
+application-specific compatibility mechanism, not the preferred general Mesa
+direction described by the final investigation.
+
+The official Steam entry supplied the controlled in-game validation. A first
+external website/standalone attempt successfully bootstrapped the package and
+Steam Linux Runtime 4.0 on an RX 9070 XT, but an invalid non-Steam-shortcut
+target stopped the run before `IL2Series.exe` was created. It is recorded as
+installation evidence, not as cross-hardware confirmation of the three fixes.
 
 ## Upstream record
 

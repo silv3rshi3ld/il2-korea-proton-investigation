@@ -129,6 +129,10 @@ distinctions are intentional and apply throughout the archive.
   VKD3D-Proton build provenance
 - [`external-evidence.md`](external-evidence.md): independent issue evidence
   and checksums without redistributing the original artifacts
+- [`evidence-community-package-bootstrap-2026-08-13.md`](evidence-community-package-bootstrap-2026-08-13.md):
+  first external community-package installation attempt, including successful
+  Runtime 4.0 bootstrap, duplicate-tool recovery, and the standalone
+  shortcut's pre-game file-not-found boundary
 - [`game-binary-inspection.md`](game-binary-inspection.md): read-only import and
   diagnostic-string evidence
 
